@@ -1,6 +1,6 @@
 # API Rules
 
-Follow [../common/api-contract.md](../common/api-contract.md) for the frontend contract, including path naming, error formats, JSON casing, and dates. This document covers only FastAPI implementation rules. Actual API paths and request/response details remain undecided.
+Follow [../common/api-contract.md](../common/api-contract.md) for the frontend contract, including path naming, error formats, JSON casing, and dates. This document covers only FastAPI implementation rules. Per-function paths and request/response details are specified in [docs/plans/api/](../../../plans/api/README.md); items marked **proposed** there still need agreement.
 
 ## Routers
 
@@ -43,21 +43,22 @@ ClothingServiceDep = Annotated[ClothingService, Depends(get_clothing_service)]
 
 ## Authorization Check Locations
 
-Entry codes/QR codes are **only event entry mechanisms**, not participant/organizer authorization. Authentication/session design is undecided; isolate identification logic in `deps.py`.
+Entry codes/QR codes are **only event entry mechanisms**, not participant/organizer authorization. Requests authenticate with [bearer-token authentication](../common/api-contract.md#authentication-decided) (`Authorization: Bearer <participantToken>`, no cookies). Isolate token lookup in `deps.py`. Only session recovery on another device remains undecided.
 
 | Check | Location | Example |
 |---|---|---|
-| Who made the request (session → participant)? | `deps.get_current_participant` | No session → 401 |
-| Does the participant belong to the event in the path? | `deps.get_current_participant` | Participant from another event → 403 |
+| Who made the request (token → participant)? | `deps.get_current_participant` | Missing/unknown token → 401 |
+| Does the participant belong to the event in the path? | `deps.get_current_participant` | Participant from another event → 404 |
 | Is the participant the organizer? | `deps.require_organizer` | `event.organizer_participant_id != me.id` → 403 |
-| Does the participant own this garment/intent? | Service | Editing another's garment → 403 |
-| Is the participant a party to this proposal? | Service | Proposal consent/cancellation |
+| Does the participant own this garment/intent? | Service | Editing another's garment → 403; another's intent → 404 (existence hidden) |
+| Is the participant a party to this proposal? | Service | Not a party → 404 (existence hidden) |
 | Is the event active? | Service, inside write transaction | Closed event → 409 |
 
-- **MUST:** verify path `event_id` matches the session participant's `event_id` in the dependency.
+- **MUST:** verify path `event_id` matches the token participant's `event_id` in the dependency.
+- **MUST:** return `404` instead of `403` only to hide private resources (proposals the caller is not in, photos uploaded by others); see the contract.
 - Check ownership/event state **in services** because data must be read, and inside the same transaction for writes. **Do not** check only in routers without rechecking in services (race condition).
 - Service methods take the actor (`actor: Participant`) first. **No** mutating service methods without an actor.
-- Until session design is settled, isolate temporary signed-cookie/header-token approaches in `deps.py` with `# TODO(undecided): authentication method`.
+- **MUST:** store only the token hash and never log tokens. **Do not** use cookies for sessions. Mark session-recovery code with `# TODO(undecided): session recovery`.
 
 ## Requests and Responses
 
@@ -70,12 +71,14 @@ Entry codes/QR codes are **only event entry mechanisms**, not participant/organi
 
 Suggestions are calculated on demand, not stored; other participants' clothing/intents may have changed since viewing.
 
-- **MUST:** send `intentId`, current offered garment `fromClothingId`, and replacement `toClothingId` when accepting.
+- **MUST:** accept with the opaque suggestion ID only (no body; [10](../../../plans/api/10-alternative-suggestions.md)). The ID is server-signed and encodes `intentId`, `wantedClothingId`, the offered garment at suggestion time (`fromClothingId`), the suggested garment (`toClothingId`), and the cycle. Reject an ID whose signature does not verify with 404.
+- **MUST:** after verifying the signature and that the intent belongs to the actor (404 otherwise), run the replay check before any state check: if the intent already offers `toClothingId` and a proposal for the suggested cycle exists in any state, return 200 with the current intent and that cycle's latest proposal.
 - **MUST:** verify all of the following in one write transaction before changing the intent. On any failure, leave the intent unchanged and return 409 (frontend reloads suggestions).
   1. Event active, intent owned by the actor and valid, and current offered garment equals `fromClothingId`.
   2. `toClothingId` belongs to the actor and is available.
-  3. The changed intent completes a two-/three-person cycle **now**, recalculated with `domain/matching.py`.
+  3. The actor has no other active intent for (`toClothingId`, `wantedClothingId`).
+  4. The changed intent completes a two-/three-person cycle **now**, recalculated with `domain/matching.py`.
 - After changing the intent, invalidate affected unconfirmed proposals and recalculate in the same transaction ([database.md](database.md#proposal-creation-and-deduplication)).
 - Acceptance is not final consent. Newly created proposals start pending consent.
-- **MUST:** receive photos with `UploadFile` and validate MIME (`image/jpeg`, `image/png`, `image/webp`) and configurable size limit (default 10MB). Generate UUID filenames server-side; never use original filenames as paths.
+- **MUST:** receive photos with `UploadFile` and validate MIME (`image/jpeg`, `image/png`, `image/webp`) and configurable size limit (`MAX_PHOTO_BYTES`; proposed default 10MB, see [05](../../../plans/api/05-upload-photo.md)). Generate UUID filenames server-side; never use original filenames as paths.
 - Keep OpenAPI (`/docs`) enabled for development/demos. Adding route `summary` descriptions for frontend reference is recommended.

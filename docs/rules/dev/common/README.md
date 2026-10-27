@@ -31,4 +31,4 @@ Shared rules for Vintage Relay's backend (FastAPI/SQLite) and frontend (Next.js/
 
 1. Follow [AGENTS.md](../../../../AGENTS.md) and the [initial development plan](../../../plans/vintage-relay-plan-v1.md) for domain/exchange rules.
 2. If common and backend/frontend rules conflict, **common rules (especially api-contract.md) take priority**. Whoever finds a conflict updates the documents.
-3. Do not present open decisions (authentication/session recovery, photo retention, etc.) as settled requirements.
+3. Do not present open decisions (session recovery, photo retention, etc.) as settled requirements.

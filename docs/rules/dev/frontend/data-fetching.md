@@ -1,13 +1,13 @@
 # Data Fetching and Server State
 
-The backend is a separate API server. Integrate only through the [shared API contract](../common/api-contract.md). Paths and request/response details remain undecided; align types/function names for now and confine later adjustments to `lib/api/`.
+The backend is a separate API server. Integrate only through the [shared API contract](../common/api-contract.md). Per-function paths and request/response details are specified in [docs/plans/api/](../../../plans/api/README.md); items marked **proposed** may still change, so confine adjustments to `lib/api/`.
 
 ## 1. One API Client
 
 - **MUST:** route all HTTP calls through `apiFetch` in `src/lib/api/client.ts`. **No** direct `fetch` in components/hooks.
-- **MUST:** let `apiFetch` handle base URL, headers, session attachment (`lib/session.ts`), JSON parsing, and `ApiError` conversion per [error-handling.md](error-handling.md).
+- **MUST:** let `apiFetch` handle base URL, headers, session attachment (`lib/session.ts`, selecting the token by `eventId` because a device may hold tokens for several events and some paths such as `/proposals/{id}` do not contain the event ID), JSON parsing, and `ApiError` conversion per [error-handling.md](error-handling.md).
 - **MUST:** follow shared JSON casing/dates. If casing conversion is needed, centralize it in `apiFetch`, never individually elsewhere.
-- **MUST:** put domain requests in `lib/api/<domain>.ts` (`events.ts`, `items.ts`, `preferences.ts`, `intents.ts`, `trades.ts`, `suggestions.ts`).
+- **MUST:** put domain requests in `lib/api/<domain>.ts` (`events.ts`, `items.ts`, `preferences.ts`, `intents.ts`, `proposals.ts`, `suggestions.ts`).
 
 ```ts
 // src/lib/api/client.ts
@@ -16,13 +16,17 @@ import { getSessionHeaders } from '@/lib/session';
 
 import { toApiError } from './api-error';
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(
+  eventId: string | null, // null only for endpoints without a token: create, entry-code lookup, join
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const isFormData = init.body instanceof FormData;
   const res = await fetch(`${env.apiBaseUrl}${path}`, {
     ...init,
     headers: {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-      ...getSessionHeaders(),
+      ...(eventId ? getSessionHeaders(eventId) : {}),
       ...init.headers,
     },
   });
@@ -33,22 +37,23 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 ```
 
 ```ts
-// src/lib/api/trades.ts
-import type { Trade } from '@/types/trade';
+// src/lib/api/proposals.ts
+import type { Proposal } from '@/types/proposal';
 
 import { apiFetch } from './client';
 
-export const getTrade = (eventId: string, tradeId: string) =>
-  apiFetch<Trade>(`/events/${eventId}/trades/${tradeId}`);
+// eventId selects the token even though the path is top-level.
+export const getProposal = (eventId: string, proposalId: string) =>
+  apiFetch<Proposal>(eventId, `/proposals/${proposalId}`);
 
-export const consentTrade = (eventId: string, tradeId: string, version: number) =>
-  apiFetch<Trade>(`/events/${eventId}/trades/${tradeId}/consent`, {
+export const consentProposal = (eventId: string, proposalId: string, version: number) =>
+  apiFetch<Proposal>(eventId, `/proposals/${proposalId}/consents`, {
     method: 'POST',
     body: JSON.stringify({ version }),
   });
 ```
 
-> Paths above are examples. Align them after the shared API contract is finalized.
+> Use the paths in [docs/plans/api/](../../../plans/api/README.md). Always pass `eventId` first, even for top-level paths.
 
 - **MUST:** upload photos using `FormData` without manually setting `Content-Type` (see `isFormData` above).
 
@@ -56,7 +61,7 @@ export const consentTrade = (eventId: string, tradeId: string, version: number) 
 
 - **MUST:** define response types in `src/types/<domain>.ts` and supply them as request function generics.
 - **MUST:** represent server statuses (event, clothing, proposal, response) with literal unions.
-- **MUST:** include server `version` in proposal types and return it unchanged in consent/rejection/alternative acceptance requests. **Never** calculate/increment versions on the frontend.
+- **MUST:** include server `version` in proposal types and return it unchanged in consent/rejection requests. Alternative acceptance sends **no body and no `version`**; only the opaque suggestion ID in the path ([10](../../../plans/api/10-alternative-suggestions.md)). **Never** calculate/increment versions on the frontend.
 - **MUST NOT:** reproduce server decisions (availability, duplicate confirmation, cycles) on the frontend. Branch only on server states/flags.
 - **SHOULD:** generate types from backend OpenAPI using `openapi-typescript` into `src/types/api.gen.ts`, replacing manual types. Do not edit generated files.
 

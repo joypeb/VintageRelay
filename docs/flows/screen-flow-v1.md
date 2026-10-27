@@ -30,7 +30,7 @@ Organizer only: Home "Manage event" card, header menu → [M1 Manage event]
 | H1 | Create event | Event name and organizer display name. [Create] → create event/participant together → H2 |
 | H2 | Created/share | QR, entry code, [Copy link]. [Register my clothes] → C2, [Home] → P2. Shown once after creation |
 | M1 | Manage event | Organizer only. QR/code, participant/garment/confirmed exchange counts, [Close event] → H3 |
-| H3 | Closure confirmation modal | Explain cancellation of all unconfirmed proposals, including organizer's. [Close] → M1 closed state |
+| H3 | Closure confirmation modal | Explain cancellation of all unconfirmed proposals, including organizer's (proposed closure handling). [Close] → M1 closed state |
 | P1 | Join | QR prefills code. Show event name; enter display name. [Join] → P2 |
 | P2 | Home | Event banner. Organizer gets manage card (→ M1). Tasks: pending consent → T2, alternative → A1, register clothes → C2, preferences → R1, recommendations → B1 |
 

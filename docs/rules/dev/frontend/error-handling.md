@@ -96,7 +96,7 @@ export default function EventError({ error, reset }: { error: Error; reset: () =
 - **MUST:** put messages directly below inputs, linked with `aria-invalid` and `aria-describedby`.
 - **MUST:** disable submit buttons while submitting to prevent duplicates.
 - **SHOULD:** avoid form libraries; consider `react-hook-form` if many fields become difficult to manage.
-- **SHOULD:** validate image MIME/size before upload. The size limit remains undecided; centralize it in `MAX_PHOTO_BYTES` and update later.
+- **SHOULD:** validate image MIME/size before upload. The size limit is proposed as 10MB ([05](../../../plans/api/05-upload-photo.md)); centralize it in `MAX_PHOTO_BYTES`.
 
 ```ts
 export const itemFormSchema = z.object({

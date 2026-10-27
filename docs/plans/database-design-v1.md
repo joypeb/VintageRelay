@@ -2,9 +2,9 @@
 
 ## 1. Purpose and Scope
 
-Describe data for entry, clothing registration, AI recommendations, two-/three-person exchanges, consent, cancellation, and closure. The design uses **eight core tables**, with SQLite planned for the first version.
+Describe data for entry, clothing registration, AI recommendations, two-/three-person exchanges, consent, cancellation, and closure. The design uses **nine core tables**, with SQLite planned for the first version.
 
-This is a draft of tables/key data. Actual SQL, types, indexes, API requests/responses, and authentication will be settled in detailed design. See [PROJECT.md](../../PROJECT.md) for behavior and [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md) for APIs/scope.
+This is a draft of tables/key data. Actual SQL, types, and indexes will be settled in detailed design. API requests/responses are specified in [api/](api/README.md); authentication follows the [API contract](../rules/dev/common/api-contract.md#authentication-decided). See [PROJECT.md](../../PROJECT.md) for behavior and [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md) for APIs/scope.
 
 ## 2. Core Tables
 
@@ -13,6 +13,7 @@ This is a draft of tables/key data. Actual SQL, types, indexes, API requests/res
 | `events` | Events and lifecycle state |
 | `participants` | Participants who joined events |
 | `clothes` | Registered garments and availability |
+| `photos` | Uploaded photos and their attachment to garments |
 | `clothing_analyses` | AI-extracted features and uncertainties |
 | `preferences` | Raw preferences and interpretations |
 | `exchange_intents` | Offered/desired garment combinations |
@@ -34,7 +35,7 @@ Field names are illustrative drafts and may change during implementation. `PK` i
 | `status` | Active or closed |
 | `created_at`, `closed_at` | Creation/closure timestamps |
 
-Creating an event registers its creator as a participant and stores that ID in `organizer_participant_id`. Organizers must belong to their own events. Completed creation activates the event immediately. Generate QR codes from entry links; no separate table is required. Organizer authentication/session recovery will be decided separately. Entry codes alone do not grant organizer permissions.
+Creating an event registers its creator as a participant and stores that ID in `organizer_participant_id`. Organizers must belong to their own events. Completed creation activates the event immediately. Generate QR codes from entry links; no separate table is required. Organizer authority comes from the participant token of `organizer_participant_id`; session recovery will be decided separately. Entry codes alone do not grant organizer permissions.
 
 `participants.event_id` references events, while `events.organizer_participant_id` references participants. Create the event, register the organizer, and link the ID in **one transaction**. For example, temporarily leave the organizer ID empty, create the participant, then fill it. Roll back all creation if linking fails; never expose an active event without an organizer. Detailed design will settle temporary nullability and foreign key implementation.
 
@@ -44,10 +45,11 @@ Creating an event registers its creator as a participant and stores that ID in `
 |---|---|
 | `id` (PK) | Participant identifier |
 | `event_id` (FK) | Joined event |
-| `display_name` | Name displayed in event |
+| `display_name` | Name displayed in event; unique per event, case-insensitive |
+| `session_token_hash` | Hash of the participant's bearer token; never the raw token |
 | `created_at` | Join timestamp |
 
-Events have multiple participants, including the organizer. Each may register multiple garments/intents. Identity verification and session recovery remain undecided.
+Events have multiple participants, including the organizer. Each may register multiple garments/intents. Event creation and join issue one token per participant; requests send it as `Authorization: Bearer <participantToken>`, and the server looks up the participant by `session_token_hash` (unique). Identity verification and session recovery remain undecided.
 
 ### 3.3 `clothes` — Clothing
 
@@ -56,15 +58,28 @@ Events have multiple participants, including the organizer. Each may register mu
 | `id` (PK) | Clothing identifier |
 | `event_id` (FK) | Registration event |
 | `owner_id` (FK) | Registering participant |
-| `photo_location` | Photo storage location |
+| `photo_id` (FK) | Attached photo, referencing `photos.id` |
 | `description` | Owner-written description |
-| `status` | Available, confirmed, withdrawn, etc. |
+| `status` | `available`, `confirmed`, `withdrawn` |
 | `content_version` | Version of photo/description content |
 | `created_at`, `updated_at` | Registration/change timestamps |
 
 Consider `clothing_photos` if multiple photos become necessary. Store participant descriptions separately from AI estimates.
 
-### 3.4 `clothing_analyses` — AI Clothing Analysis
+### 3.4 `photos` — Uploaded Photos
+
+| Data | Description |
+|---|---|
+| `id` (PK) | Photo identifier |
+| `event_id` (FK) | Upload event |
+| `uploader_id` (FK) | Uploading participant |
+| `storage_location` | Storage key/URL (unguessable) |
+| `content_type`, `size_bytes` | Stored MIME type and size |
+| `created_at` | Upload timestamp |
+
+Photos are uploaded before clothing registration and attached through `clothes.photo_id`. A photo can be attached to at most one garment (unique `clothes.photo_id`). Only the uploader can attach it, within the same event. Retention/deletion of replaced or never-attached photos remains undecided.
+
+### 3.5 `clothing_analyses` — AI Clothing Analysis
 
 | Data | Description |
 |---|---|
@@ -80,7 +95,7 @@ Consider `clothing_photos` if multiple photos become necessary. Store participan
 
 For example, store “likely a green jacket” in `features` and “check whether a logo is present” in `uncertainties`. **Unverified does not mean absent.** Photo/description changes make old analyses stale and require reanalysis. If the source changes during analysis, never display old-version results as current.
 
-### 3.5 `preferences` — Participant Preferences
+### 3.6 `preferences` — Participant Preferences
 
 | Data | Description |
 |---|---|
@@ -94,7 +109,7 @@ For example, store “likely a green jacket” in `features` and “check whethe
 
 Separate original text and AI interpretation; allow participant review/correction. The first version proposes managing each participant's current preferences.
 
-### 3.6 `exchange_intents` — Exchange Intents
+### 3.7 `exchange_intents` — Exchange Intents
 
 | Data | Description |
 |---|---|
@@ -102,29 +117,30 @@ Separate original text and AI interpretation; allow participant review/correctio
 | `participant_id` (FK) | Selecting participant |
 | `offered_clothing_id` (FK) | Garment they offer |
 | `wanted_clothing_id` (FK) | Garment they want |
-| `status` | Active, withdrawn, etc. |
+| `status` | `active`, `withdrawn` (by the participant), `invalidated` (a referenced garment was withdrawn) |
 | `created_at`, `updated_at` | Selection/change timestamps |
 
 Example: “I want to offer my white pants for B's green jacket.” Offered clothing must belong to the participant; desired clothing must belong to another participant in the same event. Multiple intents are allowed.
 
 An intent is **not final exchange consent**. Accepting an alternative changes the intent according to the participant's choice and recalculates proposals.
 
-### 3.7 `trade_proposals` — Exchange Proposals
+### 3.8 `trade_proposals` — Exchange Proposals
 
 | Data | Description |
 |---|---|
 | `id` (PK) | Proposal identifier |
 | `event_id` (FK) | Proposal's event |
 | `version` | Version shown to participants |
-| `status` | Pending consent, confirmed, rejected, invalidated, cancelled, etc. |
+| `status` | `pending`, `confirmed`, `rejected`, `invalidated`, `cancelled` |
+| `end_reason` | Why it left `pending`/`confirmed`: `participant_rejected`, `intent_changed`, `clothing_changed`, `clothing_withdrawn`, `clothing_confirmed_elsewhere`, `event_closed`, `participant_cancelled`; null otherwise |
 | `cycle_key` | Cycle identity: (participant, offered garment, received garment) entries sorted by participant |
-| `created_at`, `confirmed_at`, `cancelled_at` | Creation/confirmation/cancellation timestamps |
+| `created_at`, `confirmed_at`, `cancelled_at`, `ended_at` | Creation/confirmation/cancellation timestamps; `ended_at` is set whenever the proposal becomes rejected, invalidated, or cancelled, never on confirmation ([state transitions](api/README.md#proposal-state-transitions)) |
 
 Store participants/garments in `trade_participants`. **One row represents one proposal version reviewed by participants.** Invalidate old versions when content changes and create new versions separately. Never apply old consent to new versions. Version links/history retention will be settled in detailed design.
 
 Use a partial unique index on `(event_id, cycle_key)` only while pending, preventing duplicate pending cycles. Three-person cycles produce the same `cycle_key` regardless of starting participant.
 
-### 3.8 `trade_participants` — Participation and Final Responses
+### 3.9 `trade_participants` — Participation and Final Responses
 
 | Data | Description |
 |---|---|
@@ -132,6 +148,7 @@ Use a partial unique index on `(event_id, cycle_key)` only while pending, preven
 | `proposal_id` (FK) | Specific proposal version to review |
 | `participant_id` (FK) | Exchange participant |
 | `offered_clothing_id` (FK) | Garment given |
+| `offered_content_version` | `clothes.content_version` of the offered garment when this proposal version was created |
 | `received_clothing_id` (FK) | Garment received |
 | `response` | Pending, consented, rejected |
 | `responded_at` | Response timestamp |
@@ -146,7 +163,8 @@ Two-person exchanges have two rows, three-person exchanges three. One row per pa
 ```text
 events
   ├─ participants
-  │    ├─ clothes ─ clothing_analyses
+  │    ├─ photos
+  │    ├─ clothes ─ photo, clothing_analyses
   │    ├─ preferences
   │    └─ exchange_intents ─ offered / desired clothing
   └─ trade_proposals
@@ -184,6 +202,7 @@ Consider adding `alternative_suggestions` later if acceptance/rejection history 
 - **Final confirmation:** check active event, unanimous same-version consent, valid intents/clothing, ownership, and availability; update in one transaction. Serialize concurrent requests to prevent duplicates.
 - **Proposal changes:** clothing/intent edits, withdrawal, or another confirmation invalidate affected unconfirmed proposals/consents. Review new proposals as new versions.
 - **Recalculation:** find only affected cycles in the **same transaction** as intent registration/withdrawal/change, clothing edit/withdrawal, alternative acceptance, or exchange cancellation. Reuse existing pending `cycle_key` proposals rather than duplicating.
+- **Re-proposal suppression:** do not recreate a cycle whose latest proposal for the same `cycle_key` was `rejected` or `cancelled` unless, after that proposal's `ended_at`, one of its intents was created or updated, or one of its garments has a `content_version` different from `trade_participants.offered_content_version`.
 - **Duplicate requests:** consent/rejection/cancellation/closure/intent registration produce the same result when repeated, per API idempotency rules.
 - **Alternative acceptance:** suggestions are not stored. In one transaction, check current/new garment ownership/availability and recalculate whether the changed intent closes a cycle now. Failure leaves intents unchanged.
 - **AI persistence:** call AI outside transactions. On save, compare clothing `content_version`/preference `version` with request-time values. Mismatches must not become current results.
@@ -199,7 +218,7 @@ Consider adding `alternative_suggestions` later if acceptance/rejection history 
 | `clothing_photos` | Multiple photos and per-garment ordering |
 | `alternative_suggestions` | Suggestion history and acceptance/rejection state |
 | Recommendation results | Revisiting or analyzing recommendation history |
-| Authentication/session tables | After organizer/participant auth and recovery are decided |
+| Session recovery tables | After participant/organizer session recovery is decided |
 | Handover records | After deciding who records completion and how |
 
 Decide photo/event retention/deletion, participant/garment limits, proposal history retention, and post-closure access separately. Never infer participant/organizer authorization from entry/QR codes alone.

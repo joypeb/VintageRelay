@@ -37,15 +37,17 @@ class EventClosedError(ConflictError):
 
 | Exception | HTTP | Purpose |
 |---|---|---|
-| `UnauthenticatedError` | 401 | Missing/expired session |
+| `UnauthenticatedError` | 401 | Missing/unknown/invalid token |
 | `ForbiddenError` | 403 | Permission denied |
 | `NotFoundError` | 404 | Missing resource |
 | `ConflictError` | 409 | Base class for state conflicts |
-| └ `EventClosedError` | 409 | Write to a closed event |
-| └ `StaleProposalError` | 409 | Version mismatch (`PROPOSAL_VERSION_MISMATCH`) |
-| └ `ProposalInvalidatedError` | 409 | Respond to invalidated proposal (`PROPOSAL_VERSION_MISMATCH`) |
+| └ `EventClosedError` | 409 | Action not allowed in a closed event (writes, AI recommendations) |
+| └ `StaleProposalError` | 409 | Version mismatch on a pending proposal (`PROPOSAL_VERSION_MISMATCH`) |
+| └ `ProposalInvalidatedError` | 409 | Respond to a rejected/invalidated/cancelled proposal, or a proposal confirmed without the caller's consent (`PROPOSAL_VERSION_MISMATCH`) |
 | └ `ClothingUnavailableError` | 409 | Already confirmed garment (`CLOTHING_ALREADY_CONFIRMED`) |
 | `AIUnavailableError` | 503 | AI timeout/failure (`AI_UNAVAILABLE`) |
+
+Both proposal errors carry `details: { currentStatus, latestProposalId }` ([12](../../../plans/api/12-consent-reject-proposal.md)).
 
 - Concrete codes **must** match the shared list. Add missing codes to the common document first.
 - `message` is a user-safe English sentence. **No** internal IDs, SQL, or stack information.
@@ -96,15 +98,16 @@ def register_error_handlers(app: FastAPI) -> None:
 | Condition | Exception | HTTP |
 |---|---|---|
 | Invalid schema shape | FastAPI automatic validation | 422 |
-| Missing/expired session | `UnauthenticatedError` | 401 |
-| Edit another's garment, non-organizer, nonparty | `ForbiddenError` | 403 |
-| Missing resource or resource in another event | `NotFoundError` | 404 |
-| Write to closed event | `EventClosedError` | 409 |
+| Missing/unknown/invalid token | `UnauthenticatedError` | 401 |
+| Edit another's garment, non-organizer | `ForbiddenError` | 403 |
+| Missing resource, resource in another event, or private resource (proposal the actor is not in, photo uploaded by another participant, another participant's intent or preference) | `NotFoundError` | 404 |
+| Write or AI recommendation in closed event | `EventClosedError` | 409 |
 | Consent version differs from current | `StaleProposalError` | 409 |
+| Consent/reject on a proposal that is not `pending`, or confirmed without the caller's consent | `ProposalInvalidatedError` | 409 |
 | Garment already confirmed elsewhere | `ClothingUnavailableError` | 409 |
 | AI timeout/failure | `AIUnavailableError` | 503 |
 
-- Recommend 404 for another event's resource ID to avoid revealing existence.
+- **MUST:** return 404 for another event's resource and for private resources, to hide their existence. Return 403 for role/ownership failures on event-visible resources (garments, the event). Intents and preferences are private (404). See the [API contract](../common/api-contract.md#authentication-decided).
 - Catch `sqlalchemy.exc.IntegrityError` in services and convert to meaningful domain exceptions, usually `ConflictError` subclasses. Do not leak it as 500.
 
 ## Prohibitions
