@@ -2,7 +2,22 @@
 
 - 모든 답변과 프로젝트 문서는 한국어로 작성한다.
 - Vintage Relay는 마을 행사나 소규모 벼룩시장의 **의류 교환 코너**를 위한 모바일 웹 프로토타입이다. 주최자가 행사를 생성하면 본인도 해당 행사의 참가자로 등록되고 참가자 ID가 행사의 주최자 ID로 저장된다. 행사는 즉시 활성화되며, 참가자는 QR 코드나 입장코드로 행사 전 또는 현장에 입장할 수 있다.
-- 프로젝트 개요와 사용 흐름은 [PROJECT.md](PROJECT.md), 기획의 근거는 [idea.md](idea.md), 개발 범위와 API·AI 초안은 [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md)를 참고한다. 초기 아이디어 문서와 이후 확정된 규칙이 다르면 최신 사용자 결정과 1차 개발 계획을 우선한다.
+- 프로젝트 개요는 [PROJECT.md](PROJECT.md), 세부 문서는 `docs/` 디렉토리를 참고한다.
+  - **기획 및 도메인 지식 (`docs/domain/`):** 기획 배경과 근거([idea.md](docs/domain/idea.md)) 등
+  - **비즈니스 및 교환 규칙 (`docs/rules/`):** 핵심 교환 규칙 및 세부 정책 문서
+  - **개발 계획 및 설계 (`docs/plans/`):** 1차 개발 계획([vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md)), DB 테이블 설계([database-design-v1.md](docs/plans/database-design-v1.md))
+  - **화면 및 인터랙션 흐름 (`docs/flows/`):** 화면 흐름 명세([screen-flow-v1.md](docs/flows/screen-flow-v1.md)), 인터랙티브 목업([mockup-flow-v1.html](docs/flows/mockup-flow-v1.html))
+  - **개발 규칙 (`docs/rules/dev/`):** 코드 스타일, 예외처리, 로깅, git 규칙
+- 초기 아이디어 문서와 이후 확정된 규칙이 다르면 최신 사용자 결정과 1차 개발 계획을 우선한다.
+
+## 개발 규칙 읽기 범위
+
+코드 작성 전 작업 영역에 맞는 규칙만 읽고 따른다.
+
+- **백엔드 작업 (`backend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/backend/`](docs/rules/dev/backend/README.md)
+- **프론트엔드 작업 (`frontend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/frontend/`](docs/rules/dev/frontend/README.md). `docs/rules/dev/backend/`는 읽지 않는다.
+- **문서·git 작업:** `docs/rules/dev/common/`만 읽는다.
+- 백엔드·프론트엔드가 공유하는 API 계약은 `docs/rules/dev/common/api-contract.md`가 유일한 기준이다.
 
 ## 핵심 교환 규칙
 
