@@ -42,10 +42,12 @@ class EventClosedError(ConflictError):
 | `NotFoundError` | 404 | Missing resource |
 | `ConflictError` | 409 | Base class for state conflicts |
 | └ `EventClosedError` | 409 | Action not allowed in a closed event (writes, AI recommendations) |
-| └ `StaleProposalError` | 409 | Version mismatch (`PROPOSAL_VERSION_MISMATCH`) |
-| └ `ProposalInvalidatedError` | 409 | Respond to invalidated proposal (`PROPOSAL_VERSION_MISMATCH`) |
+| └ `StaleProposalError` | 409 | Version mismatch on a pending proposal (`PROPOSAL_VERSION_MISMATCH`) |
+| └ `ProposalInvalidatedError` | 409 | Respond to a rejected/invalidated/cancelled proposal, or a proposal confirmed without the caller's consent (`PROPOSAL_VERSION_MISMATCH`) |
 | └ `ClothingUnavailableError` | 409 | Already confirmed garment (`CLOTHING_ALREADY_CONFIRMED`) |
 | `AIUnavailableError` | 503 | AI timeout/failure (`AI_UNAVAILABLE`) |
+
+Both proposal errors carry `details: { currentStatus, latestProposalId }` ([12](../../../plans/api/12-consent-reject-proposal.md)).
 
 - Concrete codes **must** match the shared list. Add missing codes to the common document first.
 - `message` is a user-safe English sentence. **No** internal IDs, SQL, or stack information.
@@ -101,6 +103,7 @@ def register_error_handlers(app: FastAPI) -> None:
 | Missing resource, resource in another event, or private resource (proposal the actor is not in, photo uploaded by another participant, another participant's intent or preference) | `NotFoundError` | 404 |
 | Write or AI recommendation in closed event | `EventClosedError` | 409 |
 | Consent version differs from current | `StaleProposalError` | 409 |
+| Consent/reject on a proposal that is not `pending`, or confirmed without the caller's consent | `ProposalInvalidatedError` | 409 |
 | Garment already confirmed elsewhere | `ClothingUnavailableError` | 409 |
 | AI timeout/failure | `AIUnavailableError` | 503 |
 

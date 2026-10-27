@@ -85,7 +85,7 @@ Repeated taps and network retransmissions may duplicate requests on mobile. Resp
 | Request | Already in target state | Changed to another state |
 |---|---|---|
 | Proposal consent (`proposalId`, `version`) | Already consented to that version **while the proposal is `pending` or `confirmed`**: **200 + current proposal**, no state change | Rejected/invalidated/cancelled, or version differs: 409 `EVENT_CLOSED` if the event is closed, otherwise 409 `PROPOSAL_VERSION_MISMATCH` |
-| Reject proposal | Already rejected: 200 + current proposal | Already confirmed/invalidated: 409 `PROPOSAL_VERSION_MISMATCH` |
+| Reject proposal | Already rejected: 200 + current proposal | Already confirmed/invalidated/cancelled: 409 `EVENT_CLOSED` if the event is closed, otherwise 409 `PROPOSAL_VERSION_MISMATCH` |
 | Cancel confirmed exchange | Already cancelled (including by another party): **200 + cancelled proposal** | Event closed: 409 `EVENT_CLOSED` |
 | Close event | Already closed: 200 + event | - |
 | Accept alternative suggestion | Intent already offers the suggested garment **and** a proposal for the suggested cycle exists (any state): 200 + current intent and that proposal | Otherwise fall through to state checks: 409 `EVENT_CLOSED`, `INTENT_NOT_ACTIVE`, `CLOTHING_*`, or `ALTERNATIVE_NO_LONGER_VALID` |
@@ -137,7 +137,7 @@ Common error codes (add feature-specific codes as needed):
 | `FORBIDDEN` | 403 | Permission denied, e.g. editing another's clothing or closing as a non-organizer |
 | `NOT_FOUND` | 404 | Missing resource, another event's resource, or a private resource whose existence is hidden |
 | `EVENT_CLOSED` | 409 | Action not allowed in a closed event (mutations and AI recommendations) |
-| `PROPOSAL_VERSION_MISMATCH` | 409 | Consent attempted for an invalid proposal version |
+| `PROPOSAL_VERSION_MISMATCH` | 409 | Consent or rejection attempted on an ended proposal or a different version |
 | `CLOTHING_ALREADY_CONFIRMED` | 409 | Garment already confirmed elsewhere |
 | `FILE_TOO_LARGE` | 413 | Uploaded photo exceeds size limit |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | File type not allowed |

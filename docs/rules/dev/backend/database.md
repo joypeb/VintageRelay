@@ -76,7 +76,7 @@ def confirm_if_all_agreed(self, actor: Participant, proposal_id: int, version: i
         if proposal.status in (ProposalStatus.PENDING, ProposalStatus.CONFIRMED) and self.trades.has_agreed(s, proposal, actor, version):
             return proposal                                   # Replay before event state; ended proposals fall through to 409
         self.events.get_active(s, actor.event_id)             # EventClosedError if closed
-        ensure_pending_version(proposal, version)             # StaleProposalError unless status == pending and version matches
+        ensure_pending_version(proposal, version)             # ProposalInvalidatedError if not pending; StaleProposalError if version differs
         self.trades.record_agreement(s, proposal, actor)
         if self.trades.all_agreed(s, proposal):
             self._confirm(s, proposal)                        # See duplicate confirmation prevention below
