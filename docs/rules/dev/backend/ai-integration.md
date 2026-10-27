@@ -45,6 +45,6 @@ current = db.scalar(select(Clothing.content_version).where(Clothing.id == clothi
 status = AnalysisStatus.DONE if current == v else AnalysisStatus.STALE
 ```
 
-- Never overwrite existing `confirmed_*` values with new analysis. Concurrent analyses for the same version may overwrite earlier analysis results, but must not modify `confirmed_*`.
+- Never overwrite existing `confirmed_*` values with new analysis. For concurrent analyses of the same version, **the first saved `done` result wins**; later results are discarded ([AI features](../../../plans/ai-features-v1.md)). Enforce this in the write transaction (check for an existing `done` row for `(clothing_id, content_version)`).
 - Include in prompts: "Mark defects, fit, authenticity, and prices not verifiable from photos as requiring confirmation." Never store "unverified" as "absent".
 - `domain/matching.py`, not AI, handles cycle and alternative garment detection.

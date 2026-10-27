@@ -6,7 +6,7 @@ Vintage Relay is a **mobile web app for a clothing exchange corner** at neighbor
 
 The goal is to connect multiple people's intents when finding a direct exchange partner is difficult. The app assists with recommendations and proposals, but **participants choose what to give and receive and consent to exchanges**.
 
-The project is currently at the pre-implementation stage. This document describes the agreed direction and initial design; detailed API request/response formats and screen layouts will be decided later. See [idea.md](docs/domain/idea.md) for early ideas and validation background, and [vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md) for draft APIs and development order. Where their scopes differ, prioritize this document and the initial plan, which reflect later discussions.
+The project is currently at the pre-implementation stage. This document describes the agreed direction and initial design; per-function API specs are drafted in [docs/plans/api/](docs/plans/api/README.md) (items marked proposed still need agreement), and screen layouts will be decided later. See [idea.md](docs/domain/idea.md) for early ideas and validation background, and [vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md) for draft APIs and development order. Where their scopes differ, prioritize this document and the initial plan, which reflect later discussions.
 
 The application interface, user-facing API messages, and AI-generated application copy are in English. Agent replies to the user remain in Korean.
 
@@ -37,7 +37,7 @@ Exchange confirmation and physical handover are separate states. Handling cancel
 
 Creating an event registers the organizer as a participant and stores their participant ID as the event's organizer ID. The event becomes active immediately and provides a QR code and entry code. Other participants use these codes to join the same event room, whether beforehand or on site.
 
-An entry code only grants entry to an event. Permissions to manage one's clothing/consent and the organizer's permission to close the event must be separate. Authentication and session recovery details will be decided later.
+An entry code only grants entry to an event. Permissions to manage one's clothing/consent and the organizer's permission to close the event must be separate. Requests authenticate with a per-event bearer `participantToken` ([API contract](docs/rules/dev/common/api-contract.md#authentication-decided)); only session recovery on another device remains undecided.
 
 ### 2. Clothing and Preference Registration
 
@@ -109,6 +109,6 @@ Meta Model API's `muse-spark-1.3` is the first candidate. Actual access, image i
 
 - **Direction:** mobile web, Python FastAPI, SQLite, and server-side Meta Model API calls. An externally accessible deployment is needed for phone access before events.
 - **Excluded:** cycles of four or more, bundles, payments, shipping, cash adjustments, live chat, nationwide event search, price/authenticity appraisal, virtual fitting, and native apps.
-- **Open decisions:** event/participant authentication and session recovery, photo retention/deletion, physical handover records and subsequent cancellation, post-event record retention, event size limits, and proposal ordering.
+- **Open decisions:** session recovery on another device, photo retention/deletion, physical handover records and subsequent cancellation, post-event record retention, event size limits, and proposal ordering.
 
 Exchange demand and the value of AI recommendations remain unvalidated. Early development should compare actual model API integration and recommendations with manual selection, and verify two-/three-person exchanges, cancellation, and duplicate confirmation prevention.

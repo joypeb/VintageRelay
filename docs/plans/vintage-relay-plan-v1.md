@@ -4,7 +4,7 @@
 
 Build a mobile web app for a **clothing exchange corner** at neighborhood events or small flea markets. Organizers create events, and participants join through QR or entry codes to register garments before or during the event. AI helps discover suitable garments; the app proposes two-/three-person exchanges based on participant choices.
 
-This is an **initial plan**, focused on APIs and AI usage. The app/model integration has not been implemented or validated. Detailed paths, request/response formats, and screen designs will be decided later.
+This is an **initial plan**, focused on APIs and AI usage. The app/model integration has not been implemented or validated. Per-function API specs are in [api/](api/README.md) and [ai-features-v1.md](ai-features-v1.md). Paths, authentication, error codes, the 403/404 policy, and the proposal suppression rule are decided; request/response details marked **proposed** remain proposals until agreed. Screen designs will be decided later.
 
 The application UI, user-facing API messages, and AI-generated application copy use English.
 
@@ -40,32 +40,34 @@ Alternative example: I offer white pants for B's green jacket; B offers that jac
 
 ## 4. Required Internal APIs
 
-Names below describe functionality, not actual paths.
+Names below describe functionality, not actual paths. Detailed draft specifications (paths, headers, requests, responses, errors) are split into one document per function under [api/](api/README.md).
 
-| Function | Request and required processing |
-|---|---|
-| Create event | Create event, register creator as participant, link organizer ID, activate immediately, generate entry code and QR link. |
-| Read event | Return event information and active/closed state. |
-| Close event | Verify organizer, close event, block new registration, intent changes, consent, confirmation, and cancellation. |
-| Join event | Validate QR link/entry code and create a participant session. |
-| Upload photo | Store photo and associate it with clothing registration for the event/participant. |
-| Register/read clothing | Save photos/descriptions; return same-event lists/details. |
-| Edit/withdraw clothing | Owner edits or withdraws clothing. Invalidate affected unconfirmed proposals/consent. Cancel confirmed exchanges before editing confirmed garments. |
-| Register/edit preferences | Save desired styles and exclusions. |
-| AI recommendations | Return candidates, reasons, and checks based on available same-event clothing and preferences. |
-| Select/withdraw intent | Select or withdraw desired garments; initial design also specifies owned offered garments. Invalidate affected unconfirmed proposals/consent. |
-| Find/read alternatives | Compare intents with available owned clothing, finding two-/three-person cycles enabled by changing the offered garment. Recompute after clothing/intent changes. |
-| Accept/reject alternative | Owner accepts/rejects. On acceptance, revalidate event/clothing/related intents and apply the chosen intent change. Rejection/invalid suggestions never automatically change existing intents. |
-| Create/read proposal | Calculate two-/three-person exchanges from selected intents and show each participant's offered/received clothing. |
-| Consent/reject proposal | Verify participant/version and record response. On unanimous consent, recheck event/conflicts and confirm. |
-| Cancel confirmed exchange | Before closure, a party cancels the entire exchange; related garments not yet handed over become available again. |
-| Read confirmation/handover | Show who gives/receives what; distinguish confirmation from completed physical handover. |
+| Function | Request and required processing | Spec |
+|---|---|---|
+| Create event | Create event, register creator as participant, link organizer ID, activate immediately, generate entry code and QR link. | [01-create-event](api/01-create-event.md) |
+| Read event | Return event information and active/closed state. | [02-read-event](api/02-read-event.md) |
+| Close event | Verify organizer, close event, block new registration, intent changes, consent, confirmation, and cancellation. | [03-close-event](api/03-close-event.md) |
+| Join event | Validate QR link/entry code and create a participant session. | [04-join-event](api/04-join-event.md) |
+| Upload photo | Store photo and associate it with clothing registration for the event/participant. | [05-upload-photo](api/05-upload-photo.md) |
+| Register/read clothing | Save photos/descriptions; return same-event lists/details. | [06-register-read-clothing](api/06-register-read-clothing.md) |
+| Edit/withdraw clothing | Owner edits or withdraws clothing. Invalidate affected unconfirmed proposals/consent. Cancel confirmed exchanges before editing confirmed garments. | [07-edit-withdraw-clothing](api/07-edit-withdraw-clothing.md) |
+| Register/edit preferences | Save desired styles and exclusions. | [08-preferences](api/08-preferences.md) |
+| AI recommendations | Return candidates, reasons, and checks based on available same-event clothing and preferences. | [ai-features-v1](ai-features-v1.md#5-recommendations) |
+| Select/withdraw intent | Select or withdraw desired garments; initial design also specifies owned offered garments. Invalidate affected unconfirmed proposals/consent. | [09-intents](api/09-intents.md) |
+| Find/read alternatives | Compare intents with available owned clothing, finding two-/three-person cycles enabled by changing the offered garment. Recompute after clothing/intent changes. | [10-alternative-suggestions](api/10-alternative-suggestions.md) |
+| Accept/reject alternative | Owner accepts/rejects. On acceptance, revalidate event/clothing/related intents and apply the chosen intent change. Rejection/invalid suggestions never automatically change existing intents. | [10-alternative-suggestions](api/10-alternative-suggestions.md) |
+| Create/read proposal | Calculate two-/three-person exchanges from selected intents and show each participant's offered/received clothing. | [11-proposals](api/11-proposals.md) |
+| Consent/reject proposal | Verify participant/version and record response. On unanimous consent, recheck event/conflicts and confirm. | [12-consent-reject-proposal](api/12-consent-reject-proposal.md) |
+| Cancel confirmed exchange | Before closure, a party cancels the entire exchange; related garments not yet handed over become available again. | [13-cancel-exchange](api/13-cancel-exchange.md) |
+| Read confirmation/handover | Show who gives/receives what; distinguish confirmation from completed physical handover. | [14-confirmed-exchanges](api/14-confirmed-exchanges.md) |
 
 The initial design proposes **canceling unconfirmed proposals on closure and retaining confirmed records for viewing**. Separate handover recording after closure remains undecided.
 
 QR/entry codes grant event entry only. Manage participant sessions and organizer permissions separately so they cannot authorize editing another's clothing, consenting for others, or closing the event.
 
 ## 5. AI Technology and External APIs
+
+Detailed draft specification: [ai-features-v1.md](ai-features-v1.md).
 
 ### Base Model
 
@@ -134,7 +136,7 @@ Compare real users' candidate review time, missed conditions, and correction bur
 
 **Decisions needed:**
 
-- Event creation, organizer/participant session recovery, and photo retention/deletion.
+- Organizer/participant session recovery on another device, and photo retention/deletion. (Authentication is decided in the [API contract](../rules/dev/common/api-contract.md#authentication-decided).)
 - Whether to specify owned offered clothing when selecting intents or only during final proposal review. This document proposes specifying it early.
 - Who records completed handover and how; cancellation after partial handover.
 - Post-closure access and retention of confirmed records.

@@ -59,4 +59,4 @@ Pass `ruff check`, `ruff format --check`, `mypy`, and `pytest` before PRs or com
 ## Governing Principles
 
 - Follow [AGENTS.md](../../../../AGENTS.md) and [PROJECT.md](../../../../PROJECT.md) for exchange rules (one-for-one, two-/three-person cycles, unanimous consent, same version, no duplicate confirmation).
-- Do not harden open decisions (authentication/session recovery, handover records, retention, etc.) into settled rules. Isolate temporary implementations and mark them with `# TODO(undecided):`.
+- Do not harden open decisions (session recovery, handover records, retention, etc.) into settled rules. Isolate temporary implementations and mark them with `# TODO(undecided):`.

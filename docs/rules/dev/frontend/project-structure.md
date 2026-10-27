@@ -71,7 +71,7 @@ Default to server components. Use client components (`'use client'`) for any of:
 - State/effect hooks (`useState`, `useEffect`, TanStack Query).
 - Event handlers (`onClick`, `onSubmit`).
 - Browser APIs (`localStorage`, camera, clipboard, `navigator`).
-- Session-dependent data (initial implementation fetches client-side while session design is undecided).
+- Session-dependent data (the participant token lives in browser storage, so fetch client-side).
 
 Rules:
 
@@ -96,4 +96,4 @@ export default async function TradePage({
 
 ## 4. Structure for Open Decisions
 
-Session recovery/authentication remains undecided. Centralize session reads/writes in `lib/session.ts`; other code calls only its functions. Change this file once the method is agreed.
+Authentication is decided: [bearer-token authentication](../common/api-contract.md#authentication-decided). Keep one `participantToken` per event and centralize reads/writes in `lib/session.ts`; other code calls only its functions. Session recovery on another device remains undecided; change only this file once it is agreed.

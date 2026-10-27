@@ -5,7 +5,7 @@
 - See [PROJECT.md](PROJECT.md) for the overview and `docs/` for details.
   - **Planning and domain knowledge (`docs/domain/`):** background and rationale, including [idea.md](docs/domain/idea.md).
   - **Business and exchange rules (`docs/rules/`):** core exchange rules and detailed policies.
-  - **Development plans and design (`docs/plans/`):** [initial development plan](docs/plans/vintage-relay-plan-v1.md) and [database design](docs/plans/database-design-v1.md).
+  - **Development plans and design (`docs/plans/`):** [initial development plan](docs/plans/vintage-relay-plan-v1.md), [database design](docs/plans/database-design-v1.md), [per-function API specifications](docs/plans/api/README.md), and [AI features](docs/plans/ai-features-v1.md).
   - **Screens and interactions (`docs/flows/`):** [screen flow specification](docs/flows/screen-flow-v1.md) and [interactive mockup](docs/flows/mockup-flow-v1.html).
   - **Development rules (`docs/rules/dev/`):** code style, error handling, logging, and Git rules.
 - If early ideas conflict with later decisions, prioritize the latest user decisions and the initial development plan.
@@ -21,13 +21,13 @@ Before writing code, read and follow only the rules for the area being changed.
 
 ## Code Review Before Commits and PRs
 
-- Before an agent commits or creates/updates a PR, it **must** delegate an OCR delegate review using Paseo's `reviewer` profile and wait for the results. Run separate reviews before committing and before PR work.
+- Before an agent commits or creates/updates a PR, it **must** delegate an OCR delegate review to a Paseo subagent and wait for the results. Use Paseo's `commit-reviewer` profile before committing and the `pr-reviewer` profile before PR work. Run separate reviews for each stage.
 - This procedure applies to agents reading these instructions. It is not a Git hook that detects or blocks Git commands run directly by the user.
-- At the start of a review, use Paseo's `list_profiles` to check the latest `reviewer` profile and notes. Do not hardcode models or settings. `create_agent` has no `profile` argument; pass the profile's provider/model, modeId, thinkingOptionId, and featureValues as the execution settings.
+- At the start of a review, use Paseo's `list_profiles` to check the latest profile for the current stage (`commit-reviewer` or `pr-reviewer`) and its notes. Do not hardcode models or settings. `create_agent` has no `profile` argument; pass the profile's provider/model, modeId, thinkingOptionId, and featureValues as the execution settings.
 - Run the reviewer in the same Paseo workspace as the files under review. Uncommitted changes are not copied into a separate worktree, so never review pre-commit changes from another worktree.
 - Provide the review stage, target files, base branch and HEAD commit, relevant requirements, checks run and their results. If a PR exists, also provide its number, URL, and actual base/head.
 - The reviewer must not edit code or documents, commit, push, create PRs, or post comments. It only reviews and returns findings to the requesting agent. **A delegated reviewer must not create another reviewer.**
-- If Paseo or the `reviewer` profile is unavailable, do not count the review as complete. Report the reason and stop commit/PR work.
+- If Paseo or the required profile (`commit-reviewer` or `pr-reviewer`) is unavailable, do not count the review as complete. Report the reason and stop commit/PR work.
 
 ### Review Scope and OCR
 
@@ -64,4 +64,4 @@ Before writing code, read and follow only the rules for the area being changed.
 
 ## Open Decisions
 
-Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. Specifying an offered garment when recording an intent is an initial design proposal; API paths and request/response details are also undecided. Do not treat open decisions as settled rules.
+Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. Specifying an offered garment when recording an intent is an initial design proposal. API path structure, bearer-token authentication, the 403/404 authorization policy (404 only to hide private resources), and feature error codes are decided in `docs/rules/dev/common/api-contract.md`. The proposal re-proposal suppression rule is decided in `docs/plans/api/11-proposals.md`; per-function request/response details are drafted in `docs/plans/api/` and `docs/plans/ai-features-v1.md`, where items marked proposed still need agreement. Do not treat open decisions as settled rules.

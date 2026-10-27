@@ -72,10 +72,10 @@ class Db:
 ```python
 def confirm_if_all_agreed(self, actor: Participant, proposal_id: int, version: int) -> TradeProposal:
     with self.db.write() as s:
-        event = self.events.get_active(s, actor.event_id)        # EventClosedError if closed
-        proposal = self.trades.get(s, proposal_id)            # Already serialized by BEGIN IMMEDIATE
+        proposal = self.trades.get_for_participant(s, proposal_id, actor)  # 404 if not a party; serialized by BEGIN IMMEDIATE
         if self.trades.has_agreed(s, proposal, actor, version):
-            return proposal                                   # Duplicate: return current state unchanged
+            return proposal                                   # Replay before event state: return current state unchanged
+        self.events.get_active(s, actor.event_id)             # EventClosedError if closed
         ensure_version(proposal, version)                     # StaleProposalError on mismatch
         self.trades.record_agreement(s, proposal, actor)
         if self.trades.all_agreed(s, proposal):
@@ -94,7 +94,7 @@ Do not rely solely on application checks. The DB is the last line of defense.
 
 Apply **both** safeguards on confirmation.
 
-1. **Conditional update and affected-row check (required):** change only available garments to confirmed. If affected rows differ from the proposal's garment count, raise and roll back the entire transaction.
+1. **Conditional update and affected-row check (required):** change only available garments to confirmed. If affected rows differ from the proposal's garment count, raise and roll back to the savepoint taken before the consent write, then invalidate the proposal in the same transaction (see below).
 
 ```python
 result = db.execute(
@@ -103,8 +103,10 @@ result = db.execute(
     .values(status=ClothingStatus.CONFIRMED)
 )
 if result.rowcount != len(clothing_ids):
-    raise ClothingUnavailableError(...)   # Leaving the with block rolls back
+    raise ClothingUnavailableError(...)   # Caught by the confirmation service; see below
 ```
+
+**Recheck failure handling ([12](../../../plans/api/12-consent-reject-proposal.md)):** the confirmation service catches the recheck error, rolls back to the savepoint (`s.begin_nested()` taken before recording the consent), sets the proposal `status='invalidated'` with the mapped `end_reason` and `ended_at` using `WHERE status='pending'`, commits, and then returns 409 with the recheck code. If the invalidation update (`WHERE status='pending'`) affects zero rows, return the current state's error (`PROPOSAL_VERSION_MISMATCH` or `EVENT_CLOSED`) without changing `end_reason`/`ended_at`.
 
 2. **Partial unique index (required):** index `trade_participants.is_confirmed` so an offered garment belongs to only one confirmed exchange. This column is needed because `trade_proposals` status cannot be referenced by a partial-index predicate ([database-design-v1.md](../../../plans/database-design-v1.md), 3.8).
 

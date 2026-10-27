@@ -1,6 +1,6 @@
 # API Contract (Sole Source of Truth for Backend and Frontend)
 
-This is the **only authoritative document** for HTTP formats shared by backend and frontend. It takes precedence over their individual rules. Feature-specific paths and request/response details remain undecided; define them according to this contract once agreed.
+This is the **only authoritative document** for HTTP formats shared by backend and frontend. It takes precedence over their individual rules. Feature-specific paths and request/response details are specified per function in [docs/plans/api/](../../../plans/api/README.md) and [ai-features-v1.md](../../../plans/ai-features-v1.md), following this contract.
 
 ## 1. Basics
 
@@ -13,6 +13,7 @@ This is the **only authoritative document** for HTTP formats shared by backend a
 
 - **MUST:** use lowercase `kebab-case` paths and plural resource nouns, e.g. `/api/v1/events/{event_id}/clothing`, `/api/v1/proposals/{proposal_id}/consents`.
 - **MUST:** nest event resources under events, to a maximum of two levels.
+- **MUST:** nest event-scoped **collections** under the event (`/api/v1/events/{event_id}/clothing`, `/api/v1/events/{event_id}/intents`, `/api/v1/events/{event_id}/proposals`) and expose **individual resources** with globally unique IDs at the top level (`/api/v1/clothing/{clothing_id}`, `/api/v1/intents/{intent_id}`, `/api/v1/proposals/{proposal_id}`).
 - **MUST:** express CRUD using HTTP methods.
 
 | Method | Purpose |
@@ -87,7 +88,7 @@ Repeated taps and network retransmissions may duplicate requests on mobile. Resp
 | Reject proposal | Already rejected: 200 + current proposal | Already confirmed/invalidated: 409 `PROPOSAL_VERSION_MISMATCH` |
 | Cancel confirmed exchange | Already cancelled (including by another party): **200 + cancelled proposal** | Event closed: 409 `EVENT_CLOSED` |
 | Close event | Already closed: 200 + event | - |
-| Register intent | Same active (offered garment, desired garment) intent exists: 200 + existing intent; do not create another | Garment unavailable: 409 `CLOTHING_ALREADY_CONFIRMED` |
+| Register intent | Same active (offered garment, desired garment) intent exists: 200 + existing intent; do not create another | Garment confirmed elsewhere: 409 `CLOTHING_ALREADY_CONFIRMED`; withdrawn: 409 `CLOTHING_NOT_AVAILABLE` |
 
 - **MUST:** make these requests idempotent: repetition has the same result as one request. **No** duplicate rows, duplicate logs, or double state changes.
 - **MUST:** return the **current state** after processing. The frontend updates from the response and must not assume a 200 means its request changed state.
@@ -131,16 +132,30 @@ Common error codes (add feature-specific codes as needed):
 |---|---|---|
 | `VALIDATION_ERROR` | 422 | Request value validation failed |
 | `BAD_REQUEST` | 400 | Malformed request, such as unparseable JSON |
-| `UNAUTHENTICATED` | 401 | Participant session missing/expired |
+| `UNAUTHENTICATED` | 401 | Participant token missing, unknown, or invalid |
 | `FORBIDDEN` | 403 | Permission denied, e.g. editing another's clothing or closing as a non-organizer |
-| `NOT_FOUND` | 404 | Missing resource or access to another event's resource |
-| `EVENT_CLOSED` | 409 | Attempted mutation in a closed event |
+| `NOT_FOUND` | 404 | Missing resource, another event's resource, or a private resource whose existence is hidden |
+| `EVENT_CLOSED` | 409 | Action not allowed in a closed event (mutations and AI recommendations) |
 | `PROPOSAL_VERSION_MISMATCH` | 409 | Consent attempted for an invalid proposal version |
 | `CLOTHING_ALREADY_CONFIRMED` | 409 | Garment already confirmed elsewhere |
 | `FILE_TOO_LARGE` | 413 | Uploaded photo exceeds size limit |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | File type not allowed |
 | `AI_UNAVAILABLE` | 503 | Model API failure/delay; frontend offers manual selection |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+Feature-specific error codes:
+
+| Code | Status | Meaning |
+|---|---|---|
+| `DISPLAY_NAME_TAKEN` | 409 | Display name already used in this event |
+| `PHOTO_ALREADY_ATTACHED` | 409 | Photo is already attached to another garment |
+| `CLOTHING_NOT_AVAILABLE` | 409 | Garment is withdrawn or otherwise unavailable (not confirmed) |
+| `INTENT_NOT_ACTIVE` | 409 | Intent was withdrawn or invalidated, including when found during proposal confirmation |
+| `ALTERNATIVE_NO_LONGER_VALID` | 409 | Alternative suggestion no longer completes a cycle |
+| `PROPOSAL_NOT_CONFIRMED` | 409 | Cancellation attempted on a proposal that is not confirmed |
+| `CONTENT_VERSION_MISMATCH` | 409 | Clothing/preference changed since the client loaded it |
+| `ANALYSIS_NOT_READY` | 409 | No completed AI analysis exists for the current clothing version |
+| `PREFERENCE_REQUIRED` | 409 | Recommendations or interpretation requested without preference text |
 
 ## 8. HTTP Status Codes
 
@@ -165,7 +180,19 @@ Common error codes (add feature-specific codes as needed):
 
 - **MUST:** include `X-Request-ID` on every backend response. Reuse the request header if present; otherwise generate a value.
 - **SHOULD:** include `requestId` in frontend error screens/console logs for debugging.
-- Authentication/session transport (cookies or headers) remains undecided. Add it here once agreed.
+
+### Authentication (Decided)
+
+- **MUST:** authenticate participant requests with `Authorization: Bearer <participantToken>`. Do not use cookies for sessions.
+- **MUST:** issue `participantToken` only in the event creation and join responses. It is an opaque random string (at least 32 random bytes, base64url) identifying **one participant in one event**.
+- **MUST:** store only a hash of the token in the database. Never log tokens or return them from other endpoints.
+- **MUST:** derive organizer permission from `participant.id == event.organizerParticipantId`; there is no separate organizer token.
+- **MUST NOT:** treat entry codes or QR links as authentication. They grant entry only.
+- **MUST:** require the header on every endpoint except event creation, entry-code lookup, and join.
+- **MUST:** respond `401 UNAUTHENTICATED` for a missing/unknown token, `404 NOT_FOUND` when the token belongs to a different event than the resource, and `403 FORBIDDEN` when the role or ownership is insufficient.
+- **MUST:** use `404 NOT_FOUND` instead of `403` only to hide that a private resource exists, such as a proposal the caller does not participate in, a photo uploaded by another participant, or another participant's intent or preference. Resources visible to the whole event, such as garments, return `403` for role or ownership failures.
+- **MUST:** allow the `Authorization` and `X-Request-ID` request headers in CORS and expose `X-Request-ID`.
+- The frontend keeps one token per event. Session recovery on another device remains undecided.
 
 ## 10. Change Procedure
 

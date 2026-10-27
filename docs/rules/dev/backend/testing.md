@@ -66,7 +66,7 @@ def client(engine: Engine) -> Iterator[TestClient]:
 - Confirm only with unanimous consent; partial consent stays pending.
 - Old-version consent → `StaleProposalError`, no consent recorded.
 - Confirm one of two proposals sharing clothing → invalidate the other.
-- Confirm with an already confirmed garment → `ClothingUnavailableError`, **nothing changes** (verify rollback).
+- Confirm with an already confirmed garment, a withdrawn garment, or an inactive intent → 409 with the recheck code; the caller's consent is **not** recorded, no garment changes, and the proposal is `invalidated` with the mapped `endReason` and `endedAt`.
 - **Concurrent confirmation:** send final consent for two overlapping proposals on two threads → exactly one confirms.
 - **Invariant:** after confirmation/cancellation, `is_confirmed = 1` ⇔ proposal confirmed ⇔ offered garment confirmed. Partial index violations become `ClothingUnavailableError`.
 - **Duplicate requests:** consent twice to the same version → second also 200, one consent record. Two parties concurrently cancel → both 200, garment state restored once.
@@ -88,12 +88,12 @@ def test_concurrent_confirm_only_one_wins(engine: Engine, two_proposals_sharing_
 
 - Cancel confirmed exchange → entire exchange cancelled, related garments available again.
 - Consent/confirmation/cancellation/intent changes in a closed event → `EventClosedError`.
-- Closure cancels unconfirmed proposals and retains confirmed records for viewing.
+- (Proposed, test only once decided) Closure invalidates unconfirmed proposals and retains confirmed records for viewing.
 - Concurrent closure and final consent → no new confirmation after closure.
 
 ### 4. Authorization and Contract (API)
 
-- Edit another's garment, consent as a nonparty, close as non-organizer → 403.
+- Edit another's garment, close as non-organizer → 403; consent as a nonparty → 404 (existence hidden).
 - Entry code alone does not grant organizer permissions.
 - Shared error format (`{"error": {"code", "message", "details", "requestId"}}`), matching `requestId` and `X-Request-ID`: one test each for 422/404/409/500.
 - Manual clothing list retrieval succeeds even when fake AI raises an exception.
