@@ -22,7 +22,7 @@ tests/
 
 ## 테스트 DB
 
-- **실제 SQLite 파일**을 `tmp_path`에 만들어 쓴다. 운영과 같은 `core/db.py`의 엔진 설정(pragma, `BEGIN IMMEDIATE`)을 재사용한다.
+- **실제 SQLite 파일**을 `tmp_path`에 만들어 쓴다. 운영과 같은 `core/db.py`의 설정(pragma, 읽기 `BEGIN`·쓰기 `BEGIN IMMEDIATE` 엔진 분리)을 재사용한다. 아래 `make_engine`은 이 설정으로 엔진을 만드는 함수를 뜻한다.
 - `:memory:` DB는 연결마다 별개 DB라 동시성 테스트가 불가능하므로 서비스·API 테스트에서 **금지**.
 - 스키마는 `Base.metadata.create_all()`로 만든다. 마이그레이션 검증은 별도 테스트 1개(`alembic upgrade head`가 빈 DB에서 성공)로 확인한다(권장).
 - 테스트 간 상태 공유 **금지**. DB는 테스트마다 새로 만든다(파일 생성 비용은 작다).
@@ -68,6 +68,11 @@ def client(engine: Engine) -> Iterator[TestClient]:
 - 같은 옷을 포함한 두 교환안 중 하나 확정 → 다른 교환안 무효화.
 - 이미 확정된 옷이 포함된 교환안 확정 시도 → `ClothingUnavailableError`, **아무것도 바뀌지 않음**(롤백 확인).
 - **동시 확정:** 같은 옷을 공유한 두 교환안의 마지막 동의를 스레드 2개로 동시에 보냄 → 정확히 1개만 확정.
+- **불변식:** 확정·취소 후 `is_confirmed = 1` ⇔ 교환안 확정 ⇔ 제공 의류 확정. 부분 인덱스 위반은 `ClothingUnavailableError`로 변환됨.
+- **중복 요청:** 같은 버전에 두 번 동의 → 두 번째도 200, 동의 기록 1개. 두 당사자가 동시에 확정 교환 취소 → 둘 다 200, 옷 상태 1회만 복구.
+- **교환안 중복 생성 방지:** 3인 순환을 이루는 의향 3개를 서로 다른 순서·동시에 등록 → 동의 대기 교환안 정확히 1개(`cycle_key` 동일).
+- **대체 의류 수락:** 제안 조회 후 다른 참가자가 의향을 취소한 상태에서 수락 → 409, 내 의향 변경 없음.
+- **AI 분석 경쟁:** fake AI 호출 도중 의류 설명 수정 → 분석 결과가 최신으로 표시되지 않음(`stale`).
 
 ```python
 def test_concurrent_confirm_only_one_wins(engine: Engine, two_proposals_sharing_clothing) -> None:
@@ -90,8 +95,9 @@ def test_concurrent_confirm_only_one_wins(engine: Engine, two_proposals_sharing_
 
 - 남의 옷 수정, 비당사자의 교환안 동의, 주최자 아닌 참가자의 행사 종료 → 403.
 - 입장코드만으로 주최자 권한을 얻지 못함.
-- 에러 응답이 공통 포맷(`{"error": {"code", "message", "details"}}`)을 따름 — 422·404·409·500 각 1개.
+- 에러 응답이 공통 포맷(`{"error": {"code", "message", "details", "requestId"}}`)을 따르고 `requestId`가 `X-Request-ID` 헤더와 같음 — 422·404·409·500 각 1개.
 - AI fake가 예외를 던져도 수동 의류 목록 조회는 성공.
+- AI 동시 호출 상한을 넘는 요청 → 대기 후 503 `AI_UNAVAILABLE`, 그동안 다른 API(목록 조회)는 정상 응답.
 
 ## 실행
 

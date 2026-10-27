@@ -4,7 +4,7 @@
 
 ## 라우터
 
-- 리소스별로 `APIRouter`를 하나씩 두고 `prefix`와 `tags`를 지정한다. 모든 라우터는 `/api` 아래에 마운트한다.
+- 리소스별로 `APIRouter`를 하나씩 두고 `prefix`와 `tags`를 지정한다. 모든 라우터는 `/api/v1` 아래에 마운트한다.
 - 라우트 함수는 **얇게** 유지한다: 의존성 받기 → 서비스 호출 → 결과 반환. 10줄을 넘으면 서비스로 옮긴다.
 - 모든 라우트에 응답 모델을 **반드시** 지정한다(반환 타입 힌트 또는 `response_model`). `dict`·ORM 객체 반환 **금지**.
 - 생성은 `status_code=201`, 본문 없는 성공은 `204`를 명시한다.
@@ -27,7 +27,7 @@ def create_clothing(
 `api/deps.py`에 모으고 `Annotated` 별칭으로 노출한다.
 
 ```python
-DbSession = Annotated[Session, Depends(get_db)]
+DbSession = Annotated[Db, Depends(get_db)]   # read()/write() 제공 (database.md)
 CurrentParticipant = Annotated[Participant, Depends(get_current_participant)]
 Organizer = Annotated[Participant, Depends(require_organizer)]
 
@@ -37,7 +37,7 @@ def get_clothing_service(db: DbSession) -> ClothingService:
 ClothingServiceDep = Annotated[ClothingService, Depends(get_clothing_service)]
 ```
 
-- DB 세션은 요청당 1개, `get_db`에서 `yield` 후 반드시 `close()`한다. 트랜잭션은 서비스가 `with db.begin():`으로 연다(→ [database.md](database.md#트랜잭션)).
+- `get_db`는 요청당 `Db` 1개를 제공한다. 트랜잭션은 서비스가 `with db.read()` 또는 `with db.write()`로 연다(→ [database.md](database.md#트랜잭션)).
 - 설정(`Settings`)·AI 클라이언트도 의존성으로 주입해 테스트에서 `app.dependency_overrides`로 교체할 수 있게 한다.
 - 모듈 전역 상태(전역 세션, 전역 캐시 dict) **금지**.
 
@@ -64,5 +64,18 @@ ClothingServiceDep = Annotated[ClothingService, Depends(get_clothing_service)]
 - 목록 응답 형식은 공통 계약을 따른다. 공통 규칙에 정의가 없으면 배열을 바로 반환하지 않고 객체로 감싼다(`{"items": [...]}`). 페이지네이션은 필요해질 때 추가한다.
 - 응답에 다른 참가자의 세션 토큰·내부 경로 등 민감 정보를 넣는 것은 **금지**. 주최자 여부 등 화면에 필요한 값만 담는다.
 - 교환안 응답에는 `version`과 참가자별 제공·수령 의류를 **반드시** 포함한다. 동의 요청은 이 `version`을 그대로 보내고, 서버는 현재 버전과 다르면 409로 거절한다.
+- 동의·거절·취소·행사 종료·의향 등록은 공통 계약의 중복 처리 표([../common/api-contract.md](../common/api-contract.md) 5-1)대로 **반드시** 멱등하게 구현한다. "이미 목표 상태인지"는 쓰기 트랜잭션 안에서 판단한다.
+
+### 대체 의류 제안 수락
+
+제안은 저장하지 않고 요청 시 계산하므로, 제안을 본 뒤 다른 참가자의 의향·의류가 바뀌었을 수 있다.
+
+- **반드시** 수락 요청은 `intentId`, 현재 제공 의류 `fromClothingId`, 바꿀 의류 `toClothingId`를 보낸다.
+- **반드시** 서버는 하나의 쓰기 트랜잭션 안에서 다음을 모두 확인한 뒤 의향을 바꾼다. 하나라도 실패하면 의향을 바꾸지 않고 409로 응답한다(프론트엔드는 제안 목록을 다시 불러온다).
+  1. 행사 진행 중, 의향이 본인 것이고 유효하며 현재 제공 의류가 `fromClothingId`와 같음
+  2. `toClothingId`가 본인 소유이고 교환 가능 상태
+  3. 바꾼 의향으로 **지금** 2인·3인 순환이 닫힘(`domain/matching.py`로 재계산)
+- 의향 변경 후 같은 트랜잭션에서 영향받는 미확정 교환안을 무효화하고 교환안을 다시 계산한다([database.md](database.md#교환안-생성과-중복-방지)).
+- 수락은 최종 동의가 아니다. 새로 생긴 교환안은 동의 대기 상태로 시작한다.
 - 사진 업로드는 `UploadFile`로 받고 MIME 타입(`image/jpeg`, `image/png`, `image/webp`)과 크기 상한(설정값, 기본 10MB)을 **반드시** 검사한다. 저장 파일명은 서버가 생성(UUID)하고 원본 파일명을 경로에 쓰지 않는다.
 - OpenAPI 문서(`/docs`)는 개발·데모 중 켜 둔다. 라우트에 `summary`를 달아 프론트엔드가 참고할 수 있게 한다(권장).

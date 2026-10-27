@@ -6,58 +6,80 @@
 
 `core/db.py`에서 **반드시** 아래 설정을 적용한다.
 
+읽기 전용과 쓰기 트랜잭션은 시작 방식이 달라야 하므로 엔진을 둘로 나눈다.
+
 ```python
-engine = create_engine(
-    settings.database_url,  # 예: sqlite:///./data/app.db
-    connect_args={"check_same_thread": False, "timeout": 5},
-)
+def _make_engine(begin_sql: str) -> Engine:
+    engine = create_engine(
+        settings.database_url,  # 예: sqlite:///./data/app.db
+        connect_args={"check_same_thread": False, "timeout": 5},
+    )
 
-@event.listens_for(engine, "connect")
-def _on_connect(dbapi_conn, _record) -> None:
-    dbapi_conn.isolation_level = None          # pysqlite 자동 BEGIN 끄기
-    cur = dbapi_conn.cursor()
-    cur.execute("PRAGMA foreign_keys = ON")     # SQLite 기본값은 OFF
-    cur.execute("PRAGMA journal_mode = WAL")    # 읽기·쓰기 동시 진행
-    cur.execute("PRAGMA busy_timeout = 5000")   # 잠금 시 5초 대기
-    cur.execute("PRAGMA synchronous = NORMAL")
-    cur.close()
+    @event.listens_for(engine, "connect")
+    def _on_connect(dbapi_conn, _record) -> None:
+        dbapi_conn.isolation_level = None          # pysqlite 자동 BEGIN 끄기
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA foreign_keys = ON")     # SQLite 기본값은 OFF
+        cur.execute("PRAGMA journal_mode = WAL")    # 읽기·쓰기 동시 진행
+        cur.execute("PRAGMA busy_timeout = 5000")   # 잠금 시 5초 대기
+        cur.execute("PRAGMA synchronous = NORMAL")
+        cur.close()
 
-@event.listens_for(engine, "begin")
-def _on_begin(conn) -> None:
-    conn.exec_driver_sql("BEGIN IMMEDIATE")     # 트랜잭션 시작 시 쓰기 잠금 확보
+    @event.listens_for(engine, "begin")
+    def _on_begin(conn) -> None:
+        conn.exec_driver_sql(begin_sql)
 
-SessionLocal = sessionmaker(engine, expire_on_commit=False, autobegin=False)
+    return engine
+
+ReadSession = sessionmaker(_make_engine("BEGIN"), expire_on_commit=False, autobegin=False)
+WriteSession = sessionmaker(_make_engine("BEGIN IMMEDIATE"), expire_on_commit=False, autobegin=False)
+
+class Db:
+    """요청당 1개. 서비스는 read()/write() 중 하나로 트랜잭션을 연다."""
+    @contextmanager
+    def read(self) -> Iterator[Session]:
+        with ReadSession() as s, s.begin():
+            yield s
+
+    @contextmanager
+    def write(self) -> Iterator[Session]:
+        with WriteSession() as s, s.begin():
+            yield s
 ```
 
 - `autobegin=False`로 **명시적 트랜잭션 없이 DB에 접근하면 에러**가 나게 한다. 의도치 않게 열린 트랜잭션이 잠금을 오래 잡는 것을 막는다.
-
-- `BEGIN IMMEDIATE`는 트랜잭션 시작 시점에 쓰기 잠금을 잡아 **동시 쓰기를 직렬화**한다. "읽고 검사한 뒤 쓰기" 사이에 다른 요청이 끼어드는 문제를 막는 핵심 장치이므로 끄지 않는다.
+- **반드시** 쓰기가 하나라도 있을 수 있는 트랜잭션은 `db.write()`(`BEGIN IMMEDIATE`)로 연다. 트랜잭션 시작 시점에 쓰기 잠금을 잡아 **동시 쓰기를 직렬화**한다. "읽고 검사한 뒤 쓰기" 사이에 다른 요청이 끼어드는 문제를 막는 핵심 장치다. 시뮬레이션에서 쓰기를 일반 `BEGIN`으로 시작하면 동시 요청의 87%가 `database is locked`로 실패했다.
+- **반드시** 조회만 하는 트랜잭션(목록·상세·폴링, `get_current_participant`)은 `db.read()`로 연다. WAL에서는 읽기가 쓰기를 기다리지 않는다. 시뮬레이션(읽기 40·쓰기 2 스레드)에서 읽기까지 `BEGIN IMMEDIATE`로 하면 p95 566ms, p99 1.5초였고 읽기 전용으로 나누면 p95 6ms였다.
+- **금지:** `db.read()` 안에서 쓰기. 읽기 트랜잭션에서 검사한 결과로 다른 트랜잭션에서 쓰는 것도 **금지**(검사와 쓰기는 같은 `db.write()` 안에서).
 - DB 파일은 `data/` 아래에 두고 git에 커밋하지 않는다(`.gitignore`).
 
 ## 동시성 한계 (알고 쓰기)
 
-- SQLite는 **쓰기 1개만 동시 진행**한다. 위 설정에서는 읽기 트랜잭션도 잠금을 잡으므로 요청이 사실상 한 줄로 처리된다. 행사 단위(수십 명) 규모에서는 충분하다.
+- SQLite는 **쓰기 1개만 동시 진행**한다. 쓰기 요청은 한 줄로 처리되며, 행사 단위(수십 명) 규모에서는 충분하다.
 - Uvicorn 워커는 **1개**로 실행한다. 여러 서버 인스턴스가 같은 DB 파일을 공유하는 구성(네트워크 파일시스템 포함)은 **금지**.
+- **반드시** 배포 환경은 **상시 실행되는 단일 서버 + 영속 디스크**여야 한다. 서버리스(요청마다 인스턴스 생성)·자동 확장·재배포 시 디스크가 초기화되는 환경은 **금지**. 이 조건이 깨지면 이 문서의 모든 동시성 보장이 무효가 된다.
 - 트랜잭션 안에서 AI 호출·파일 업로드 등 느린 I/O를 하는 것은 **금지**. 잠금을 오래 잡아 다른 요청이 `database is locked`로 실패한다. 느린 작업은 트랜잭션 밖에서 끝내고, 짧은 트랜잭션으로 결과만 저장한다.
 - 규모가 커지면 PostgreSQL 전환을 검토한다. 이를 위해 SQLite 전용 SQL은 `core/db.py`와 마이그레이션에만 둔다(권장).
 
 ## 트랜잭션
 
-- 모든 DB 접근(읽기 포함)은 `with db.begin():` 블록 안에서 한다. 블록이 정상 종료되면 커밋, 예외면 롤백된다.
+- 모든 DB 접근(읽기 포함)은 `with db.read() as s:` 또는 `with db.write() as s:` 블록 안에서 한다. 블록이 정상 종료되면 커밋, 예외면 롤백된다.
 - 트랜잭션 경계는 **서비스 메서드 1개 = 트랜잭션 1개**가 기본이다. 단, AI 호출이 있는 서비스는 "읽기 트랜잭션 → (트랜잭션 밖) AI 호출 → 쓰기 트랜잭션"으로 나눈다.
-- `deps.get_current_participant`도 자체 `with db.begin():` 블록에서 조회를 끝낸다. 권한 판단에 필요한 값(행사 상태, 소유권)은 서비스 트랜잭션에서 다시 읽는다.
+- `deps.get_current_participant`도 자체 `with db.read():` 블록에서 조회를 끝낸다. 권한 판단에 필요한 값(행사 상태, 소유권)은 서비스 트랜잭션에서 다시 읽는다.
 - 리포지토리에서 `begin()`/`commit()` 호출 **금지**. 필요하면 `flush()`만 한다.
 - 검사(행사 상태·소유권·버전·의류 상태)와 그 결과에 따른 변경은 **반드시 같은 트랜잭션** 안에서 한다.
 
 ```python
 def confirm_if_all_agreed(self, actor: Participant, proposal_id: int, version: int) -> TradeProposal:
-    with self.db.begin():
-        event = self.events.get_active(actor.event_id)        # 종료됐으면 EventClosedError
-        proposal = self.trades.get(proposal_id)               # BEGIN IMMEDIATE로 이미 직렬화됨
+    with self.db.write() as s:
+        event = self.events.get_active(s, actor.event_id)        # 종료됐으면 EventClosedError
+        proposal = self.trades.get(s, proposal_id)            # BEGIN IMMEDIATE로 이미 직렬화됨
+        if self.trades.has_agreed(s, proposal, actor, version):
+            return proposal                                   # 중복 요청: 상태 변경 없이 현재 상태 반환
         ensure_version(proposal, version)                     # 다르면 StaleProposalError
-        self.trades.record_agreement(proposal, actor)
-        if self.trades.all_agreed(proposal):
-            self._confirm(proposal)                           # 아래 "중복 확정 방지"
+        self.trades.record_agreement(s, proposal, actor)
+        if self.trades.all_agreed(s, proposal):
+            self._confirm(s, proposal)                        # 아래 "중복 확정 방지"
         return proposal
 ```
 
@@ -102,6 +124,21 @@ __table_args__ = (
 - 미확정 교환안에는 같은 옷이 여러 번 나올 수 있으므로 `offered_clothing_id`에 무조건 `UNIQUE`를 거는 것은 **금지**.
 - 확정과 같은 트랜잭션에서 해당 옷이 포함된 다른 미확정 교환안을 무효화한다.
 - 행사 종료와 확정의 경쟁도 같은 원리로 처리한다: 확정 트랜잭션 안에서 행사 상태를 다시 읽고, 종료 트랜잭션은 `UPDATE events SET status='closed' WHERE status='active'`로 처리한다. `BEGIN IMMEDIATE` 덕분에 둘 중 하나가 먼저 끝난 뒤 다른 하나가 최신 상태를 본다.
+
+### 교환안 생성과 중복 방지
+
+같은 순환이 동의 대기 교환안으로 두 번 생기면 참가자가 둘 중 어디에 동의해야 할지 혼란스럽고, 동의가 나뉘어 확정되지 않는다.
+
+- **반드시** 교환안 재계산은 원인이 된 변경과 **같은 `db.write()` 트랜잭션**에서 한다. 원인: 의향 등록·취소·변경, 의류 수정·철회, 대체 의류 수락, 확정 교환 취소. 별도 백그라운드 작업이나 다음 요청으로 미루는 것은 **금지**(직렬화가 깨진다).
+- **반드시** `trade_proposals.cycle_key`를 저장한다. 값은 참여 내역을 `participant_id` 순으로 정렬한 `participant:offered:received` 목록을 이어 붙인 문자열이다. 같은 3인 순환을 어느 참가자부터 찾았든 같은 값이 나온다.
+- **반드시** 동의 대기 상태에서 같은 순환이 하나만 존재하도록 부분 고유 인덱스를 건다. 생성 전에 같은 `cycle_key`의 대기 교환안이 있으면 새로 만들지 않고 건너뛴다. 인덱스는 마지막 방어선이다.
+
+```python
+Index("uq_pending_cycle", "event_id", "cycle_key",
+      unique=True, sqlite_where=text("status = 'pending'"))
+```
+
+- 재계산은 변경된 의향·의류를 포함하는 순환만 찾는다(행사 전체 재계산 금지). 교환 가능 상태의 의류와 유효한 의향만 대상으로 한다.
 
 ## ORM 규칙 (SQLAlchemy 2.x)
 
