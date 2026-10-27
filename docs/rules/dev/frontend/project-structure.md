@@ -9,7 +9,7 @@ frontend/
 ├── src/
 │   ├── app/              # 라우팅 전용 (page, layout, error, not-found, loading)
 │   ├── components/
-│   │   ├── ui/           # 도메인 무관 공통 UI (Button, BottomSheet, Modal, Badge)
+│   │   ├── ui/           # Astryx 컴포넌트를 조합한 도메인 무관 공통 UI (예: BottomTabBar)
 │   │   └── <domain>/     # 도메인 컴포넌트 (event, item, preference, trade, suggestion)
 │   ├── hooks/            # 공통 훅 (useEventId, useDisclosure 등). 쿼리 훅은 여기 두지 않는다
 │   ├── lib/
@@ -17,7 +17,8 @@ frontend/
 │   │   ├── utils/        # cn, format(날짜·상태 라벨) 등 순수 함수
 │   │   └── env.ts        # 환경변수 읽기 단일 지점
 │   ├── types/            # API 응답·도메인 타입
-│   └── styles/globals.css
+│   ├── styles/globals.css  # Astryx·Tailwind 레이어 순서와 import
+│   └── astryx-themes.ts    # `astryx theme add` 가 생성. 직접 수정 금지
 ├── public/
 └── tests/e2e/            # Playwright (필요 시)
 ```

@@ -1,6 +1,6 @@
 # 공통 개발 규칙
 
-Vintage Relay의 백엔드(FastAPI·SQLite)와 프론트엔드(Next.js·TypeScript·Tailwind CSS)가 함께 따르는 규칙이다. 해커톤 프로토타입이므로 실제로 지킬 수 있는 최소 규칙만 둔다.
+Vintage Relay의 백엔드(FastAPI·SQLite)와 프론트엔드(Next.js·TypeScript·Astryx·Tailwind CSS)가 함께 따르는 규칙이다. 해커톤 프로토타입이므로 실제로 지킬 수 있는 최소 규칙만 둔다.
 
 ## 읽기 범위
 

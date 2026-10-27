@@ -21,8 +21,9 @@ Vintage Relay **모바일 웹** 프론트엔드의 개발 규칙이다. 해커�
 | Next.js | 16.x (확인 시점 16.4.3), App Router | Turbopack 기본. `next lint`는 없으므로 ESLint CLI 직접 실행 |
 | React / React DOM | 19.x (확인 시점 19.3.1) | |
 | TypeScript | **6.0.x** (확인 시점 6.0.3) | 최신은 7.0.2지만 `typescript-eslint` 8.72.1의 지원 범위가 `<6.1.0`이라 6.0으로 고정한다. 린트 도구가 7을 지원하면 올린다 |
-| Tailwind CSS | 4.x (확인 시점 4.3.3) + `@tailwindcss/postcss` | CSS-first 설정(`@theme`), `tailwind.config.js` 없음 |
-| ESLint | 10.x (확인 시점 10.13.0), flat config | `eslint-config-next` 16.x + `typescript-eslint` |
+| Astryx | 0.7.x (확인 시점 0.7.4): `@astryxdesign/core`, `@astryxdesign/theme-chocolate`, `@astryxdesign/cli`(dev) | UI 컴포넌트·디자인 토큰. 사전 빌드 CSS를 쓰므로 StyleX 컴파일러 플러그인은 두지 않는다. peer 의존성 `@stylexjs/stylex` 0.19.x |
+| Tailwind CSS | 4.x (확인 시점 4.3.3) + `@tailwindcss/postcss` | 레이아웃 보정용. Astryx 토큰 브리지(`tailwind-theme.css`) 사용, `tailwind.config.js` 없음 |
+| ESLint | **9.x** (확인 시점 9.39.5), flat config | `eslint-config-next` 16.x + `typescript-eslint`. 10.x는 `eslint-plugin-import` 2.32가 지원하지 않아 `import/order` 실행 중 크래시가 나므로 9로 고정한다 |
 | Prettier | 3.x (확인 시점 3.9.10) + `prettier-plugin-tailwindcss` 0.8.x | |
 | TanStack Query | 5.x (확인 시점 5.105.0) | 서버 상태 관리 |
 | Zod | 4.x (확인 시점 4.6.7) | 폼 검증 |
@@ -34,7 +35,7 @@ Vintage Relay **모바일 웹** 프론트엔드의 개발 규칙이다. 해커�
 |---|---|
 | [project-structure.md](project-structure.md) | 디렉토리 배치, `app/` 라우팅과 화면 ID 매핑, 서버/클라이언트 컴포넌트 기준 |
 | [code-style.md](code-style.md) | TypeScript strict, 네이밍, 컴포넌트 작성, import 순서, 린트·포맷 |
-| [styling.md](styling.md) | Tailwind v4 규칙, 디자인 토큰, 조건부 클래스, 접근성 기본 |
+| [styling.md](styling.md) | Astryx 컴포넌트·테마, Tailwind v4 규칙, 디자인 토큰, 조건부 클래스, 접근성 기본 |
 | [data-fetching.md](data-fetching.md) | API 클라이언트, 타입, TanStack Query, 폴링, 환경변수 |
 | [error-handling.md](error-handling.md) | API 에러 파싱, `error.tsx`/`not-found.tsx`, 사용자 메시지, 폼 검증 |
 | [logging.md](logging.md) | 클라이언트 로깅 기준과 민감정보 금지 |
@@ -54,7 +55,7 @@ pnpm dev          # 개발 서버
 pnpm build        # 프로덕션 빌드
 pnpm lint         # eslint .
 pnpm format       # prettier --write .
-pnpm typecheck    # tsc --noEmit
+pnpm typecheck    # next typegen && tsc --noEmit
 pnpm test         # vitest run
 ```
 
