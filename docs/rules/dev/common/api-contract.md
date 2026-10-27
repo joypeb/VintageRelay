@@ -84,10 +84,11 @@ Repeated taps and network retransmissions may duplicate requests on mobile. Resp
 
 | Request | Already in target state | Changed to another state |
 |---|---|---|
-| Proposal consent (`proposalId`, `version`) | Already consented to that version: **200 + current proposal**, no state change | Invalidated/rejected, or version differs after confirmation: 409 `PROPOSAL_VERSION_MISMATCH` |
+| Proposal consent (`proposalId`, `version`) | Already consented to that version **while the proposal is `pending` or `confirmed`**: **200 + current proposal**, no state change | Rejected/invalidated/cancelled, or version differs: 409 `EVENT_CLOSED` if the event is closed, otherwise 409 `PROPOSAL_VERSION_MISMATCH` |
 | Reject proposal | Already rejected: 200 + current proposal | Already confirmed/invalidated: 409 `PROPOSAL_VERSION_MISMATCH` |
 | Cancel confirmed exchange | Already cancelled (including by another party): **200 + cancelled proposal** | Event closed: 409 `EVENT_CLOSED` |
 | Close event | Already closed: 200 + event | - |
+| Accept alternative suggestion | Intent already offers the suggested garment **and** a proposal for the suggested cycle exists (any state): 200 + current intent and that proposal | Otherwise fall through to state checks: 409 `EVENT_CLOSED`, `INTENT_NOT_ACTIVE`, `CLOTHING_*`, or `ALTERNATIVE_NO_LONGER_VALID` |
 | Register intent | Same active (offered garment, desired garment) intent exists: 200 + existing intent; do not create another | Garment confirmed elsewhere: 409 `CLOTHING_ALREADY_CONFIRMED`; withdrawn: 409 `CLOTHING_NOT_AVAILABLE` |
 
 - **MUST:** make these requests idempotent: repetition has the same result as one request. **No** duplicate rows, duplicate logs, or double state changes.

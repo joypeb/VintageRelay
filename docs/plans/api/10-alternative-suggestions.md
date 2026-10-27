@@ -76,7 +76,7 @@ All participants are distinct, all garments `available`, and all in the same eve
 | Field | Type | Description |
 |---|---|---|
 | `intent` | `Intent` | Updated intent with the suggested offered garment ([schema](09-intents.md#intent-schema)) |
-| `proposal` | `Proposal` | Pending proposal for the completed cycle ([schema](11-proposals.md#proposal-schema)); every participant must still consent |
+| `proposal` | `Proposal` | Latest proposal for the completed cycle ([schema](11-proposals.md#proposal-schema)). Usually `pending` (every participant must still consent), but a replay may return any state; clients must use `status` and `canConsent` |
 
 ### Processing Rules
 

@@ -76,7 +76,7 @@ def confirm_if_all_agreed(self, actor: Participant, proposal_id: int, version: i
         if proposal.status in (ProposalStatus.PENDING, ProposalStatus.CONFIRMED) and self.trades.has_agreed(s, proposal, actor, version):
             return proposal                                   # Replay before event state; ended proposals fall through to 409
         self.events.get_active(s, actor.event_id)             # EventClosedError if closed
-        ensure_version(proposal, version)                     # StaleProposalError on mismatch
+        ensure_pending_version(proposal, version)             # StaleProposalError unless status == pending and version matches
         self.trades.record_agreement(s, proposal, actor)
         if self.trades.all_agreed(s, proposal):
             self._confirm(s, proposal)                        # See duplicate confirmation prevention below
@@ -120,7 +120,7 @@ __table_args__ = (
 ```
 
 - **MUST:** change proposal status, `clothes.status`, and `is_confirmed` together in one transaction on confirmation; revert all three together on cancellation. Centralize this in repository `mark_confirmed()`/`mark_cancelled()`.
-- Convert `IntegrityError` for `uq_confirmed_offered_clothing` to `ClothingUnavailableError`.
+- Convert `IntegrityError` for `uq_confirmed_offered_clothing` to `ClothingUnavailableError` and handle it like any recheck failure: roll back to the savepoint, invalidate the proposal with `end_reason = clothing_confirmed_elsewhere`, commit, and return 409 (see recheck failure handling above).
 - **MUST:** test the invariant: rows with `is_confirmed = 1` ⇔ proposal confirmed ⇔ offered garment confirmed.
 
 - **No** unconditional `UNIQUE` on `offered_clothing_id`, because unconfirmed proposals may share garments.

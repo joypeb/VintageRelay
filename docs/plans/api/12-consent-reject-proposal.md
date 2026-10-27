@@ -60,7 +60,7 @@ The frontend treats all three like `PROPOSAL_VERSION_MISMATCH`: show the proposa
 | 404 | `NOT_FOUND` | Proposal does not exist, belongs to another event, or the caller is not a participant (existence hidden; see [contract](../../rules/dev/common/api-contract.md#authentication-decided)) |
 | 409 | `EVENT_CLOSED` | Event is closed |
 | 409 | `PROPOSAL_VERSION_MISMATCH` | Proposal is `rejected`/`invalidated`/`cancelled`, `version` differs, or it was confirmed without the caller's consent to this version. `details`: `{ "currentStatus": "invalidated", "latestProposalId": "..." \| null }` (latest pending proposal for the same cycle, if any) |
-| 409 | `CLOTHING_ALREADY_CONFIRMED` | Recheck, unique index, or conditional update detected a garment confirmed elsewhere during confirmation. `details`: `{ "clothingId": "..." }` |
+| 409 | `CLOTHING_ALREADY_CONFIRMED` | Recheck, unique index, or conditional update detected a garment confirmed elsewhere during confirmation; all three follow the recheck-failure path above (proposal invalidated). `details`: `{ "clothingId": "..." }` |
 | 409 | `CLOTHING_NOT_AVAILABLE` | Recheck found a withdrawn garment. `details`: `{ "clothingId": "..." }` |
 | 409 | `INTENT_NOT_ACTIVE` | Recheck found an inactive intent or changed ownership. `details`: `{ "intentId": "..." }` |
 | 422 | `VALIDATION_ERROR` | `version` missing or not a positive integer |

@@ -51,7 +51,7 @@ Returns the current `Event` ([schema](02-read-event.md#event-schema)) with `stat
    - Keep confirmed proposals and their `is_confirmed` rows unchanged for viewing (**proposed**).
 4. Log `INFO` event `event_closed` with `extra`: `event_id`, `invalidated_proposal_count`.
 
-Because closure and final consent use the same serialized write lock, a **new** consent (not a replay of one already recorded) that starts after closure commits sees `closed` and fails with `EVENT_CLOSED`.
+Because closure and final consent use the same serialized write lock, a consent that is not a replay (a replay requires a recorded consent on a proposal that is still `pending` or `confirmed`) that starts after closure commits sees `closed` and fails with `EVENT_CLOSED`.
 
 ### Effects After Closure
 
