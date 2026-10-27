@@ -1,89 +1,89 @@
-# Vintage Relay 모바일 화면 흐름 초안
+# Vintage Relay Draft Mobile Screen Flow
 
-## 1. 목적과 범위
+## 1. Purpose and Scope
 
-모바일 웹 기준으로 필요한 화면, 화면 간 연결, 주요 버튼의 이동 경로를 정리한다. 이 문서는 [PROJECT.md](../../PROJECT.md), [vintage-relay-plan-v1.md](../plans/vintage-relay-plan-v1.md), [database-design-v1.md](../plans/database-design-v1.md)를 바탕으로 한 **1차 제안**이며, 시각 디자인과 API 상세는 다루지 않는다. 흐름 확인용 목업은 [mockup-flow-v1.html](mockup-flow-v1.html)에 있다.
+List required mobile screens, connections, and primary button destinations. This **initial proposal** is based on [PROJECT.md](../../PROJECT.md), [vintage-relay-plan-v1.md](../plans/vintage-relay-plan-v1.md), and [database-design-v1.md](../plans/database-design-v1.md). It excludes visual design/API details. See the [interactive mockup](mockup-flow-v1.html).
 
-## 2. 전제
+## 2. Assumptions
 
-- 주최자는 행사를 생성하면 해당 행사의 참가자로 자동 등록된다. `events.organizer_participant_id`가 그 참가자를 가리킨다.
-- 따라서 주최자 전용 앱은 따로 두지 않는다. **참가자 앱 하나에 주최자 전용 기능을 추가**하며, 노출 여부는 `participant.id == event.organizer_participant_id`로 판단한다.
-- 주최자도 일반 참가자와 같은 화면으로 옷을 등록하고 교환에 참여한다.
+- Creating an event automatically registers the organizer as a participant, referenced by `events.organizer_participant_id`.
+- No separate organizer app. **Add organizer-only features to one participant app**, shown when `participant.id == event.organizer_participant_id`.
+- Organizers register garments and exchange through the same screens as other participants.
 
-## 3. 전체 구조
+## 3. Overall Structure
 
 ```text
-[S0 랜딩] ─┬─ 행사 만들기 → [H1 행사 생성] → [H2 생성 완료·공유] → [P2 홈]
-           └─ 코드 입력/QR → [P1 입장] → [P2 홈]
+[S0 Landing] ─┬─ Create event → [H1 Create] → [H2 Created/share] → [P2 Home]
+              └─ Code/QR → [P1 Join] → [P2 Home]
 
-하단 탭: 홈(P2) | 둘러보기(B1) | 내 옷(C1) | 교환(T1)
-주최자 전용: 홈의 "행사 관리" 카드, 헤더 메뉴 → [M1 행사 관리]
+Bottom tabs: Home (P2) | Browse (B1) | My clothes (C1) | Exchanges (T1)
+Organizer only: Home "Manage event" card, header menu → [M1 Manage event]
 ```
 
-## 4. 화면 목록
+## 4. Screens
 
-### 4.1 진입과 주최자 기능
+### 4.1 Entry and Organizer Features
 
-| ID | 화면 | 주요 요소와 이동 |
+| ID | Screen | Main elements and navigation |
 |---|---|---|
-| S0 | 랜딩 | [행사 만들기] → H1, [입장코드로 참여] → P1 |
-| H1 | 행사 생성 | 행사 이름, 주최자 본인의 표시 이름 입력. [생성] → 행사·참가자 동시 생성 → H2 |
-| H2 | 생성 완료·공유 | QR 코드, 입장코드, [링크 복사]. [내 옷 등록하러 가기] → C2, [홈으로] → P2. 생성 직후 1회 표시 |
-| M1 | 행사 관리 | 주최자 전용. QR·코드 재확인, 참가자·의류·확정 교환 수, [행사 종료] → H3 |
-| H3 | 행사 종료 확인 모달 | 미확정 교환안 취소 안내(주최자 본인의 미확정 교환안 포함). [종료] → M1(종료 상태) |
-| P1 | 입장 | QR 접속 시 코드 자동 입력. 행사명 표시, 표시 이름 입력. [입장] → P2 |
-| P2 | 홈 | 행사 상태 배너. 주최자에게는 "행사 관리" 카드(→ M1). 할 일 카드: 동의 대기 → T2, 대체 제안 → A1, 옷 등록 → C2, 취향 입력 → R1, AI 추천 → B1 |
+| S0 | Landing | [Create event] → H1, [Join with entry code] → P1 |
+| H1 | Create event | Event name and organizer display name. [Create] → create event/participant together → H2 |
+| H2 | Created/share | QR, entry code, [Copy link]. [Register my clothes] → C2, [Home] → P2. Shown once after creation |
+| M1 | Manage event | Organizer only. QR/code, participant/garment/confirmed exchange counts, [Close event] → H3 |
+| H3 | Closure confirmation modal | Explain cancellation of all unconfirmed proposals, including organizer's. [Close] → M1 closed state |
+| P1 | Join | QR prefills code. Show event name; enter display name. [Join] → P2 |
+| P2 | Home | Event banner. Organizer gets manage card (→ M1). Tasks: pending consent → T2, alternative → A1, register clothes → C2, preferences → R1, recommendations → B1 |
 
-### 4.2 둘러보기 탭
+### 4.2 Browse Tab
 
-| ID | 화면 | 주요 요소와 이동 |
+| ID | Screen | Main elements and navigation |
 |---|---|---|
-| B1 | AI 추천 | 상단 "내 취향" 칩 → R1. 카드별 추천 이유·확인할 점, 카드 → B3. 취향이 없으면 R1 안내, AI 실패 시 B2 안내 |
-| B2 | 전체 목록 | B1과 세그먼트로 전환. 카드 → B3 |
-| B3 | 의류 상세(다른 참가자의 옷) | 사진, 소유자 설명, AI 추정 특징("추정" 표시), 미확인 사항. [이 옷 받고 싶어요] → I1. 의향이 있으면 [의향 취소] 표시 |
-| I1 | 제공 의류 선택 바텀시트 | 교환 가능한 내 옷 중 하나를 선택하고 [의향 등록] → B3 복귀. 내 옷이 없으면 [옷 등록] → C2 |
-| R1 | 취향 입력 | 원하는 스타일과 거부 조건 자유 입력. [AI 해석] → R2 |
-| R2 | 취향 해석 확인 | AI가 정리한 조건을 수정·삭제, 애매한 표현 표시. [저장] → B1 |
+| B1 | AI recommendations | "My preferences" chip → R1. Reasons/checks per card; card → B3. Missing preferences → R1, AI failure → B2 |
+| B2 | All clothing | Segment switch with B1. Cards → B3 |
+| B3 | Another participant's clothing | Photo, owner description, AI features labeled estimates, uncertainties. [I want this] → I1; existing intent shows [Withdraw intent] |
+| I1 | Offered garment sheet | Select one available owned garment; [Register intent] → B3. No clothing → [Register clothing] → C2 |
+| R1 | Preferences | Free-text styles/exclusions. [AI interpretation] → R2 |
+| R2 | Review interpretation | Edit/remove conditions; flag ambiguity. [Save] → B1 |
 
-### 4.3 내 옷 탭
+### 4.3 My Clothes Tab
 
-| ID | 화면 | 주요 요소와 이동 |
+| ID | Screen | Main elements and navigation |
 |---|---|---|
-| C1 | 내 옷 목록 | 상태 배지(교환 가능·확정·철회). [+ 옷 등록] → C2, 카드 → C4 |
-| C2 | 옷 등록·수정 | 사진(카메라·앨범), 설명. [등록] → C3. 수정 시 관련 미확정 교환안 무효화 경고 |
-| C3 | AI 분석 확인 | 추정 특징 수정, 확인 필요 사항 표시. [확인] → C4, 분석 실패 시 [건너뛰기] → C4 |
-| C4 | 내 옷 상세 | 정보와 관련 의향·교환안 목록(→ T2·T3). [수정] → C2, [철회] → 확인 모달. 확정된 옷은 수정·철회 불가, 교환 취소 안내 → T3 |
+| C1 | My clothes | Available/confirmed/withdrawn badges. [+ Register] → C2; card → C4 |
+| C2 | Register/edit clothing | Camera/album photo and description. [Register] → C3. Warn that edits invalidate affected unconfirmed proposals |
+| C3 | Review AI analysis | Correct estimated features and show checks. [Confirm] → C4; failure [Skip] → C4 |
+| C4 | My clothing detail | Information, related intents/proposals (→ T2/T3). [Edit] → C2, [Withdraw] → confirmation. Confirmed garments cannot be edited/withdrawn; guide to cancellation → T3 |
 
-### 4.4 교환 탭
+### 4.4 Exchanges Tab
 
-| ID | 화면 | 주요 요소와 이동 |
+| ID | Screen | Main elements and navigation |
 |---|---|---|
-| T1 | 교환 목록 | 세그먼트: 내 의향(→ B3, [취소]) / 진행 중(대체 제안 → A1, 동의 대기 → T2) / 확정(→ T3) / 지난 내역(무효·거절·취소) |
-| A1 | 대체 의류 제안 | 현재 제공 의류와 제안 의류 비교, 순환 미리보기. [수락] → 서버 재검사 후 T2, 실패 시 안내 후 T1. [거절] → T1. 수락이 최종 동의가 아님을 표시 |
-| T2 | 교환안 상세(동의 대기) | 순환 도식, 참가자별 주는 옷·받는 옷, 응답 상태, 버전. [동의]·[거절](확인 모달). 무효화되면 읽기 전용. 전원 동의 시 T3 |
-| T3 | 확정·인수인계 | 누구에게 무엇을 주고 누구에게 무엇을 받는지 표시, "확정은 전달 완료가 아님" 안내. [교환 취소] → 확인 모달 → T1 |
+| T1 | Exchanges | Segments: My intents (→ B3, [Cancel]) / Active (alternative → A1, pending → T2) / Confirmed (→ T3) / History (invalidated/rejected/cancelled) |
+| A1 | Alternative garment | Compare current/proposed clothing; preview cycle. [Accept] → server revalidation → T2; failure explanation → T1. [Reject] → T1. State that acceptance is not final consent |
+| T2 | Pending proposal | Cycle diagram, offered/received clothing per participant, responses, version. [Consent]/[Reject] with confirmation. Read-only if invalidated; unanimous consent → T3 |
+| T3 | Confirmed/handover | Who gives/receives what; explain confirmation is not completed handover. [Cancel exchange] → confirmation → T1 |
 
-## 5. 핵심 흐름
+## 5. Core Flows
 
-1. **주최자 시작:** S0 → H1 → H2(QR 공유) → C2 → C3 → R1 → R2 → B1
-2. **참가자 첫 참여:** QR → P1 → P2 → C2 → C3 → R1 → R2 → B1 → B3 → I1(의향 등록)
-3. **교환 성사:** 홈 "동의 대기" 카드 또는 교환 탭 → T2 → [동의] → 전원 동의 시 T3
-4. **대체 제안:** 홈 카드 → A1 → [수락] → T2 → [동의]
-5. **현장 전달:** 교환 탭 확정 → T3에서 실물 확인 → 필요 시 [교환 취소]
-6. **AI 실패:** B1 오류 → B2에서 직접 선택, C3는 [건너뛰기]
-7. **행사 종료:** 홈 "행사 관리" → M1 → H3 → 종료
+1. **Organizer:** S0 → H1 → H2 (share QR) → C2 → C3 → R1 → R2 → B1.
+2. **New participant:** QR → P1 → P2 → C2 → C3 → R1 → R2 → B1 → B3 → I1 (register intent).
+3. **Exchange:** Home pending card or Exchanges tab → T2 → [Consent] → T3 after unanimity.
+4. **Alternative:** Home card → A1 → [Accept] → T2 → [Consent].
+5. **On-site handover:** Confirmed tab → T3; inspect garments, [Cancel exchange] if needed.
+6. **AI failure:** B1 error → manual selection in B2; C3 → [Skip].
+7. **Closure:** Home manage card → M1 → H3 → closed.
 
-## 6. 전역 상태 처리
+## 6. Global States
 
-- **행사 종료:** 모든 화면에 종료 배너를 표시하고 등록·의향·동의·취소 버튼을 비활성화한다. 확정 내역(T3)은 조회만 가능하다.
-- **버전 충돌:** 동의·수락 요청이 서버에서 거부되면 교환안 변경 안내 모달을 띄우고 최신 상태로 다시 불러온다.
-- **알림:** 실시간 채팅은 범위 밖이므로 홈·교환 탭의 배지와 주기적 조회로 갱신하는 방식을 제안한다.
-- **주최자 표시:** 교환안과 의류 상세에서 주최자에게 "주최자" 배지를 붙이는 방식을 제안한다.
+- **Closed event:** show a banner everywhere; disable registration, intents, consent, cancellation. T3 remains view-only.
+- **Version conflict:** if consent/acceptance is rejected, show a proposal-changed modal and reload current state.
+- **Notifications:** no live chat; propose badges on Home/Exchanges and periodic refresh.
+- **Organizer badge:** propose labeling organizers in proposals/clothing details.
 
-## 7. 미정 사항
+## 7. Open Decisions
 
-- **세션 복원:** 재접속 시 본인 확인 방식이 정해져야 P1과 주최자 권한 유지 방식을 확정할 수 있다. 주최자 세션을 잃으면 종료 권한을 되찾을 수 없으므로, 그 전까지는 H2에 같은 기기 사용 안내를 두는 방식을 제안한다.
-- **전달 완료 기록:** T3에 [전달 완료] 버튼을 둘지 정해야 한다.
-- **내 옷을 원하는 참가자 노출:** C4에 표시할지 정해야 한다.
-- **교환안 표시 순서:** 교환안이 여러 개일 때 T1의 정렬 기준이 필요하다.
-- **행사 생성 처리:** `events`와 `participants`가 서로 참조하므로 행사 생성 API는 행사·참가자 생성과 `organizer_participant_id` 저장을 한 트랜잭션으로 처리해야 한다. 생성 응답으로 행사 정보와 주최자의 참가자 세션을 함께 돌려주는 방식을 제안한다.
+- **Session recovery:** settle returning-user verification before finalizing P1/organizer permission persistence. Losing the organizer session loses closure access; meanwhile propose a same-device notice on H2.
+- **Handover completion:** decide whether T3 needs [Handover complete].
+- **Showing interested participants:** decide whether C4 displays who wants the garment.
+- **Proposal ordering:** define T1 sorting when multiple proposals exist.
+- **Creation transaction:** events/participants reference each other. Create both and save `organizer_participant_id` in one transaction. Propose returning event information and organizer participant session together.

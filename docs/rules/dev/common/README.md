@@ -1,34 +1,34 @@
-# 공통 개발 규칙
+# Common Development Rules
 
-Vintage Relay의 백엔드(FastAPI·SQLite)와 프론트엔드(Next.js·TypeScript·Astryx·Tailwind CSS)가 함께 따르는 규칙이다. 해커톤 프로토타입이므로 실제로 지킬 수 있는 최소 규칙만 둔다.
+Shared rules for Vintage Relay's backend (FastAPI/SQLite) and frontend (Next.js/TypeScript/Astryx/Tailwind CSS). This hackathon prototype uses only a practical minimum of rules.
 
-## 읽기 범위
+## Reading Scope
 
-- **백엔드 작업:** `common/` + `backend/`만 읽는다.
-- **프론트엔드 작업:** `common/` + `frontend/`만 읽는다.
-- **API를 추가·변경하는 작업:** 위 범위에 더해 [api-contract.md](api-contract.md)를 반드시 확인한다.
-- 다른 쪽(backend↔frontend) 규칙 문서는 읽지 않아도 된다. 양쪽이 공유해야 하는 내용은 모두 `common/`에 둔다.
+- **Backend work:** read only `common/` + `backend/`.
+- **Frontend work:** read only `common/` + `frontend/`.
+- **Adding/changing APIs:** also check [api-contract.md](api-contract.md).
+- Reading the other side's rules is unnecessary. All shared requirements belong in `common/`.
 
-## 규칙 표기
+## Rule Labels
 
-- **반드시:** 예외 없이 지킨다.
-- **금지:** 하지 않는다.
-- **권장:** 기본으로 따르되, 이유가 있으면 PR에 적고 벗어날 수 있다.
+- **MUST:** follow without exception.
+- **MUST NOT:** prohibited.
+- **SHOULD:** follow by default; explain any justified deviation in the PR.
 
-## 목차
+## Contents
 
-| 문서 | 내용 |
+| Document | Contents |
 |---|---|
-| [tech-stack.md](tech-stack.md) | 버전 정책, 모노레포 구조, 패키지 매니저, 환경변수·비밀정보 |
-| [code-style.md](code-style.md) | 언어 무관 코드 스타일(네이밍, 주석, 파일 크기, 매직넘버) |
-| [api-contract.md](api-contract.md) | REST 규칙, JSON 케이스, 에러 포맷, 상태코드, 날짜·ID·페이지네이션 (**양측 단일 기준**) |
-| [error-handling-logging.md](error-handling-logging.md) | 예외 처리와 로깅 원칙, 요청 ID |
-| [git-commit.md](git-commit.md) | 커밋 메시지 규칙 |
-| [git-workflow.md](git-workflow.md) | 브랜치, PR, 리뷰, 머지, 커밋 전 체크 |
-| [testing.md](testing.md) | 공통 테스트 원칙 |
+| [tech-stack.md](tech-stack.md) | Version policy, monorepo, package managers, environment variables, and secrets |
+| [code-style.md](code-style.md) | Language-independent naming, comments, file size, and magic values |
+| [api-contract.md](api-contract.md) | REST, JSON casing, errors, status codes, dates, IDs, and pagination (**sole shared contract**) |
+| [error-handling-logging.md](error-handling-logging.md) | Error handling, logging principles, and request IDs |
+| [git-commit.md](git-commit.md) | Commit message rules |
+| [git-workflow.md](git-workflow.md) | Branches, PRs, reviews, merges, and pre-commit checks |
+| [testing.md](testing.md) | Shared testing principles |
 
-## 우선순위
+## Priority
 
-1. 도메인·교환 규칙은 [AGENTS.md](../../../../AGENTS.md)와 [1차 개발 계획](../../../plans/vintage-relay-plan-v1.md)을 따른다.
-2. 공통 규칙과 backend/frontend 규칙이 충돌하면 **공통 규칙(특히 api-contract.md)을 우선**하고, 충돌을 발견한 사람이 문서를 고친다.
-3. 미정 사항(인증·세션 복원, 사진 보관 등)을 이 문서들에서 확정된 것처럼 다루지 않는다.
+1. Follow [AGENTS.md](../../../../AGENTS.md) and the [initial development plan](../../../plans/vintage-relay-plan-v1.md) for domain/exchange rules.
+2. If common and backend/frontend rules conflict, **common rules (especially api-contract.md) take priority**. Whoever finds a conflict updates the documents.
+3. Do not present open decisions (authentication/session recovery, photo retention, etc.) as settled requirements.

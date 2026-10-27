@@ -1,37 +1,37 @@
-# 테스트 원칙
+# Testing Principles
 
-해커톤 프로토타입이므로 **깨지면 치명적인 곳만** 자동 테스트한다. 도구와 실행 방법은 backend/frontend 문서를 따른다.
+For this hackathon prototype, automate tests **where failure would be critical**. See backend/frontend documents for tools and commands.
 
-## 1. 반드시 테스트할 것
+## 1. Required Tests
 
-교환 규칙을 어기면 실제 사용자의 옷이 잘못 전달되므로, 아래는 **반드시** 백엔드 자동 테스트를 둔다.
+Exchange rule violations could send real users' garments to the wrong people. Backend automated tests are **required** for:
 
-- 2인 맞교환·3인 순환교환 탐색 (찾아야 할 경우, 찾지 말아야 할 경우)
-- 대체 의류 제안 탐색과 수락 시 재검사
-- 같은 옷의 중복 확정 방지 (동시 확정 요청 포함)
-- 교환안 버전이 바뀐 뒤 이전 버전 동의 거부
-- 확정 교환 취소 시 관련 의류 재사용 가능 처리
-- 행사 종료 후 등록·의향·동의·확정·취소 거부
-- 권한: 다른 참가자의 의류 수정·동의, 주최자가 아닌 사람의 행사 종료 거부
+- Two-person swap/three-person cycle detection, both positive and negative cases.
+- Alternative garment detection and revalidation on acceptance.
+- Prevention of duplicate garment confirmation, including concurrent requests.
+- Rejection of consent to an old proposal version.
+- Making related garments reusable after cancellation of a confirmed exchange.
+- Rejection of registration, intents, consent, confirmation, and cancellation after event closure.
+- Permissions: reject editing another's garments, consenting for another participant, and closing events as a non-organizer.
 
-## 2. 권장
+## 2. Recommendations
 
-- **권장:** API 계약의 에러 포맷(`error.code` 등)과 주요 응답 필드를 확인하는 API 테스트 몇 개.
-- **권장:** 프론트엔드는 복잡한 순수 로직(상태 변환, 입력 검증)이 생길 때만 단위 테스트. 화면은 수동 확인으로 대신한다.
-- **권장:** 배포 전 모바일 기기에서 종단 흐름(행사 생성 → 입장 → 의류 등록 → 교환안 → 동의 → 취소/종료)을 수동 확인한다.
+- **SHOULD:** add a few API tests for error formats (`error.code`, etc.) and key response fields.
+- **SHOULD:** unit-test frontend logic only when complex pure logic appears (state transformations, validation); check screens manually.
+- **SHOULD:** manually verify the end-to-end flow on a phone before deployment (create event → join → register clothing → proposal → consent → cancel/close).
 
-## 3. 작성 원칙
+## 3. Writing Tests
 
-- **반드시** 테스트는 외부 서비스 없이 실행된다. 모델 API는 가짜 응답(mock/fake)으로 대체한다.
-- **반드시** 테스트끼리 데이터를 공유하지 않는다. 테스트마다 새 SQLite DB(메모리 또는 임시 파일)를 쓴다.
-- **반드시** 버그를 고칠 때 가능하면 재현 테스트를 먼저 추가한다.
-- **반드시** 테스트 이름은 무엇을 검증하는지 드러낸다. 예: `test_confirm_rejects_clothing_already_confirmed`
-- **금지:** 실패하는 테스트를 지우거나 skip해서 PR을 통과시키는 것. 정말 보류해야 하면 이유와 `TODO`를 남긴다.
-- **금지:** 실제 API 키·실제 사진·개인정보를 테스트 데이터로 커밋.
-- **권장:** 테스트 데이터는 도메인 예시(하얀 바지, 초록 재킷, 검은 후드티)를 재사용해 읽기 쉽게 한다.
-- **권장:** 커버리지 수치 목표는 두지 않는다. 위 1절 목록이 기준이다.
+- **MUST:** run without external services; replace model APIs with mocks/fakes.
+- **MUST:** isolate test data with a fresh SQLite DB per test (memory or temporary file).
+- **MUST:** add a reproducing test before fixing bugs where possible.
+- **MUST:** use descriptive names, e.g. `test_confirm_rejects_clothing_already_confirmed`.
+- **MUST NOT:** delete/skip failing tests to pass a PR. If genuinely deferred, leave a reason and `TODO`.
+- **MUST NOT:** commit actual API keys, real photos, or personal data as fixtures.
+- **SHOULD:** reuse readable domain examples (white pants, green jacket, black hoodie).
+- **SHOULD:** use section 1 as the criterion rather than a numeric coverage target.
 
-## 4. 수동 검증
+## 4. Manual Verification
 
-- **반드시** 화면 변경 PR은 모바일 뷰포트(폭 360~430px)에서 확인하고 스크린샷을 첨부한다.
-- **권장:** AI 추천 품질은 자동 테스트하지 않는다. 정한 사례로 수동 선택과 비교해 기록한다([1차 개발 계획](../../../plans/vintage-relay-plan-v1.md) 8절).
+- **MUST:** verify screen changes at mobile widths of 360–430px and attach screenshots to the PR.
+- **SHOULD:** evaluate AI recommendation quality manually against agreed cases and manual selection; record results ([initial plan](../../../plans/vintage-relay-plan-v1.md), section 8).

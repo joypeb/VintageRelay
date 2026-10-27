@@ -1,139 +1,141 @@
-# Vintage Relay 1차 개발 계획
+# Vintage Relay Initial Development Plan
 
-## 1. 목표와 범위
+## 1. Goal and Scope
 
-마을 행사나 소규모 벼룩시장의 **의류 교환 코너**를 위한 모바일 웹앱을 만든다. 주최자가 행사를 생성하면 참가자는 QR 코드나 입장코드로 접속해 행사 전 또는 현장에서 옷을 등록한다. AI가 취향에 맞는 옷을 찾도록 돕고, 앱은 참가자의 선택을 바탕으로 2인 또는 3인 교환을 제안한다.
+Build a mobile web app for a **clothing exchange corner** at neighborhood events or small flea markets. Organizers create events, and participants join through QR or entry codes to register garments before or during the event. AI helps discover suitable garments; the app proposes two-/three-person exchanges based on participant choices.
 
-이 문서는 API와 AI 활용을 중심으로 한 **1차 계획**이다. 앱과 모델 연동은 아직 구현하거나 검증하지 않았다. API의 세부 경로, 요청·응답 형식, 화면 디자인은 이후에 정한다.
+This is an **initial plan**, focused on APIs and AI usage. The app/model integration has not been implemented or validated. Detailed paths, request/response formats, and screen designs will be decided later.
 
-## 2. 확정된 운영 규칙
+The application UI, user-facing API messages, and AI-generated application copy use English.
 
-- 주최자가 행사를 생성하면 해당 행사의 참가자로 등록되고, 참가자 ID가 행사의 주최자 ID로 저장된다. 행사는 즉시 활성화되고 QR 코드와 입장코드가 만들어진다. 별도의 행사 시작 절차는 없다.
-- 참가자는 행사 전이나 현장에서 입장해 의류를 등록할 수 있다. 교환 후보 선택과 최종 동의도 행사 전에 가능하다.
-- 한 참가자는 의류를 여러 벌 등록하고 서로 다른 옷으로 여러 교환에 참여할 수 있다.
-- 교환 한 건에서 각 참가자는 의류 **1벌을 주고 1벌을 받는다**. 2벌 대 1벌 같은 묶음 교환은 제외한다.
-- 교환은 2인 맞교환 또는 3인 순환교환으로 진행한다. 같은 옷은 두 교환에 중복 확정할 수 없다.
-- 본인의 다른 등록 의류를 내놓으면 교환이 가능한 경우, 앱이 이를 감지해 해당 참가자에게 변경을 제안한다. 참가자의 선택 없이 의향을 바꾸지 않는다.
-- 참가자 전원이 같은 교환안에 동의해야 확정된다. 후보에 대한 관심 표시와 최종 동의는 다르다.
-- 행사 종료 전, 참가자가 확정된 교환을 취소하면 교환 전체를 취소하고 관련 옷을 다시 교환 가능하게 한다. 현장에서 실물을 확인한 뒤에도 적용한다.
-- 주최자가 행사를 종료하면 이후 교환을 진행할 수 없다.
+## 2. Agreed Operating Rules
 
-교환안 확정은 실제 물건을 전달했다는 뜻이 아니다. 취소로 옷을 다시 교환 가능하게 처리하는 흐름은 실제 전달 전에 적용한다. 물건이 이미 일부 전달된 뒤의 처리는 별도 정책이 필요하다.
+- Creating an event registers its organizer as a participant and stores their participant ID as the event's organizer ID. The event becomes active immediately and generates QR/entry codes. No separate start procedure.
+- Participants may join and register garments before or during the event. Candidate selection and final consent are also possible beforehand.
+- Participants may register multiple garments and join multiple exchanges with different garments.
+- Each participant **gives one garment and receives one garment** per exchange. Bundles such as two-for-one are excluded.
+- Exchanges are two-person swaps or three-person cycles. No garment may be confirmed in two exchanges.
+- If offering another registered garment would enable an exchange, the app detects it and suggests a change. Never change intents without the participant's choice.
+- Confirmation requires every participant's consent to the same proposal. Candidate interest and final consent are distinct.
+- Before closure, cancellation by a participant cancels the entire confirmed exchange and makes related garments available again, including after on-site inspection.
+- No further exchange actions are allowed once the organizer closes the event.
 
-## 3. 사용자 흐름
+Confirmation does not mean physical handover is complete. Restoring availability on cancellation applies before handover. Cancellation after partial handover needs a separate policy.
 
-1. **행사 생성:** 주최자가 행사를 만들고 생성된 QR 코드 또는 입장코드를 공유한다.
-2. **참가:** 참가자가 행사 전이나 현장에서 코드로 입장한다.
-3. **옷 등록:** 참가자가 교환할 옷의 사진과 설명을 등록한다.
-4. **취향 등록:** 원하는 스타일과 거부 조건을 입력한다.
-5. **후보 탐색:** AI가 의류 후보와 추천 이유, 직접 확인할 점을 제시한다. 참가자는 목록에서 직접 옷을 찾을 수도 있다.
-6. **교환 의향 선택:** 참가자가 받고 싶은 옷을 선택한다. 어떤 본인 옷을 줄 의향이 있는지도 함께 지정하는 방식을 1차 설계로 제안한다.
-7. **대체 의류 제안:** 현재 의향으로 연결되지 않더라도 본인의 다른 옷을 내놓으면 교환이 가능할 경우 앱이 변경을 제안한다. 참가자가 제안을 확인하고 수락하거나 거절한다.
-8. **교환안 제안:** 앱이 선택된 의향을 기준으로 2인 또는 3인 교환을 찾는다. 가능한 교환이 없을 수도 있다.
-9. **최종 동의:** 각 참가자가 줄 옷과 받을 옷이 표시된 전체 교환안을 확인하고 동의하거나 거절한다.
-10. **현장 확인·전달:** 확정된 교환 내역을 확인하고, 현장에서 실물을 확인해 전달한다. 필요하면 행사 종료 전 교환을 취소한다.
-11. **행사 종료:** 주최자가 행사를 종료하면 더 이상 교환을 진행하지 않는다.
+## 3. User Flow
 
-대체 의류 제안 예: 내가 하얀 바지를 주고 B의 초록 재킷을 원하고, B는 초록 재킷을 주고 C의 검은 후드티를 원하며, C는 검은 후드티를 주고 내 검은 재킷을 원한다. 앱은 내 검은 재킷이 사용 가능하면 **하얀 바지 대신 검은 재킷을 제공해 3인 교환을 진행할지** 나에게 제안한다. 내가 수락해도 교환은 아직 확정되지 않으며, 세 사람이 완성된 교환안에 각각 최종 동의해야 한다.
+1. **Create event:** organizer creates an event and shares its QR/entry code.
+2. **Join:** participants enter using the code before or during the event.
+3. **Register clothing:** upload photos and descriptions.
+4. **Enter preferences:** specify desired styles and exclusions.
+5. **Discover candidates:** AI suggests candidates with reasons/checks; participants may also browse manually.
+6. **Select exchange intent:** choose a desired garment. The initial design proposes also specifying an owned garment to offer.
+7. **Alternative garment suggestion:** if another owned garment enables an otherwise impossible exchange, suggest it for acceptance/rejection.
+8. **Exchange proposal:** find two-/three-person exchanges from chosen intents. There may be no possible exchange.
+9. **Final consent:** each participant reviews the complete proposal, including offered/received garments, and consents or rejects.
+10. **On-site inspection/handover:** inspect confirmed details and physical garments before handover; cancel before closure if needed.
+11. **Close event:** organizer closes the event; exchange actions stop.
 
-## 4. 필요한 내부 API
+Alternative example: I offer white pants for B's green jacket; B offers that jacket for C's black hoodie; C offers that hoodie for my black jacket. If my black jacket is available, suggest **offering it instead of the white pants to enable a three-person exchange**. Acceptance does not confirm the exchange; all three must give final consent to the complete proposal.
 
-API 이름은 기능 구분을 위한 것이며 실제 경로는 아니다.
+## 4. Required Internal APIs
 
-| 기능 | 요청과 필요한 처리 |
+Names below describe functionality, not actual paths.
+
+| Function | Request and required processing |
 |---|---|
-| 행사 생성 | 행사를 만들고 생성자를 해당 행사의 참가자로 등록해 주최자 ID로 연결한다. 행사를 즉시 활성화하고 입장코드와 QR용 링크를 만든다. |
-| 행사 조회 | 행사 정보와 진행 중·종료 상태를 제공한다. |
-| 행사 종료 | 주최자 권한을 확인하고 행사를 종료한다. 새로운 등록·의향 변경·교환 동의·확정·취소를 막는다. |
-| 행사 입장 | QR 링크 또는 입장코드를 확인하고 참가자별 세션을 만든다. |
-| 사진 업로드 | 의류 사진을 저장하고 해당 행사와 참가자의 의류 등록 정보에 연결한다. |
-| 의류 등록·조회 | 사진과 설명을 등록하고 같은 행사의 의류 목록과 상세 정보를 제공한다. |
-| 의류 수정·철회 | 소유자가 내용을 수정하거나 의류를 교환 대상에서 제외한다. 관련 미확정 제안과 기존 동의를 무효화한다. 확정된 옷은 교환을 먼저 취소해야 다시 변경할 수 있다. |
-| 취향 등록·수정 | 참가자의 원하는 스타일과 거부 조건을 저장한다. |
-| AI 후보 추천 | 행사 내 교환 가능한 의류와 참가자의 취향을 바탕으로 AI 후보와 이유·확인 사항을 제공한다. |
-| 교환 의향 선택·취소 | 참가자가 받고 싶은 옷을 선택하거나 선택을 취소한다. 1차 설계에서는 제공할 본인 의류도 함께 지정한다. 관련 미확정 제안과 기존 동의를 무효화한다. |
-| 대체 의류 제안 탐색·조회 | 등록된 의향과 교환 가능한 본인 의류를 비교해, 제공 의류를 변경하면 2인·3인 교환이 완성되는 경우를 찾고 해당 참가자에게 보여준다. 의류나 의향이 바뀌면 다시 탐색한다. |
-| 대체 의류 제안 수락·거절 | 소유자가 변경 제안을 수락하거나 거절한다. 수락 시 행사·의류·관련 의향이 여전히 유효한지 확인하고 참가자의 의향 변경을 반영한다. 거절하거나 제안이 무효인 경우 기존 의향을 자동으로 바꾸지 않는다. |
-| 교환안 생성·조회 | 선택된 의향으로 2인·3인 교환을 계산하고 각 참가자의 제공·수령 의류를 보여준다. |
-| 교환안 동의·거절 | 제안의 참가자와 버전을 확인해 동의 또는 거절을 기록한다. 전원 동의 시 행사 상태와 의류 충돌을 다시 검사해 확정한다. |
-| 확정 교환 취소 | 행사 종료 전 당사자가 확정된 교환을 취소하면 교환 전체를 취소하고, 실제 전달 전인 관련 의류를 다시 교환 가능하게 한다. |
-| 확정 내역·인수인계 조회 | 참가자별로 줄 옷과 받을 옷을 보여준다. 교환안 확정과 실제 전달 완료를 구분한다. |
+| Create event | Create event, register creator as participant, link organizer ID, activate immediately, generate entry code and QR link. |
+| Read event | Return event information and active/closed state. |
+| Close event | Verify organizer, close event, block new registration, intent changes, consent, confirmation, and cancellation. |
+| Join event | Validate QR link/entry code and create a participant session. |
+| Upload photo | Store photo and associate it with clothing registration for the event/participant. |
+| Register/read clothing | Save photos/descriptions; return same-event lists/details. |
+| Edit/withdraw clothing | Owner edits or withdraws clothing. Invalidate affected unconfirmed proposals/consent. Cancel confirmed exchanges before editing confirmed garments. |
+| Register/edit preferences | Save desired styles and exclusions. |
+| AI recommendations | Return candidates, reasons, and checks based on available same-event clothing and preferences. |
+| Select/withdraw intent | Select or withdraw desired garments; initial design also specifies owned offered garments. Invalidate affected unconfirmed proposals/consent. |
+| Find/read alternatives | Compare intents with available owned clothing, finding two-/three-person cycles enabled by changing the offered garment. Recompute after clothing/intent changes. |
+| Accept/reject alternative | Owner accepts/rejects. On acceptance, revalidate event/clothing/related intents and apply the chosen intent change. Rejection/invalid suggestions never automatically change existing intents. |
+| Create/read proposal | Calculate two-/three-person exchanges from selected intents and show each participant's offered/received clothing. |
+| Consent/reject proposal | Verify participant/version and record response. On unanimous consent, recheck event/conflicts and confirm. |
+| Cancel confirmed exchange | Before closure, a party cancels the entire exchange; related garments not yet handed over become available again. |
+| Read confirmation/handover | Show who gives/receives what; distinguish confirmation from completed physical handover. |
 
-**종료 시 미확정 제안은 취소하고 확정 내역은 조회용으로 남기는 방식**을 1차 설계로 제안한다. 행사 종료 후 실제 전달 상태를 별도로 기록할지는 미정이다.
+The initial design proposes **canceling unconfirmed proposals on closure and retaining confirmed records for viewing**. Separate handover recording after closure remains undecided.
 
-QR과 입장코드는 행사 참여 수단이다. 다른 참가자의 의류 수정이나 교환 동의, 주최자의 행사 종료를 대신할 수 없도록 참가자 세션과 주최자 권한을 별도로 관리한다.
+QR/entry codes grant event entry only. Manage participant sessions and organizer permissions separately so they cannot authorize editing another's clothing, consenting for others, or closing the event.
 
-## 5. 필요한 AI 기술과 외부 API
+## 5. AI Technology and External APIs
 
-### 기본 모델
+### Base Model
 
-Meta Model API의 **Muse Spark 1.3 (`muse-spark-1.3`)** 하나를 우선 검토한다. 모델 문서상 이미지 이해와 구조화 출력을 지원한다. 실제 계정 접근, 모델 호출, 한국어 취향 해석과 추천 품질은 첫날 확인한다. [Meta 모델 문서](https://dev.meta.ai/docs/models)
+First consider only **Muse Spark 1.3 (`muse-spark-1.3`)** through Meta Model API. Model documentation lists image understanding and structured output. Verify account access, actual calls, English preference interpretation, and recommendation quality on day one. [Meta model documentation](https://dev.meta.ai/docs/models)
 
-| AI 작업 | 입력 | 필요한 결과 |
+| AI task | Input | Required output |
 |---|---|---|
-| 의류 특징 정리 | 옷 사진과 등록자의 설명 | 옷 종류, 색상, 눈에 보이는 특징, 확인할 점 |
-| 취향 해석 | 원하는 스타일과 거부 조건 | 후보 비교에 사용할 조건과 애매한 표현 |
-| 후보 추천 | 참가자의 취향과 행사 내 의류 정보 | 살펴볼 후보, 추천 이유, 직접 확인할 점 |
+| Clothing features | Photos and owner's description | Type, color, visible features, points to check |
+| Preference interpretation | Desired styles and exclusions | Comparison conditions and ambiguous expressions |
+| Recommendations | Preferences and event clothing information | Candidates to inspect, reasons, points to check |
 
-- 참가자가 AI가 정리한 의류 정보와 취향을 확인하고 수정할 수 있어야 한다.
-- 사진에 보이지 않는 하자, 정확한 핏, 정품 여부나 가격은 확인된 사실처럼 표시하지 않는다.
-- AI가 추천한 옷의 행사 소속과 현재 교환 가능 상태는 서버가 다시 확인한다.
-- 대체 의류 제안은 이미 등록된 의향과 의류를 일반 코드로 비교한다. AI가 임의로 의향을 변경하거나 상대의 동의를 대신하지 않는다.
-- 모델 오류나 지연이 발생해도 참가자가 의류 목록에서 직접 선택할 수 있게 한다.
-- 첫 버전은 백엔드의 직접 모델 호출을 우선한다. 별도 모델 학습, 벡터 DB, 이미지 생성, 음성 처리, AI 에이전트 도구 호출은 필수 범위에 넣지 않는다.
+- Participants must be able to review/correct AI clothing information and preferences.
+- Never present unseen defects, exact fit, authenticity, or prices as verified facts.
+- Server rechecks event membership and current availability of recommended garments.
+- Regular code compares existing intents/clothing for alternatives. AI never changes intents or consents on anyone's behalf.
+- Allow manual clothing selection on model errors/delays.
+- Prioritize direct backend model calls. Additional training, vector DBs, image generation, speech processing, and AI agent tool calling are not required for the first version.
 
-### AI와 일반 코드의 역할
+### AI and Regular Code
 
-| AI | 일반 코드와 사람 |
+| AI | Regular code and people |
 |---|---|
-| 사진·설명과 자연어 취향을 연결한다. | 참가자가 실제로 원하는 옷과 제공할 옷을 선택한다. |
-| 추천 이유와 확인할 점을 설명한다. | 서버가 승인된 의향으로 2인·3인 순환을 계산한다. |
-| 조건의 모호함과 확인되지 않은 정보를 표시한다. | 참가자가 교환안에 동의하고, 서버가 권한·버전·중복·행사 상태를 검사한다. |
+| Connect photos/descriptions to natural-language preferences. | Participants select desired/offered garments. |
+| Explain reasons and checks. | Server calculates two-/three-person cycles from approved intents. |
+| Flag ambiguity and unverified information. | Participants consent; server checks permissions, versions, duplicates, and event state. |
 
-AI의 추천은 교환 의향이나 최종 동의를 자동으로 만들지 않는다.
+Recommendations never automatically create exchange intents or final consent.
 
-## 6. 교환 상태와 충돌 처리
+## 6. Exchange State and Conflicts
 
-- 미확정 제안에는 같은 옷이 여러 번 나타날 수 있다. 다만 **최종 확정은 한 교환에서만** 가능하다.
-- 전원 동의에 따른 확정 시, 서버는 행사 진행 여부, 제안 버전, 참가자 동의, 의류 소유·사용 가능 여부를 다시 확인하고 하나의 DB 트랜잭션으로 처리한다.
-- 한 교환이 확정되면 해당 옷이 들어간 다른 미확정 제안과 동의를 무효화한다.
-- 의류나 의향이 바뀌면 영향을 받는 미확정 제안의 기존 동의를 무효화한다.
-- 대체 의류 제안은 가정에 기반한 제안이며 확정된 의향이나 최종 동의가 아니다. 수락 시 현재 상태를 재검사하고, 변경된 의향으로 다시 교환안을 계산한다. 재검사에 실패하면 변경하지 않고 다시 탐색한다.
-- 행사 종료와 마지막 동의가 동시에 요청돼도 종료 후 새로운 확정이 생기지 않도록 서버와 DB에서 일관되게 처리한다.
-- 확정된 교환을 행사 종료 전에 취소하면 전체 교환을 취소한다. 실제 전달 전인 옷을 다시 교환 가능하게 하고, 교환안을 다시 찾을 수 있게 한다.
-- 여러 교환에 참여하는 참가자라도 **각 교환안에서는** 1벌을 주고 1벌을 받는다.
+- Unconfirmed proposals may share garments, but **each garment can be finally confirmed in only one exchange**.
+- On unanimous consent, recheck active event, version, consents, ownership, and availability; perform confirmation in one DB transaction.
+- Confirmation invalidates other unconfirmed proposals/consents sharing the garments.
+- Clothing/intent changes invalidate affected unconfirmed proposals' existing consents.
+- Alternative suggestions are hypothetical, not confirmed intents or final consent. Revalidate on acceptance and recalculate from changed intents. On failure, leave unchanged and search again.
+- Serialize closure/final consent consistently in server/DB so concurrent requests cannot create confirmations after closure.
+- Before closure, cancellation cancels the entire exchange, makes garments not yet handed over available again, and allows new proposal discovery.
+- Even participants in multiple exchanges give/receive one garment **in each proposal**.
 
-## 7. 기술 구성 초안
+## 7. Draft Architecture
 
-- **화면:** 휴대전화에서 사용하는 모바일 웹.
-- **서버:** Python FastAPI.
-- **데이터:** SQLite로 행사, 참가자, 의류, 의향, 교환안, 동의와 상태를 저장한다. 동시 요청의 정합성을 SQLite 쓰기 직렬화에 의존하므로 **상시 실행되는 단일 서버 + 영속 디스크**에 배포한다. 서버리스·다중 인스턴스 배포는 사용하지 않는다.
-- **의류 사진:** 외부에서 접속 가능한 서버에 저장하며, 구체적인 저장 방식은 배포 환경에 맞춰 정한다.
-- **AI:** 서버에서 Meta Model API를 호출한다. API 키는 서버에서만 관리한다.
-- **접속:** 행사 전에 각자의 휴대전화에서 접속할 수 있는 배포 주소가 필요하다. 로컬 개발 서버만으로는 이 사용 흐름을 충족하지 못한다.
+- **Screens:** mobile web used on phones.
+- **Server:** Python FastAPI.
+- **Data:** SQLite stores events, participants, clothing, intents, proposals, consent, and states. Because consistency relies on serialized SQLite writes, deploy on an **always-on single server with persistent disk**. No serverless/multi-instance deployment.
+- **Photos:** store on an externally accessible server; choose storage details for the deployment environment.
+- **AI:** call Meta Model API server-side; keep keys only on the server.
+- **Access:** provide a deployment URL accessible from individual phones before events. A local development server alone cannot satisfy this flow.
 
-이는 기존 1인 7일 계획을 바탕으로 한 초안이다. 실제 동시 사용자 규모와 배포 환경에 따라 저장 방식과 운영 구성을 재검토한다.
+This draft builds on the solo seven-day plan. Reassess storage/operations for actual concurrency and deployment conditions.
 
-## 8. 개발과 검증 순서 초안
+## 8. Draft Development and Validation Order
 
-1. **핵심 검증:** Meta API 접근, 사진 입력과 구조화 출력, 한국어 취향 해석을 시험한다. 수동 선택과 비교할 사례·기준을 미리 정한다.
-2. **행사와 입장:** 행사 생성·즉시 활성화·QR/코드·참가자 및 주최자 권한을 구현한다.
-3. **의류와 취향:** 사진 업로드, 의류 등록·수정·철회, 취향 입력과 수동 후보 선택을 연결한다.
-4. **AI 후보:** 의류 특징 정리, 취향 해석, 후보 추천과 수정·실패 시 수동 선택을 연결한다.
-5. **교환안:** 참가자의 의향을 바탕으로 2인·3인 교환 계산, 대체 의류 제안의 탐색·수락·거절, 교환안 조회를 완성한다.
-6. **동의와 취소:** 전원 동의, 버전 검사, 중복 확정 방지, 확정 후 전체 교환 취소와 행사 종료를 구현한다.
-7. **종단 검증:** 행사 전 등록부터 교환 확정·현장 확인·취소 또는 종료까지 확인한다. 동시 요청, 제안 변경, 교환 미발견, AI 실패 사례도 확인한다.
+1. **Core validation:** test Meta access, photo input, structured output, and English interpretation. Define manual-selection comparisons and criteria in advance.
+2. **Events/entry:** creation, immediate activation, QR/code, participant and organizer authorization.
+3. **Clothing/preferences:** upload, register/edit/withdraw, preferences, manual selection.
+4. **AI candidates:** feature extraction, interpretation, recommendations, correction, manual fallback.
+5. **Proposals:** two-/three-person calculation, alternative detection/acceptance/rejection, proposal viewing.
+6. **Consent/cancellation:** unanimity, versions, duplicate prevention, entire-exchange cancellation, closure.
+7. **End-to-end verification:** pre-event registration through confirmation, on-site inspection, cancellation/closure. Include concurrency, proposal changes, no matches, and AI failures.
 
-실제 사용자의 후보 검토 시간과 조건 누락·수정 부담을 수동 방식과 비교한다. 가상 참가자로 순환을 찾은 결과는 교환 로직 검증이며, 실제 수요나 AI 효과의 증거로 간주하지 않는다.
+Compare real users' candidate review time, missed conditions, and correction burden against manual selection. Finding cycles for fictional participants validates exchange logic, not actual demand or AI impact.
 
-## 9. 첫 버전 제외 및 추가 결정 사항
+## 9. First-Version Exclusions and Open Decisions
 
-**제외:** 결제, 배송, 현금 차액 정산, 묶음 교환, 실시간 채팅, 전국 행사 탐색, 가격·정품 감정, 가상 피팅, 네이티브 앱.
+**Excluded:** payments, shipping, cash adjustments, bundles, live chat, nationwide event search, price/authenticity appraisal, virtual fitting, native apps.
 
-**추가 결정 필요:**
+**Decisions needed:**
 
-- 행사 생성·주최자 및 참가자 세션 복원 방식과 사진 보관·삭제 정책.
-- 교환 의향을 고를 때 제공할 본인 옷을 미리 지정할지, 교환안에서만 최종 확인할지. 이 문서는 미리 지정하는 방식을 제안한다.
-- 실제 전달 완료를 누가 어떻게 기록할지, 일부 물건이 이미 전달된 뒤 취소 요청이 들어오면 어떻게 처리할지.
-- 행사 종료 후 확정 내역의 조회 권한과 보관 기간.
-- 행사당 참가자·의류 수의 초기 상한과 다수 교환안 중 표시 순서.
+- Event creation, organizer/participant session recovery, and photo retention/deletion.
+- Whether to specify owned offered clothing when selecting intents or only during final proposal review. This document proposes specifying it early.
+- Who records completed handover and how; cancellation after partial handover.
+- Post-closure access and retention of confirmed records.
+- Initial participant/garment limits and ordering among multiple proposals.

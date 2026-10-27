@@ -1,54 +1,54 @@
-# 예외 처리와 로깅
+# Common Error Handling and Logging
 
-언어 무관 원칙이다. 구현 방법(미들웨어, 로거 설정)은 backend/frontend 문서를 따른다. API 에러 응답 형식은 [api-contract.md](api-contract.md) 7절이 기준이다.
+These principles are language-independent; see backend/frontend rules for middleware and logger implementations. [api-contract.md](api-contract.md), section 7, defines API error responses.
 
-## 1. 예외 처리
+## 1. Exception Handling
 
-- **반드시** 예상 가능한 실패(검증 실패, 권한 없음, 행사 종료, 버전 충돌, 중복 확정)는 도메인 에러로 명시적으로 표현하고 정해진 에러 코드로 응답한다.
-- **반드시** 예상하지 못한 예외는 한 곳(전역 핸들러/에러 경계)에서 잡아 `INTERNAL_ERROR`로 응답하고 스택트레이스를 로그에 남긴다.
-- **금지:** 예외를 잡고 아무것도 하지 않는 것(`except: pass`, 빈 `catch {}`).
-- **금지:** 광범위하게 잡은 예외(`except Exception`, `catch (e)`)를 처리 없이 다른 의미로 바꿔 던지는 것. 바꿀 때는 원인을 보존한다(`raise ... from e`, `{ cause: e }`).
-- **반드시** 외부 호출(모델 API 등)에는 타임아웃을 둔다. 실패 시 사용자 흐름을 막지 말고 대체 경로(수동 후보 선택)로 안내한다.
-- **반드시** 상태를 바꾸는 작업(교환 확정, 취소, 행사 종료)이 중간에 실패하면 전부 되돌린다(DB 트랜잭션).
-- **권장:** 재시도는 멱등한 조회·외부 호출에만, 최대 1~2회.
+- **MUST:** explicitly represent expected failures (validation, permissions, closure, version conflicts, duplicate confirmation) as domain errors with agreed error codes.
+- **MUST:** catch unexpected exceptions centrally (global handler/error boundary), respond with `INTERNAL_ERROR`, and log stack traces.
+- **MUST NOT:** catch exceptions and do nothing (`except: pass`, empty `catch {}`).
+- **MUST NOT:** rethrow broadly caught exceptions (`except Exception`, `catch (e)`) with a different meaning and no handling. Preserve the cause when converting (`raise ... from e`, `{ cause: e }`).
+- **MUST:** set timeouts for external calls such as model APIs. On failure, guide users to a fallback (manual candidate selection) rather than blocking the flow.
+- **MUST:** roll back all changes if a state-changing operation (confirmation, cancellation, closure) fails midway, using DB transactions.
+- **SHOULD:** retry only idempotent reads/external calls, at most once or twice.
 
-## 2. 사용자에게 보이는 에러
+## 2. User-Facing Errors
 
-- **반드시** 사용자 메시지는 무엇을 하면 되는지 알려주는 짧은 한국어. 예: "행사가 종료되어 교환할 수 없어요."
-- **금지:** 사용자 화면에 스택트레이스, SQL, 내부 파일 경로, 외부 API 원본 에러를 보여주는 것.
-- **반드시** 프론트엔드는 네트워크 실패와 서버 에러를 구분해 안내하고, 재시도 가능한 경우 재시도 수단을 준다.
+- **MUST:** use short English messages that tell users what to do, e.g. “This event is closed, so exchanges are unavailable.”
+- **MUST NOT:** show stack traces, SQL, internal paths, or raw external API errors.
+- **MUST:** distinguish network failures from server errors in the frontend and offer retry controls when retryable.
 
-## 3. 로그 레벨
+## 3. Log Levels
 
-| 레벨 | 기준 | 예 |
+| Level | Meaning | Examples |
 |---|---|---|
-| `ERROR` | 처리하지 못한 실패. 사람이 봐야 함 | 예상 못한 예외, DB 트랜잭션 실패 |
-| `WARNING` | 처리했지만 비정상 | 모델 API 타임아웃 후 대체 경로, 동시 확정 충돌 |
-| `INFO` | 주요 상태 변화(요청당 몇 줄 이내) | 행사 생성·종료, 교환안 생성·확정·취소 |
-| `DEBUG` | 개발 중 상세 정보. 운영(배포)에서 끔 | 순환 탐색 중간 결과, 모델 요청·응답 요약 |
+| `ERROR` | Unhandled failure requiring investigation | Unexpected exception, DB transaction failure |
+| `WARNING` | Handled but abnormal condition | Model timeout fallback, concurrent confirmation conflict |
+| `INFO` | Major state changes (only a few lines per request) | Event creation/closure, proposal creation/confirmation/cancellation |
+| `DEBUG` | Development details; disabled in deployment | Cycle search intermediate results, model request/response summaries |
 
-- **반드시** 4xx 도메인 에러(검증 실패, 권한 없음 등)는 `ERROR`가 아니라 `INFO` 또는 `WARNING`으로 남긴다.
-- **반드시** 로그 레벨은 환경변수(`LOG_LEVEL`)로 바꿀 수 있게 한다. 배포 기본값은 `INFO`.
-- **금지:** 운영 코드에 `print`, `console.log` 남기기. 로거를 쓴다.
+- **MUST:** log 4xx domain errors (validation, permissions, etc.) at `INFO` or `WARNING`, never `ERROR`.
+- **MUST:** configure levels with `LOG_LEVEL`; deployment defaults to `INFO`.
+- **MUST NOT:** leave `print` or `console.log` in production code. Use a logger.
 
-## 4. 민감정보 금지
+## 4. Sensitive Data
 
-로그·에러 응답·분석 도구에 다음을 **절대 남기지 않는다.**
+**Never record** the following in logs, error responses, or analytics:
 
-- API 키, 토큰, 세션 값, 쿠키, `Authorization` 헤더
-- 입장코드 원문 (필요하면 앞 2자리만 등 마스킹)
-- 업로드 사진 바이너리, base64 이미지
-- 참가자가 입력한 자유 텍스트 전문(취향·설명). 필요하면 길이나 ID만 남긴다.
-- 모델 API 요청·응답 전문 (`DEBUG`에서 요약만 허용)
+- API keys, tokens, session values, cookies, or `Authorization` headers.
+- Raw entry codes (mask them if needed, e.g. retain only the first two characters).
+- Uploaded photo bytes or base64 images.
+- Full participant free text (preferences/descriptions); log lengths or IDs instead.
+- Full model API requests/responses (summaries only at `DEBUG`).
 
-- **권장:** 로그에는 사람이 아닌 ID(`eventId`, `participantId`, `proposalId`)를 남긴다.
+- **SHOULD:** log IDs (`eventId`, `participantId`, `proposalId`) rather than personal information.
 
-## 5. 요청 ID 상관관계
+## 5. Request ID Correlation
 
-- **반드시** 백엔드는 요청마다 요청 ID를 정한다. 들어온 `X-Request-ID`가 있으면 쓰고, 없으면 생성한다.
-- **반드시** 해당 요청에서 나온 모든 로그에 요청 ID를 포함하고, 응답 헤더 `X-Request-ID`와 에러 본문 `requestId`에도 같은 값을 넣는다.
-- **권장:** 프론트엔드는 에러 발생 시 `requestId`를 콘솔 로그와(필요하면) 화면 하단에 작게 표시해, 버그 제보 시 백엔드 로그를 바로 찾을 수 있게 한다.
-- **권장:** 로그 한 줄에 `시각(UTC) 레벨 requestId 메시지 key=value` 순서를 유지한다.
+- **MUST:** assign a request ID in the backend. Reuse incoming `X-Request-ID`, or generate one if absent.
+- **MUST:** include the same ID in all request logs, the response header `X-Request-ID`, and the error body's `requestId`.
+- **SHOULD:** show `requestId` in frontend error logs and, if useful, subtly at the bottom of the screen to help locate backend logs in bug reports.
+- **SHOULD:** format text logs as `timestamp(UTC) level requestId message key=value`.
 
 ```text
 2026-10-27T05:30:00Z INFO  b7e2c1 proposal confirmed proposalId=3f1c eventId=9a0d

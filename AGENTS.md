@@ -1,67 +1,67 @@
-# 프로젝트 지침
+# Project Instructions
 
-- 모든 답변과 프로젝트 문서는 한국어로 작성한다. 단, 코드 리뷰 결과와 PR 리뷰 코멘트는 영어로 작성한다.
-- Vintage Relay는 마을 행사나 소규모 벼룩시장의 **의류 교환 코너**를 위한 모바일 웹 프로토타입이다. 주최자가 행사를 생성하면 본인도 해당 행사의 참가자로 등록되고 참가자 ID가 행사의 주최자 ID로 저장된다. 행사는 즉시 활성화되며, 참가자는 QR 코드나 입장코드로 행사 전 또는 현장에 입장할 수 있다.
-- 프로젝트 개요는 [PROJECT.md](PROJECT.md), 세부 문서는 `docs/` 디렉토리를 참고한다.
-  - **기획 및 도메인 지식 (`docs/domain/`):** 기획 배경과 근거([idea.md](docs/domain/idea.md)) 등
-  - **비즈니스 및 교환 규칙 (`docs/rules/`):** 핵심 교환 규칙 및 세부 정책 문서
-  - **개발 계획 및 설계 (`docs/plans/`):** 1차 개발 계획([vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md)), DB 테이블 설계([database-design-v1.md](docs/plans/database-design-v1.md))
-  - **화면 및 인터랙션 흐름 (`docs/flows/`):** 화면 흐름 명세([screen-flow-v1.md](docs/flows/screen-flow-v1.md)), 인터랙티브 목업([mockup-flow-v1.html](docs/flows/mockup-flow-v1.html))
-  - **개발 규칙 (`docs/rules/dev/`):** 코드 스타일, 예외처리, 로깅, git 규칙
-- 초기 아이디어 문서와 이후 확정된 규칙이 다르면 최신 사용자 결정과 1차 개발 계획을 우선한다.
+- Agent replies to the user must be in Korean. All application UI text, user-facing API messages, AI-generated application copy, project documents, code comments and docstrings, review results, PR titles/descriptions/comments, and Git commit messages must be in English.
+- Vintage Relay is a mobile web prototype for a **clothing exchange corner** at neighborhood events or small flea markets. Creating an event also registers the organizer as a participant and stores that participant ID as the event's organizer ID. Events become active immediately; participants can join before or during the event using a QR code or entry code.
+- See [PROJECT.md](PROJECT.md) for the overview and `docs/` for details.
+  - **Planning and domain knowledge (`docs/domain/`):** background and rationale, including [idea.md](docs/domain/idea.md).
+  - **Business and exchange rules (`docs/rules/`):** core exchange rules and detailed policies.
+  - **Development plans and design (`docs/plans/`):** [initial development plan](docs/plans/vintage-relay-plan-v1.md) and [database design](docs/plans/database-design-v1.md).
+  - **Screens and interactions (`docs/flows/`):** [screen flow specification](docs/flows/screen-flow-v1.md) and [interactive mockup](docs/flows/mockup-flow-v1.html).
+  - **Development rules (`docs/rules/dev/`):** code style, error handling, logging, and Git rules.
+- If early ideas conflict with later decisions, prioritize the latest user decisions and the initial development plan.
 
-## 개발 규칙 읽기 범위
+## Which Development Rules to Read
 
-코드 작성 전 작업 영역에 맞는 규칙만 읽고 따른다.
+Before writing code, read and follow only the rules for the area being changed.
 
-- **백엔드 작업 (`backend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/backend/`](docs/rules/dev/backend/README.md)
-- **프론트엔드 작업 (`frontend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/frontend/`](docs/rules/dev/frontend/README.md). `docs/rules/dev/backend/`는 읽지 않는다.
-- **문서·git 작업:** `docs/rules/dev/common/`만 읽는다.
-- 백엔드·프론트엔드가 공유하는 API 계약은 `docs/rules/dev/common/api-contract.md`가 유일한 기준이다.
+- **Backend (`backend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/backend/`](docs/rules/dev/backend/README.md).
+- **Frontend (`frontend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/frontend/`](docs/rules/dev/frontend/README.md). Do not read `docs/rules/dev/backend/`.
+- **Documentation and Git:** read only `docs/rules/dev/common/`.
+- `docs/rules/dev/common/api-contract.md` is the sole source of truth for the API contract shared by backend and frontend.
 
-## 커밋·PR 전 코드 리뷰
+## Code Review Before Commits and PRs
 
-- **반드시** 에이전트가 커밋하거나 PR을 생성·갱신하기 전에 Paseo의 `reviewer` 프로필을 사용해 OCR delegate 리뷰를 맡기고 결과를 기다린다. 커밋 전 리뷰와 PR 전 리뷰는 각각 수행한다.
-- 이 절차는 이 지침을 읽은 에이전트의 작업에 적용된다. 사용자가 터미널에서 직접 실행하는 Git 명령을 감지하거나 차단하는 Git 훅은 아니다.
-- 리뷰를 시작할 때 Paseo의 `list_profiles`로 최신 `reviewer` 프로필과 notes를 확인한다. 모델·설정을 하드코딩하지 않는다. `create_agent`에는 `profile` 인자가 없으므로 프로필의 provider/model과 modeId, thinkingOptionId, featureValues를 해당 실행 설정으로 전달한다.
-- reviewer는 리뷰 대상 파일이 있는 동일한 Paseo 워크스페이스에서 실행한다. 특히 커밋 전의 미커밋 변경은 별도 worktree에 복사되지 않으므로 다른 worktree에서 리뷰하지 않는다.
-- reviewer에게 리뷰 단계, 대상 파일, 기준 브랜치와 HEAD 커밋, 관련 요구사항, 실행한 체크와 결과를 전달한다. PR이 있으면 번호·URL과 실제 base/head도 전달한다.
-- reviewer는 코드·문서를 수정하거나 커밋·push·PR 생성·코멘트 게시를 하지 않는다. 리뷰만 수행하고 결과를 요청한 에이전트에 반환한다. **리뷰를 위임받은 reviewer는 다시 reviewer를 생성하지 않는다.**
-- Paseo 또는 `reviewer` 프로필을 사용할 수 없으면 완료한 리뷰로 간주하지 않는다. 원인을 알리고 커밋·PR 작업을 중단한다.
+- Before an agent commits or creates/updates a PR, it **must** delegate an OCR delegate review using Paseo's `reviewer` profile and wait for the results. Run separate reviews before committing and before PR work.
+- This procedure applies to agents reading these instructions. It is not a Git hook that detects or blocks Git commands run directly by the user.
+- At the start of a review, use Paseo's `list_profiles` to check the latest `reviewer` profile and notes. Do not hardcode models or settings. `create_agent` has no `profile` argument; pass the profile's provider/model, modeId, thinkingOptionId, and featureValues as the execution settings.
+- Run the reviewer in the same Paseo workspace as the files under review. Uncommitted changes are not copied into a separate worktree, so never review pre-commit changes from another worktree.
+- Provide the review stage, target files, base branch and HEAD commit, relevant requirements, checks run and their results. If a PR exists, also provide its number, URL, and actual base/head.
+- The reviewer must not edit code or documents, commit, push, create PRs, or post comments. It only reviews and returns findings to the requesting agent. **A delegated reviewer must not create another reviewer.**
+- If Paseo or the `reviewer` profile is unavailable, do not count the review as complete. Report the reason and stop commit/PR work.
 
-### 리뷰 범위와 OCR 사용
+### Review Scope and OCR
 
-- **커밋 전:** `ocr delegate preview --format json`으로 로컬 변경을 확인하고, 실제 커밋할 파일과 내용을 리뷰한다. 기본 preview는 staged·unstaged·untracked 변경을 모두 포함한다. 부분 스테이징한 파일은 인덱스의 내용과 `git --no-pager diff --cached --no-ext-diff --no-textconv --no-color`를 확인해 실제 커밋 대상과 구분한다.
-- **PR 전:** 실제 PR 대상 브랜치 대비 HEAD의 커밋된 변경 전체를 `ocr delegate preview --format json --from <base> --to HEAD`로 선정한다. 기존 PR은 실제 base/head를 확인하고, PR에 포함되지 않은 로컬 변경을 리뷰 결과에 섞지 않는다.
-- 선정한 파일에 `ocr delegate rule --format json <path...>`를 실행하고, `open-code-review-delegate` 스킬에 따라 diff와 관련 코드를 읽는다. Git 명령은 `git --no-pager`를 사용한다.
-- 파일별로 위의 개발 규칙 읽기 범위를 적용하고 관련 문서를 직접 읽는다. API 계약은 공통 문서를 기준으로 확인하며, 미정 사항을 확정 규칙처럼 지적하지 않는다.
-- 리뷰 결과와 코멘트는 **영어**로 작성한다. 각 지적에 심각도, 파일·라인, 문제 발생 조건과 영향, 수정 방향을 포함한다. 검증 가능한 버그·보안·회귀 문제를 우선한다.
-- preview의 모든 파일은 reviewed 또는 사유가 있는 skipped로 기록한다. 커밋 대상 밖의 파일도 사유를 기록하며, 전체·리뷰·제외 파일 수와 커버리지를 보고한다. 수행하지 않은 테스트를 통과했다고 보고하지 않는다.
-- Critical/High 지적을 해결하기 전에는 커밋·PR 작업을 진행하지 않는다. 수정은 작업 에이전트가 담당하며, 수정 후 관련 체크와 reviewer의 재검토를 거친다. 리뷰 중 대상 내용이 바뀌면 변경된 내용을 다시 검토한다.
+- **Before committing:** use `ocr delegate preview --format json` to inspect local changes and review the exact files and content to be committed. The default preview includes staged, unstaged, and untracked changes. For partially staged files, inspect the index and `git --no-pager diff --cached --no-ext-diff --no-textconv --no-color` to distinguish actual commit content.
+- **Before PR work:** select all committed changes from the actual PR base to HEAD with `ocr delegate preview --format json --from <base> --to HEAD`. For existing PRs, check the actual base/head and exclude local changes that are outside the PR.
+- Run `ocr delegate rule --format json <path...>` for the selected files, then read the diff and related code following the `open-code-review-delegate` skill. Use `git --no-pager` for Git commands.
+- Apply the reading scope above to each file and read the relevant documents directly. Use the common API contract and do not report undecided matters as settled rules.
+- Write review results and comments in **English**. Each finding must include severity, file/line, triggering conditions and impact, and a suggested fix. Prioritize verifiable bugs, security issues, and regressions.
+- Record every preview file as reviewed or skipped with a reason, including files outside the commit scope. Report total/reviewed/skipped counts and coverage. Never claim tests passed if they were not run.
+- Resolve Critical/High findings before committing or PR work. The working agent makes fixes, runs relevant checks, and obtains reviewer re-review. If content changes during review, review the changed content again.
 
-### PR 코멘트 게시
+### Posting PR Review Comments
 
-- PR 전 리뷰를 마친 뒤 PR을 생성하고, 기존 PR은 갱신된 head를 확인한 뒤 요청한 에이전트가 **영어 리뷰 코멘트를 게시한다.** 사용자가 PR 작업을 요청한 경우 이 게시도 해당 작업에 포함한다.
-- 게시 직전에 리뷰한 HEAD와 PR의 최신 head 커밋이 일치하는지 확인한다. 다르면 최신 변경을 다시 리뷰한다.
-- 지적은 가능한 경우 해당 커밋의 변경 라인에 인라인 코멘트로 남긴다. 인라인 게시가 불가능하면 파일·라인을 포함한 일반 코멘트로 남긴다.
-- 요약 코멘트에는 리뷰한 커밋, 범위·커버리지, 지적사항, 검증 결과·제한을 포함한다. 지적이 없어도 요약을 남긴다. 같은 커밋·같은 지적을 중복 게시하지 않는다.
-- 게시 결과와 코멘트 URL을 확인한다. 권한·인증 등으로 게시하지 못하면 영어 코멘트 초안과 실패 원인을 보고하고 게시 완료로 간주하지 않는다.
+- After the pre-PR review, create the PR; for existing PRs, verify the updated head. The requesting agent then **posts English review comments**. Posting is part of a user-requested PR task.
+- Immediately before posting, confirm the reviewed HEAD matches the latest PR head commit. If they differ, review the latest changes again.
+- Post findings inline on changed lines of the reviewed commit when possible. Otherwise, post a general comment containing file/line references.
+- The summary comment must include the reviewed commit, scope and coverage, findings, and verification results/limitations. Post a summary even with no findings. Do not duplicate the same findings for the same commit.
+- Verify the posting result and comment URL. If permissions or authentication prevent posting, report the failure and provide an English comment draft; do not count posting as complete.
 
-## 핵심 교환 규칙
+## Core Exchange Rules
 
-- 참가자는 옷을 여러 벌 등록하고 서로 다른 옷으로 여러 교환에 참여할 수 있다. 교환 한 건에서는 각 참가자가 1벌을 주고 1벌을 받으며, 묶음 교환은 제외한다.
-- 첫 버전은 참가자의 명시적 의향을 바탕으로 2인 맞교환과 3인 순환교환을 찾는다. 한 옷을 여러 교환에 중복 확정할 수 없다.
-- 본인의 다른 옷을 제공하면 교환이 완성되는 경우 대체 의류를 제안할 수 있다. 당사자의 수락 없이 의향을 변경하지 않으며, 수락도 최종 동의가 아니다.
-- 모든 참가자가 같은 버전의 교환안에 최종 동의해야 확정된다. 의류·의향 변경이나 충돌로 무효가 된 제안의 동의는 재사용하지 않는다.
-- 행사 종료 전 당사자는 확정된 교환 전체를 취소할 수 있다. 실제 전달 전인 관련 의류는 다시 교환 가능하게 한다. 교환 확정과 실물 전달은 구분한다.
-- 주최자가 행사를 종료하면 더 이상 교환을 진행할 수 없다. 종료 시 미확정 제안을 취소하고 확정 내역을 조회용으로 남기는 것은 1차 계획의 제안이다.
+- Participants can register multiple garments and take part in multiple exchanges using different garments. Each participant gives one garment and receives one garment per exchange; bundles are excluded.
+- The first version finds two-person swaps and three-person cycles based on explicit participant intents. A garment cannot be confirmed in multiple exchanges.
+- Suggest an alternative garment when offering another garment owned by the participant would complete an exchange. Never change an intent without acceptance; acceptance is not final consent.
+- Confirmation requires all participants to give final consent to the same proposal version. Do not reuse consent from proposals invalidated by clothing/intent changes or conflicts.
+- Before the event closes, a party may cancel an entire confirmed exchange. Related garments that have not been physically handed over become available again. Confirmation and physical handover are separate.
+- Once the organizer closes the event, no further exchange actions are allowed. Canceling unconfirmed proposals and retaining confirmed records for viewing at closure is a proposal in the initial plan.
 
-## AI와 시스템 책임
+## AI and System Responsibilities
 
-- AI는 의류 사진·설명과 자연어 취향을 해석하고 후보, 추천 이유, 확인할 점을 제시한다. 사용자는 직접 후보를 선택할 수도 있다.
-- 순환 탐색과 대체 의류 제안은 일반 코드가 처리한다. 권한·제안 버전·행사 상태·옷의 중복 확정 검사도 서버와 데이터베이스의 책임이다.
-- AI는 의향을 자동 변경하거나 참가자의 최종 동의를 대신하지 않는다. 사진에서 확인할 수 없는 사실을 확정하지 않는다.
+- AI interprets clothing photos/descriptions and natural-language preferences, then suggests candidates, reasons, and points to check. Users can also select candidates manually.
+- Regular code handles cycle detection and alternative garment suggestions. The server and database also enforce permissions, proposal versions, event state, and prevention of duplicate garment confirmation.
+- AI must not automatically change intents or provide final consent on a participant's behalf. It must not state facts that cannot be verified from photos.
 
-## 아직 결정되지 않은 사항
+## Open Decisions
 
-실물 일부가 이미 전달된 뒤의 취소 처리, 전달 완료 기록, 세션 복원, 사진과 행사 내역의 보관 정책, 참가자·의류 상한 및 제안 표시 순서는 미정이다. 제공 의류를 의향 단계에서 지정하는 방식은 1차 설계 제안이며, API 경로와 요청·응답 상세도 아직 정해지지 않았다. 미정 사항을 확정된 규칙처럼 취급하지 않는다.
+Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. Specifying an offered garment when recording an intent is an initial design proposal; API paths and request/response details are also undecided. Do not treat open decisions as settled rules.
