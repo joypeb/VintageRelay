@@ -73,8 +73,8 @@ class Db:
 def confirm_if_all_agreed(self, actor: Participant, proposal_id: int, version: int) -> TradeProposal:
     with self.db.write() as s:
         proposal = self.trades.get_for_participant(s, proposal_id, actor)  # 404 if not a party; serialized by BEGIN IMMEDIATE
-        if self.trades.has_agreed(s, proposal, actor, version):
-            return proposal                                   # Replay before event state: return current state unchanged
+        if proposal.status in (ProposalStatus.PENDING, ProposalStatus.CONFIRMED) and self.trades.has_agreed(s, proposal, actor, version):
+            return proposal                                   # Replay before event state; ended proposals fall through to 409
         self.events.get_active(s, actor.event_id)             # EventClosedError if closed
         ensure_version(proposal, version)                     # StaleProposalError on mismatch
         self.trades.record_agreement(s, proposal, actor)

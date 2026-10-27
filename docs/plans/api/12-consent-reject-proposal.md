@@ -31,7 +31,7 @@ Returns the current `Proposal` ([schema](11-proposals.md#proposal-schema)): `pen
 All steps run in **one write transaction** serialized with event closure (SQLite `BEGIN IMMEDIATE`):
 
 1. Verify the caller is a participant of the proposal.
-2. **Replay:** if the caller already consented to this version, return `200` with the current proposal.
+2. **Replay:** if the caller already consented to this version **and** the proposal is still `pending` or `confirmed`, return `200` with the current proposal. For `rejected`/`invalidated`/`cancelled` proposals, the recorded consent is kept for history but the request falls through to step 3: if the event is closed it returns `EVENT_CLOSED`; otherwise step 4 returns `PROPOSAL_VERSION_MISMATCH`.
 3. Verify the event is active.
 4. Verify `status = pending` and `version` matches. Otherwise `409 PROPOSAL_VERSION_MISMATCH`.
 5. Record `response = consented` and `respondedAt`.
