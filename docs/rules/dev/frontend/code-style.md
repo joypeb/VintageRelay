@@ -65,10 +65,10 @@ type ConsentButtonsProps = {
 
 export function ConsentButtons({ disabled, onConsent, onReject }: ConsentButtonsProps) {
   return (
-    <div className="flex gap-2">
-      <Button variant="secondary" disabled={disabled} onClick={onReject}>거절</Button>
-      <Button disabled={disabled} onClick={onConsent}>동의</Button>
-    </div>
+    <HStack gap={2}>
+      <Button label="거절" isDisabled={disabled} onClick={onReject} />
+      <Button label="동의" variant="primary" isDisabled={disabled} onClick={onConsent} />
+    </HStack>
   );
 }
 ```

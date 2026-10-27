@@ -1,0 +1,6 @@
+allowBuilds:
+  sharp: false
+  unrs-resolver: false
+  # init 안내 메시지만 출력하는 postinstall이라 실행하지 않는다
+  '@astryxdesign/cli': false
+  '@astryxdesign/core': false

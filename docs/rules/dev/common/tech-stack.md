@@ -18,6 +18,7 @@
 | React | **19.x** | Next.js 16 권장 버전을 따른다. |
 | TypeScript | **6.0.x** | 최신은 7.x지만 `typescript-eslint`가 6.1 미만만 지원해 6.0으로 고정. 린트 도구가 7을 지원하면 올린다. |
 | Tailwind CSS | **4.x** | 2026 중반 기준 4.3 라인. |
+| Astryx | **0.7.x** (`@astryxdesign/core`) | Meta 디자인 시스템. 1.0 미출시라 마이너 간 변경이 있을 수 있어 lock으로 고정한다. 테마는 chocolate. |
 | uv | 최신 안정 | 백엔드 패키지·가상환경 관리. |
 | pnpm | **12.x** | `packageManager` 필드로 고정. |
 
@@ -75,5 +76,6 @@ cd frontend && pnpm add zod         # 프론트엔드 의존성 추가
 - [FastAPI 다운로드 통계·버전 (pepy.tech)](https://pepy.tech/projects/fastapi)
 - [Python 3.15.0 릴리스](https://python.org/downloads/release/python-3150/)
 - [TypeScript 7.0 정식 출시 (gihyo.jp)](https://gihyo.jp/article/2026/07/typescript-7-0), [TypeScript 6.0 (codersera)](https://codersera.com/blog/typescript-6-0-whats-new-breaking-changes-2026/)
+- [Astryx 시작하기](https://astryx.atmeta.com/docs/getting-started), [facebook/astryx](https://github.com/facebook/astryx)
 - [Tailwind CSS 버전 (versionlog)](https://versionlog.com/tailwind-css/), [endoflife.date](https://endoflife.date/tailwind-css)
 - [pnpm 11 RC (InfoQ)](https://infoq.com/news/2026/04/pnpm-11-rc-release/), [pnpm 11 (bytes.dev)](https://bytes.dev/archives/484)
