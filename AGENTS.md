@@ -1,6 +1,6 @@
 # 프로젝트 지침
 
-- 모든 답변과 프로젝트 문서는 한국어로 작성한다.
+- 모든 답변과 프로젝트 문서는 한국어로 작성한다. 단, 코드 리뷰 결과와 PR 리뷰 코멘트는 영어로 작성한다.
 - Vintage Relay는 마을 행사나 소규모 벼룩시장의 **의류 교환 코너**를 위한 모바일 웹 프로토타입이다. 주최자가 행사를 생성하면 본인도 해당 행사의 참가자로 등록되고 참가자 ID가 행사의 주최자 ID로 저장된다. 행사는 즉시 활성화되며, 참가자는 QR 코드나 입장코드로 행사 전 또는 현장에 입장할 수 있다.
 - 프로젝트 개요는 [PROJECT.md](PROJECT.md), 세부 문서는 `docs/` 디렉토리를 참고한다.
   - **기획 및 도메인 지식 (`docs/domain/`):** 기획 배경과 근거([idea.md](docs/domain/idea.md)) 등
@@ -18,6 +18,34 @@
 - **프론트엔드 작업 (`frontend/`):** [`docs/rules/dev/common/`](docs/rules/dev/common/README.md) + [`docs/rules/dev/frontend/`](docs/rules/dev/frontend/README.md). `docs/rules/dev/backend/`는 읽지 않는다.
 - **문서·git 작업:** `docs/rules/dev/common/`만 읽는다.
 - 백엔드·프론트엔드가 공유하는 API 계약은 `docs/rules/dev/common/api-contract.md`가 유일한 기준이다.
+
+## 커밋·PR 전 코드 리뷰
+
+- **반드시** 에이전트가 커밋하거나 PR을 생성·갱신하기 전에 Paseo의 `reviewer` 프로필을 사용해 OCR delegate 리뷰를 맡기고 결과를 기다린다. 커밋 전 리뷰와 PR 전 리뷰는 각각 수행한다.
+- 이 절차는 이 지침을 읽은 에이전트의 작업에 적용된다. 사용자가 터미널에서 직접 실행하는 Git 명령을 감지하거나 차단하는 Git 훅은 아니다.
+- 리뷰를 시작할 때 Paseo의 `list_profiles`로 최신 `reviewer` 프로필과 notes를 확인한다. 모델·설정을 하드코딩하지 않는다. `create_agent`에는 `profile` 인자가 없으므로 프로필의 provider/model과 modeId, thinkingOptionId, featureValues를 해당 실행 설정으로 전달한다.
+- reviewer는 리뷰 대상 파일이 있는 동일한 Paseo 워크스페이스에서 실행한다. 특히 커밋 전의 미커밋 변경은 별도 worktree에 복사되지 않으므로 다른 worktree에서 리뷰하지 않는다.
+- reviewer에게 리뷰 단계, 대상 파일, 기준 브랜치와 HEAD 커밋, 관련 요구사항, 실행한 체크와 결과를 전달한다. PR이 있으면 번호·URL과 실제 base/head도 전달한다.
+- reviewer는 코드·문서를 수정하거나 커밋·push·PR 생성·코멘트 게시를 하지 않는다. 리뷰만 수행하고 결과를 요청한 에이전트에 반환한다. **리뷰를 위임받은 reviewer는 다시 reviewer를 생성하지 않는다.**
+- Paseo 또는 `reviewer` 프로필을 사용할 수 없으면 완료한 리뷰로 간주하지 않는다. 원인을 알리고 커밋·PR 작업을 중단한다.
+
+### 리뷰 범위와 OCR 사용
+
+- **커밋 전:** `ocr delegate preview --format json`으로 로컬 변경을 확인하고, 실제 커밋할 파일과 내용을 리뷰한다. 기본 preview는 staged·unstaged·untracked 변경을 모두 포함한다. 부분 스테이징한 파일은 인덱스의 내용과 `git --no-pager diff --cached --no-ext-diff --no-textconv --no-color`를 확인해 실제 커밋 대상과 구분한다.
+- **PR 전:** 실제 PR 대상 브랜치 대비 HEAD의 커밋된 변경 전체를 `ocr delegate preview --format json --from <base> --to HEAD`로 선정한다. 기존 PR은 실제 base/head를 확인하고, PR에 포함되지 않은 로컬 변경을 리뷰 결과에 섞지 않는다.
+- 선정한 파일에 `ocr delegate rule --format json <path...>`를 실행하고, `open-code-review-delegate` 스킬에 따라 diff와 관련 코드를 읽는다. Git 명령은 `git --no-pager`를 사용한다.
+- 파일별로 위의 개발 규칙 읽기 범위를 적용하고 관련 문서를 직접 읽는다. API 계약은 공통 문서를 기준으로 확인하며, 미정 사항을 확정 규칙처럼 지적하지 않는다.
+- 리뷰 결과와 코멘트는 **영어**로 작성한다. 각 지적에 심각도, 파일·라인, 문제 발생 조건과 영향, 수정 방향을 포함한다. 검증 가능한 버그·보안·회귀 문제를 우선한다.
+- preview의 모든 파일은 reviewed 또는 사유가 있는 skipped로 기록한다. 커밋 대상 밖의 파일도 사유를 기록하며, 전체·리뷰·제외 파일 수와 커버리지를 보고한다. 수행하지 않은 테스트를 통과했다고 보고하지 않는다.
+- Critical/High 지적을 해결하기 전에는 커밋·PR 작업을 진행하지 않는다. 수정은 작업 에이전트가 담당하며, 수정 후 관련 체크와 reviewer의 재검토를 거친다. 리뷰 중 대상 내용이 바뀌면 변경된 내용을 다시 검토한다.
+
+### PR 코멘트 게시
+
+- PR 전 리뷰를 마친 뒤 PR을 생성하고, 기존 PR은 갱신된 head를 확인한 뒤 요청한 에이전트가 **영어 리뷰 코멘트를 게시한다.** 사용자가 PR 작업을 요청한 경우 이 게시도 해당 작업에 포함한다.
+- 게시 직전에 리뷰한 HEAD와 PR의 최신 head 커밋이 일치하는지 확인한다. 다르면 최신 변경을 다시 리뷰한다.
+- 지적은 가능한 경우 해당 커밋의 변경 라인에 인라인 코멘트로 남긴다. 인라인 게시가 불가능하면 파일·라인을 포함한 일반 코멘트로 남긴다.
+- 요약 코멘트에는 리뷰한 커밋, 범위·커버리지, 지적사항, 검증 결과·제한을 포함한다. 지적이 없어도 요약을 남긴다. 같은 커밋·같은 지적을 중복 게시하지 않는다.
+- 게시 결과와 코멘트 URL을 확인한다. 권한·인증 등으로 게시하지 못하면 영어 코멘트 초안과 실패 원인을 보고하고 게시 완료로 간주하지 않는다.
 
 ## 핵심 교환 규칙
 
