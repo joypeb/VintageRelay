@@ -2,7 +2,7 @@
 
 ## 1. 목적과 범위
 
-모바일 웹 기준으로 필요한 화면, 화면 간 연결, 주요 버튼의 이동 경로를 정리한다. 이 문서는 [PROJECT.md](PROJECT.md), [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md), [database-design-v1.md](database-design-v1.md)를 바탕으로 한 **1차 제안**이며, 시각 디자인과 API 상세는 다루지 않는다. 흐름 확인용 목업은 [mockup-flow-v1.html](mockup-flow-v1.html)에 있다.
+모바일 웹 기준으로 필요한 화면, 화면 간 연결, 주요 버튼의 이동 경로를 정리한다. 이 문서는 [PROJECT.md](../../PROJECT.md), [vintage-relay-plan-v1.md](../plans/vintage-relay-plan-v1.md), [database-design-v1.md](../plans/database-design-v1.md)를 바탕으로 한 **1차 제안**이며, 시각 디자인과 API 상세는 다루지 않는다. 흐름 확인용 목업은 [mockup-flow-v1.html](mockup-flow-v1.html)에 있다.
 
 ## 2. 전제
 

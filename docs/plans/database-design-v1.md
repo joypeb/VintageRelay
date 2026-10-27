@@ -4,7 +4,7 @@
 
 행사 입장, 의류 등록, AI 후보 추천, 2인·3인 교환, 동의·취소·행사 종료에 필요한 데이터를 정리한다. **8개 핵심 테이블**을 기준으로 하며, 첫 버전의 데이터베이스는 SQLite를 계획한다.
 
-이 문서는 테이블과 주요 데이터의 초안이다. 실제 SQL, 자료형, 인덱스, API 요청·응답과 인증 방식은 상세 설계에서 정한다. 프로젝트 동작은 [PROJECT.md](PROJECT.md), API와 개발 범위는 [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md)를 참고한다.
+이 문서는 테이블과 주요 데이터의 초안이다. 실제 SQL, 자료형, 인덱스, API 요청·응답과 인증 방식은 상세 설계에서 정한다. 프로젝트 동작은 [PROJECT.md](../../PROJECT.md), API와 개발 범위는 [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md)를 참고한다.
 
 ## 2. 핵심 테이블 목록
 
