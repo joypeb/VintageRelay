@@ -84,12 +84,20 @@ if result.rowcount != len(clothing_ids):
     raise ClothingUnavailableError(...)   # with 블록 탈출 → 롤백
 ```
 
-2. **부분 유니크 인덱스 (권장):** "확정된 교환에 속한 제공 의류"가 한 번만 존재하도록 인덱스를 건다. 상태가 `trade_proposals`에 있어 부분 인덱스 조건으로 쓸 수 없으므로, `trade_participants`에 확정 여부 플래그(예: `is_confirmed`)를 두고 확정·취소 시 함께 갱신한다. 컬럼 추가는 상세 설계에서 확정한다.
+2. **부분 유니크 인덱스 (반드시):** "확정된 교환에 속한 제공 의류"가 한 번만 존재하도록 `trade_participants.is_confirmed`에 부분 고유 인덱스를 건다. 상태가 `trade_proposals`에 있어 부분 인덱스 조건으로 쓸 수 없으므로 이 컬럼을 둔다([database-design-v1.md](../../../plans/database-design-v1.md) 3.8).
 
 ```python
-Index("uq_confirmed_offered_clothing", "offered_clothing_id",
-      unique=True, sqlite_where=text("is_confirmed = 1"))
+is_confirmed: Mapped[bool] = mapped_column(default=False, server_default=text("0"))
+
+__table_args__ = (
+    Index("uq_confirmed_offered_clothing", "offered_clothing_id",
+          unique=True, sqlite_where=text("is_confirmed = 1")),
+)
 ```
+
+- **반드시** 확정 시 교환안 상태·`clothes.status`·`is_confirmed`를 한 트랜잭션에서 함께 바꾼다. 취소 시에도 세 값을 함께 되돌린다. 이 묶음은 리포지토리의 `mark_confirmed()`/`mark_cancelled()` 한 곳에서만 처리한다.
+- `IntegrityError`(`uq_confirmed_offered_clothing`)는 `ClothingUnavailableError`로 변환한다.
+- **반드시** 테스트에서 불변식을 검사한다: `is_confirmed = 1`인 행 ⇔ 교환안 상태가 확정 ⇔ 제공 의류 상태가 확정.
 
 - 미확정 교환안에는 같은 옷이 여러 번 나올 수 있으므로 `offered_clothing_id`에 무조건 `UNIQUE`를 거는 것은 **금지**.
 - 확정과 같은 트랜잭션에서 해당 옷이 포함된 다른 미확정 교환안을 무효화한다.
