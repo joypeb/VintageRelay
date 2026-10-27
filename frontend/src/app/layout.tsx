@@ -5,7 +5,7 @@ import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'Vintage Relay',
-  description: '행사 현장 의류 교환 코너',
+  description: 'A clothing exchange corner for local events',
 };
 
 export const viewport: Viewport = {
@@ -16,7 +16,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="ko" className="bg-body">
+    <html lang="en" className="bg-body">
       <body className="mx-auto min-h-dvh max-w-md">
         <Providers>{children}</Providers>
       </body>

@@ -1,68 +1,68 @@
-# Git 작업 흐름
+# Git Workflow
 
-해커톤 기간에 맞춘 단순한 GitHub Flow를 쓴다. `main` 하나와 짧게 사는 작업 브랜치만 둔다.
+Use a simple GitHub Flow for the hackathon: one `main` branch and short-lived working branches.
 
-## 1. 브랜치
+## 1. Branches
 
-- **반드시** `main`은 항상 실행·배포 가능한 상태로 유지한다.
-- **금지:** `main`에 직접 push, force push. GitHub 브랜치 보호(직접 push 금지, PR 필수)를 켠다.
-- **반드시** 모든 작업은 `main`에서 새 브랜치를 따서 한다.
+- **MUST:** keep `main` runnable and deployable.
+- **MUST NOT:** push directly or force-push to `main`. Enable GitHub branch protection requiring PRs and blocking direct pushes.
+- **MUST:** start all work on a new branch from `main`.
 
-| 접두사 | 용도 | 예 |
+| Prefix | Purpose | Example |
 |---|---|---|
-| `feature/` | 기능 추가 | `feature/backend-event-create` |
-| `fix/` | 버그 수정 | `fix/frontend-entry-code-input` |
-| `docs/` | 문서 | `docs/common-dev-rules` |
-| `chore/` | 설정·의존성·배포 | `chore/infra-deploy-setup` |
-| `refactor/` | 구조 개선 | `refactor/backend-cycle-finder` |
+| `feature/` | Features | `feature/backend-event-create` |
+| `fix/` | Bug fixes | `fix/frontend-entry-code-input` |
+| `docs/` | Documentation | `docs/common-dev-rules` |
+| `chore/` | Configuration, dependencies, deployment | `chore/infra-deploy-setup` |
+| `refactor/` | Structural improvements | `refactor/backend-cycle-finder` |
 
-- **반드시** 브랜치 이름은 `접두사/영역-짧은-설명`, 영어 소문자 `kebab-case`. 영역은 [git-commit.md](git-commit.md)의 scope를 쓴다.
-- **권장:** 브랜치는 하루 안에 머지할 크기로 만든다. 오래 살수록 충돌이 커진다.
-- **권장:** 작업 중 `main`이 바뀌면 `git pull --rebase origin main`으로 자주 따라간다(push 전 개인 브랜치에서만).
-- **반드시** 머지된 브랜치는 삭제한다.
+- **MUST:** use `prefix/area-short-description` with lowercase English `kebab-case`. Use a scope from [git-commit.md](git-commit.md) as the area.
+- **SHOULD:** keep branches small enough to merge in a day; long-lived branches increase conflicts.
+- **SHOULD:** follow changes to `main` frequently using `git pull --rebase origin main` (only on a personal branch before pushing).
+- **MUST:** delete merged branches.
 
-## 2. 커밋 전 체크
+## 2. Pre-Commit Checks
 
-커밋 또는 PR 전에 해당 영역의 체크를 통과시킨다. 정확한 명령은 backend/frontend 문서를 따른다.
+Pass the relevant checks before commits or PRs. See backend/frontend rules for exact commands.
 
-| 영역 | 반드시 실행 | 예 |
+| Area | Required | Examples |
 |---|---|---|
-| backend | 포맷, 린트, 타입 체크, 테스트 | `uv run ruff format`, `uv run ruff check`, `uv run mypy app`, `uv run pytest` |
-| frontend | 린트, 타입 체크, 테스트 | `pnpm lint`, `pnpm typecheck`, `pnpm test` (PR 전 `pnpm build`) |
-| docs | 링크·표 깨짐 육안 확인 | - |
+| backend | Format, lint, types, tests | `uv run ruff format`, `uv run ruff check`, `uv run mypy app`, `uv run pytest` |
+| frontend | Lint, types, tests | `pnpm lint`, `pnpm typecheck`, `pnpm test` (`pnpm build` before PRs) |
+| docs | Visually inspect links/tables | - |
 
-- **금지:** 체크 실패 상태로 PR 머지. 테스트를 지우거나 skip해서 통과시키는 것도 금지.
-- **반드시** `git diff --staged`로 비밀정보·디버그 코드·불필요 파일이 없는지 확인한다.
+- **MUST NOT:** merge a PR with failing checks or remove/skip tests to make it pass.
+- **MUST:** inspect `git diff --staged` for secrets, debug code, and unnecessary files.
 
-## 3. Pull Request
+## 3. Pull Requests
 
-- **반드시** PR 제목은 커밋 규칙 형식(`type(scope): subject`). squash 커밋 메시지가 된다.
-- **반드시** PR 설명에 아래 세 가지를 적는다.
+- **MUST:** use the commit format (`type(scope): subject`) for PR titles; they become squash commit messages.
+- **MUST:** write PR titles, descriptions, and comments in English, including all three sections below.
 
 ```markdown
-## 변경 내용
-- 무엇을 바꿨는지
+## Changes
+- What changed
 
-## 확인 방법
-- 실행한 체크, 수동 확인 절차 (화면 변경은 모바일 스크린샷 첨부)
+## Verification
+- Checks run and manual verification steps (attach mobile screenshots for screen changes)
 
-## 참고
-- API 변경 여부, 관련 문서, 미정 사항
+## Notes
+- API changes, related documents, and open decisions
 ```
 
-- **권장:** PR 하나는 300줄 이내 변경(lock 파일 제외). 백엔드와 프론트엔드는 가급적 PR을 나눈다.
-- **반드시** API 계약이 바뀌면 설명에 "API 변경"을 적고 [api-contract.md](api-contract.md)를 같은 PR에서 갱신한다.
-- **권장:** 작업 중 공유가 필요하면 Draft PR을 연다.
+- **SHOULD:** keep PRs within 300 changed lines (excluding lockfiles). Separate backend/frontend PRs where practical.
+- **MUST:** state "API change" in the description and update [api-contract.md](api-contract.md) in the same PR when changing the API contract.
+- **SHOULD:** open a draft PR when sharing work in progress.
 
-## 4. 리뷰
+## 4. Review
 
-- **권장:** 머지 전 팀원 1명 승인. 시간이 급하면 체크 통과 후 셀프 머지를 허용하되, 머지 후 팀에 알린다.
-- **반드시** 다음 변경은 셀프 머지 금지, 1명 이상 리뷰: API 계약, DB 스키마, 교환 확정·취소·동시성 로직, 인증·권한, 비밀정보 처리.
-- **권장:** 리뷰는 정확성(교환 규칙 위반, 중복 확정 가능성) → 보안(권한, 민감정보) → 가독성 순으로 본다. 취향 문제는 막지 않는다.
-- **권장:** 리뷰 요청 후 30분 내 응답을 목표로 한다.
+- **SHOULD:** obtain one teammate approval before merging. When time is short, self-merge after passing checks is allowed; notify the team afterward.
+- **MUST:** obtain at least one review and avoid self-merge for API contracts, DB schemas, exchange confirmation/cancellation/concurrency, authentication/authorization, and secret handling changes.
+- **SHOULD:** prioritize correctness (exchange rule violations, duplicate confirmation), then security (permissions, sensitive data), then readability. Do not block on personal preferences.
+- **SHOULD:** respond to review requests within 30 minutes.
 
-## 5. 머지
+## 5. Merge
 
-- **반드시** **Squash and merge**로 머지한다. GitHub 설정에서 merge commit·rebase merge를 끈다.
-- **반드시** 머지 직전 `main` 최신 상태 기준으로 체크가 통과해야 한다.
-- **반드시** 머지 후 `main`이 깨지면 원인 PR 작성자가 즉시 고치거나 revert한다. 고치는 데 오래 걸리면 revert가 우선이다.
+- **MUST:** use **Squash and merge**. Disable merge commits and rebase merges in GitHub settings.
+- **MUST:** pass checks against the latest `main` immediately before merging.
+- **MUST:** if a merge breaks `main`, the PR author fixes or reverts it immediately. Prefer reverting if a fix will take time.

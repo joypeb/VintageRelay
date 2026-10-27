@@ -1,205 +1,205 @@
-# Vintage Relay DB 테이블 설계 초안
+# Vintage Relay Draft Database Table Design
 
-## 1. 목적과 범위
+## 1. Purpose and Scope
 
-행사 입장, 의류 등록, AI 후보 추천, 2인·3인 교환, 동의·취소·행사 종료에 필요한 데이터를 정리한다. **8개 핵심 테이블**을 기준으로 하며, 첫 버전의 데이터베이스는 SQLite를 계획한다.
+Describe data for entry, clothing registration, AI recommendations, two-/three-person exchanges, consent, cancellation, and closure. The design uses **eight core tables**, with SQLite planned for the first version.
 
-이 문서는 테이블과 주요 데이터의 초안이다. 실제 SQL, 자료형, 인덱스, API 요청·응답과 인증 방식은 상세 설계에서 정한다. 프로젝트 동작은 [PROJECT.md](../../PROJECT.md), API와 개발 범위는 [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md)를 참고한다.
+This is a draft of tables/key data. Actual SQL, types, indexes, API requests/responses, and authentication will be settled in detailed design. See [PROJECT.md](../../PROJECT.md) for behavior and [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md) for APIs/scope.
 
-## 2. 핵심 테이블 목록
+## 2. Core Tables
 
-| 테이블 | 목적 |
+| Table | Purpose |
 |---|---|
-| `events` | 행사와 진행 상태 관리 |
-| `participants` | 행사에 입장한 참가자 관리 |
-| `clothes` | 참가자가 등록한 의류와 교환 가능 상태 관리 |
-| `clothing_analyses` | AI가 추출한 의류 특징과 미확인 사항 관리 |
-| `preferences` | 참가자의 취향 원문과 해석 결과 관리 |
-| `exchange_intents` | 참가자가 주고 싶은 옷과 받고 싶은 옷의 조합 관리 |
-| `trade_proposals` | 2인·3인 교환안과 해당 버전의 상태 관리 |
-| `trade_participants` | 교환안별 참가자의 제공·수령 의류와 최종 응답 관리 |
+| `events` | Events and lifecycle state |
+| `participants` | Participants who joined events |
+| `clothes` | Registered garments and availability |
+| `clothing_analyses` | AI-extracted features and uncertainties |
+| `preferences` | Raw preferences and interpretations |
+| `exchange_intents` | Offered/desired garment combinations |
+| `trade_proposals` | Two-/three-person proposals and version states |
+| `trade_participants` | Offered/received garments and final responses per proposal participant |
 
-## 3. 테이블별 주요 데이터
+## 3. Key Data by Table
 
-아래 필드 이름은 이해를 돕기 위한 초안이며 구현 과정에서 바뀔 수 있다. `PK`는 해당 행을 구분하는 키, `FK`는 다른 테이블을 참조하는 키다.
+Field names are illustrative drafts and may change during implementation. `PK` identifies a row; `FK` references another table.
 
-### 3.1 `events` — 행사
+### 3.1 `events` — Events
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 행사 식별자 |
-| `name` | 행사 이름 |
-| `organizer_participant_id` (FK) | 행사를 생성한 주최자의 참가자 ID. `participants.id`를 참조한다. |
-| `entry_code` | 참가자가 행사에 입장할 때 사용하는 코드 |
-| `status` | 행사 진행 중 또는 종료 |
-| `created_at`, `closed_at` | 생성·종료 시각 |
+| `id` (PK) | Event identifier |
+| `name` | Event name |
+| `organizer_participant_id` (FK) | Creator's participant ID, referencing `participants.id` |
+| `entry_code` | Code participants use to join |
+| `status` | Active or closed |
+| `created_at`, `closed_at` | Creation/closure timestamps |
 
-행사를 생성하면 생성자도 해당 행사의 참가자로 등록하고, 그 참가자의 ID를 `organizer_participant_id`에 저장한다. 주최자는 본인이 주최하는 행사에 속한 참가자여야 한다. 생성이 완료되면 행사는 즉시 진행 중 상태가 된다. QR 코드는 행사 입장 링크에서 생성할 수 있으므로 별도 테이블이 필수는 아니다. 주최자 본인 인증과 세션 복원 방식은 별도로 정한다. 입장코드만으로 주최자 권한을 부여하지 않는다.
+Creating an event registers its creator as a participant and stores that ID in `organizer_participant_id`. Organizers must belong to their own events. Completed creation activates the event immediately. Generate QR codes from entry links; no separate table is required. Organizer authentication/session recovery will be decided separately. Entry codes alone do not grant organizer permissions.
 
-`participants.event_id`가 행사를 참조하고 `events.organizer_participant_id`가 참가자를 참조하므로 생성 시 두 테이블이 서로 연결된다. 행사 생성, 주최자 참가자 등록, 주최자 ID 연결은 **하나의 트랜잭션**으로 처리한다. 예를 들어 트랜잭션 안에서 행사에 주최자 ID를 임시로 비워 생성하고, 참가자를 등록한 뒤 주최자 ID를 채운다. 주최자 연결에 실패하면 행사 생성 전체를 되돌리며, 주최자가 없는 활성 행사가 외부에 노출되지 않도록 한다. 초기 임시 빈 값 허용과 외래 키 제약의 구체적 구현은 상세 설계에서 정한다.
+`participants.event_id` references events, while `events.organizer_participant_id` references participants. Create the event, register the organizer, and link the ID in **one transaction**. For example, temporarily leave the organizer ID empty, create the participant, then fill it. Roll back all creation if linking fails; never expose an active event without an organizer. Detailed design will settle temporary nullability and foreign key implementation.
 
-### 3.2 `participants` — 참가자
+### 3.2 `participants` — Participants
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 참가자 식별자 |
-| `event_id` (FK) | 참가한 행사 |
-| `display_name` | 행사에서 표시할 이름 |
-| `created_at` | 참가 시각 |
+| `id` (PK) | Participant identifier |
+| `event_id` (FK) | Joined event |
+| `display_name` | Name displayed in event |
+| `created_at` | Join timestamp |
 
-한 행사에 여러 참가자가 있고, 주최자도 해당 행사의 참가자다. 각 참가자는 여러 벌의 옷과 여러 교환 의향을 등록할 수 있다. 본인 확인과 세션 복원 방식은 미정이다.
+Events have multiple participants, including the organizer. Each may register multiple garments/intents. Identity verification and session recovery remain undecided.
 
-### 3.3 `clothes` — 의류
+### 3.3 `clothes` — Clothing
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 의류 식별자 |
-| `event_id` (FK) | 의류가 등록된 행사 |
-| `owner_id` (FK) | 의류를 등록한 참가자 |
-| `photo_location` | 의류 사진의 저장 위치 |
-| `description` | 소유자가 직접 작성한 설명 |
-| `status` | 교환 가능, 확정, 등록 철회 등 의류의 상태 |
-| `content_version` | 사진·설명 변경을 구분하는 버전 |
-| `created_at`, `updated_at` | 등록·변경 시각 |
+| `id` (PK) | Clothing identifier |
+| `event_id` (FK) | Registration event |
+| `owner_id` (FK) | Registering participant |
+| `photo_location` | Photo storage location |
+| `description` | Owner-written description |
+| `status` | Available, confirmed, withdrawn, etc. |
+| `content_version` | Version of photo/description content |
+| `created_at`, `updated_at` | Registration/change timestamps |
 
-사진을 여러 장 저장하는 것이 필요해지면 별도의 `clothing_photos` 테이블을 검토한다. 참가자가 입력한 설명과 AI의 추정은 구분해 보관한다.
+Consider `clothing_photos` if multiple photos become necessary. Store participant descriptions separately from AI estimates.
 
-### 3.4 `clothing_analyses` — AI 의류 분석
+### 3.4 `clothing_analyses` — AI Clothing Analysis
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 분석 결과 식별자 |
-| `clothing_id` (FK) | 분석한 의류 |
-| `content_version` | 분석에 사용한 의류 사진·설명의 버전 |
-| `features` | AI가 추정한 종류, 색상, 특징 등의 구조화된 결과 |
-| `uncertainties` | 사진·설명만으로 확인할 수 없는 사항 |
-| `confirmed_features` | 참가자가 확인하거나 수정한 의류 특징 |
-| `status` | 분석 대기·완료·실패·오래됨 등 |
-| `model_info` | 분석에 사용한 모델 정보 |
-| `created_at` | 분석 시각 |
+| `id` (PK) | Analysis identifier |
+| `clothing_id` (FK) | Analyzed garment |
+| `content_version` | Photo/description version analyzed |
+| `features` | Structured estimated type, color, features, etc. |
+| `uncertainties` | Matters not verifiable from photos/descriptions |
+| `confirmed_features` | Participant-reviewed/corrected features |
+| `status` | Pending, done, failed, stale, etc. |
+| `model_info` | Model used |
+| `created_at` | Analysis timestamp |
 
-예를 들어 `features`에 “초록색 재킷으로 추정”, `uncertainties`에 “로고 유무 확인 필요”를 저장할 수 있다. **확인되지 않음과 없음은 다르다.** 사진이나 설명이 바뀌면 이전 분석을 오래된 것으로 취급하고 다시 분석한다. 분석 요청 도중 원본이 변경되면 이전 버전의 결과를 최신 결과로 표시하지 않는다.
+For example, store “likely a green jacket” in `features` and “check whether a logo is present” in `uncertainties`. **Unverified does not mean absent.** Photo/description changes make old analyses stale and require reanalysis. If the source changes during analysis, never display old-version results as current.
 
-### 3.5 `preferences` — 참가자 취향
+### 3.5 `preferences` — Participant Preferences
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 취향 정보 식별자 |
-| `participant_id` (FK) | 취향을 입력한 참가자 |
-| `original_text` | 참가자가 입력한 취향과 거부 조건 원문 |
-| `interpreted_conditions` | AI가 원문에서 정리한 조건 |
-| `confirmed_conditions` | 참가자가 확인하거나 수정한 조건 |
-| `version` | 취향 변경을 구분하는 버전 |
-| `updated_at` | 마지막 변경 시각 |
+| `id` (PK) | Preference identifier |
+| `participant_id` (FK) | Participant who entered preferences |
+| `original_text` | Original preferences/exclusions |
+| `interpreted_conditions` | AI-structured conditions |
+| `confirmed_conditions` | Participant-reviewed/corrected conditions |
+| `version` | Preference change version |
+| `updated_at` | Last change timestamp |
 
-원문과 AI 해석을 구분하고 참가자가 해석을 확인·수정할 수 있어야 한다. 첫 버전에서는 참가자별 현재 취향을 기준으로 관리하는 방식을 제안한다.
+Separate original text and AI interpretation; allow participant review/correction. The first version proposes managing each participant's current preferences.
 
-### 3.6 `exchange_intents` — 교환 의향
+### 3.6 `exchange_intents` — Exchange Intents
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 교환 의향 식별자 |
-| `participant_id` (FK) | 의향을 선택한 참가자 |
-| `offered_clothing_id` (FK) | 해당 참가자가 내놓을 옷 |
-| `wanted_clothing_id` (FK) | 참가자가 받고 싶은 옷 |
-| `status` | 유효·철회 등 의향 상태 |
-| `created_at`, `updated_at` | 선택·변경 시각 |
+| `id` (PK) | Intent identifier |
+| `participant_id` (FK) | Selecting participant |
+| `offered_clothing_id` (FK) | Garment they offer |
+| `wanted_clothing_id` (FK) | Garment they want |
+| `status` | Active, withdrawn, etc. |
+| `created_at`, `updated_at` | Selection/change timestamps |
 
-예: “내 하얀 바지를 주고 B의 초록 재킷을 받고 싶다.” 제공할 옷은 해당 참가자의 옷이어야 하며, 받고 싶은 옷은 같은 행사의 다른 참가자가 등록한 옷이어야 한다. 참가자는 여러 의향을 선택할 수 있다.
+Example: “I want to offer my white pants for B's green jacket.” Offered clothing must belong to the participant; desired clothing must belong to another participant in the same event. Multiple intents are allowed.
 
-의향은 **최종 교환 동의가 아니다.** 대체 의류 제안을 수락한 경우에도 당사자의 선택을 반영해 의향을 변경하고 교환안을 다시 계산한다.
+An intent is **not final exchange consent**. Accepting an alternative changes the intent according to the participant's choice and recalculates proposals.
 
-### 3.7 `trade_proposals` — 교환안
+### 3.7 `trade_proposals` — Exchange Proposals
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 교환안 식별자 |
-| `event_id` (FK) | 교환안이 속한 행사 |
-| `version` | 참가자에게 제시된 교환안의 버전 |
-| `status` | 동의 대기·확정·거절·무효·취소 등 상태 |
-| `cycle_key` | 순환을 구분하는 값. 참여 내역을 참가자 순으로 정렬한 (참가자, 제공 의류, 수령 의류) 목록 |
-| `created_at`, `confirmed_at`, `cancelled_at` | 생성·확정·취소 시각 |
+| `id` (PK) | Proposal identifier |
+| `event_id` (FK) | Proposal's event |
+| `version` | Version shown to participants |
+| `status` | Pending consent, confirmed, rejected, invalidated, cancelled, etc. |
+| `cycle_key` | Cycle identity: (participant, offered garment, received garment) entries sorted by participant |
+| `created_at`, `confirmed_at`, `cancelled_at` | Creation/confirmation/cancellation timestamps |
 
-교환안의 참가자와 옷은 `trade_participants`에 기록한다. **한 행은 참가자들이 확인하는 한 버전의 교환안**을 나타내며, 내용이 바뀌면 이전 버전을 무효화하고 새 버전을 별도로 만든다. 이전 버전의 동의는 새 버전에 적용하지 않는다. 버전 간 연결 필드와 이력 보관 방식은 상세 설계에서 정한다.
+Store participants/garments in `trade_participants`. **One row represents one proposal version reviewed by participants.** Invalidate old versions when content changes and create new versions separately. Never apply old consent to new versions. Version links/history retention will be settled in detailed design.
 
-같은 순환이 동의 대기 교환안으로 두 번 생기지 않도록 `(event_id, cycle_key)`에 동의 대기 상태일 때만 적용되는 부분 고유 인덱스를 둔다. 3인 순환은 어느 참가자부터 찾아도 같은 `cycle_key`가 나온다.
+Use a partial unique index on `(event_id, cycle_key)` only while pending, preventing duplicate pending cycles. Three-person cycles produce the same `cycle_key` regardless of starting participant.
 
-### 3.8 `trade_participants` — 교환안 참여 및 최종 응답
+### 3.8 `trade_participants` — Participation and Final Responses
 
-| 데이터 | 설명 |
+| Data | Description |
 |---|---|
-| `id` (PK) | 참여 내역 식별자 |
-| `proposal_id` (FK) | 참가자가 확인할 교환안의 특정 버전 |
-| `participant_id` (FK) | 해당 교환의 참가자 |
-| `offered_clothing_id` (FK) | 참가자가 주는 옷 |
-| `received_clothing_id` (FK) | 참가자가 받는 옷 |
-| `response` | 응답 대기·동의·거절 |
-| `responded_at` | 응답 시각 |
-| `is_confirmed` | 이 참여 내역이 **현재 유효한 확정 교환**에 속하는지 여부. 기본값 거짓 |
+| `id` (PK) | Participation identifier |
+| `proposal_id` (FK) | Specific proposal version to review |
+| `participant_id` (FK) | Exchange participant |
+| `offered_clothing_id` (FK) | Garment given |
+| `received_clothing_id` (FK) | Garment received |
+| `response` | Pending, consented, rejected |
+| `responded_at` | Response timestamp |
+| `is_confirmed` | Whether this row belongs to a **currently valid confirmed exchange**; default false |
 
-2인 교환은 참여 내역 2개, 3인 교환은 3개로 표현한다. 한 버전에서 같은 참가자의 참여 내역은 하나만 있어야 한다. 모든 참여자의 동의는 해당 `proposal_id`에만 적용된다.
+Two-person exchanges have two rows, three-person exchanges three. One row per participant per version. Consent applies only to that `proposal_id`.
 
-`is_confirmed`는 같은 옷의 중복 확정을 DB 제약으로 막기 위한 값이다. 교환안이 확정되면 해당 교환안의 모든 참여 내역을 참으로, 확정 교환이 취소되면 거짓으로 바꾼다. 둘 다 교환안 상태 변경과 **같은 트랜잭션**에서 처리한다. 이 값이 참인 행에 대해 `offered_clothing_id`가 유일하도록 부분 고유 인덱스를 둔다. 수령 의류는 같은 교환안의 다른 참여자가 제공하는 의류이므로 제공 의류만 제약해도 충분하다. 행사 종료 후에도 확정 내역은 참으로 남는다.
+`is_confirmed` enables DB-enforced duplicate prevention. Set all proposal participation rows true on confirmation and false on cancellation, in the **same transaction** as proposal state changes. A partial unique index makes `offered_clothing_id` unique among true rows. Received clothing is offered by another participant in the same proposal, so constraining offered clothing suffices. Confirmed records stay true after event closure.
 
-## 4. 테이블 관계
+## 4. Relationships
 
 ```text
 events
   ├─ participants
   │    ├─ clothes ─ clothing_analyses
   │    ├─ preferences
-  │    └─ exchange_intents ─ 제공 의류 / 희망 의류
+  │    └─ exchange_intents ─ offered / desired clothing
   └─ trade_proposals
-       └─ trade_participants ─ 참가자 / 제공 의류 / 수령 의류
+       └─ trade_participants ─ participant / offered / received clothing
 ```
 
-`events.organizer_participant_id`는 해당 행사에 속한 `participants.id`를 참조한다.
+`events.organizer_participant_id` references a participant in that event.
 
-모든 교환 의향과 교환안의 참가자·의류는 **같은 행사**에 속해야 한다. 각 참여자의 제공 의류는 본인 소유여야 하고, 수령 의류는 같은 교환안에서 다른 참가자가 제공하는 의류여야 한다. 각 교환안은 서로 다른 2명 또는 3명이 각각 1벌을 주고 1벌을 받는 닫힌 순환이어야 한다.
+All participants/garments in intents/proposals must belong to **the same event**. Offered clothing belongs to its participant; received clothing is offered by another participant in the same proposal. Each proposal is a closed cycle of two or three distinct participants, each giving/receiving one garment.
 
-## 5. AI 추천에서의 데이터 흐름
+## 5. AI Recommendation Data Flow
 
-1. 참가자가 옷을 등록하면 사진과 설명을 `clothes`에 저장한다.
-2. AI가 사진과 설명을 분석하면 추정한 특징과 확인할 점을 `clothing_analyses`에 저장한다.
-3. 참가자가 원하는 스타일과 거부 조건을 입력하면 원문과 확인·수정 가능한 해석을 `preferences`에 저장한다.
-4. 서버가 같은 행사의 교환 가능한 의류를 조회하고, 그 특징과 참가자의 취향을 AI에 전달한다.
-5. AI가 자연어 취향과 후보 특징을 비교해 추천 후보, 이유와 확인 사항을 제시한다. 서버는 결과를 보여주기 전에 후보가 해당 행사에 속하고 여전히 교환 가능한지 다시 확인한다.
-6. 참가자가 실제로 원하는 옷과 제공할 본인 옷을 선택하면 그 의향을 `exchange_intents`에 저장한다.
+1. Save registered photos/descriptions in `clothes`.
+2. Save AI-estimated features/checks in `clothing_analyses`.
+3. Save original preferences/exclusions and reviewable interpretations in `preferences`.
+4. Query available same-event clothing and send features/preferences to AI.
+5. AI compares natural-language preferences and features, returning candidates/reasons/checks. Before displaying, server rechecks event membership/availability.
+6. Save `exchange_intents` only when participants select desired and owned offered garments.
 
-DB 조회는 비교할 후보를 준비하고, AI는 취향과 후보 특징을 비교한다. 단순 DB 필터만으로 추천하는 경우와 AI 비교를 사용하는 경우의 효용은 실제로 비교 검증해야 한다. AI 결과만으로 교환 의향이나 최종 동의를 저장하지 않는다.
+DB queries prepare candidates; AI compares their features to preferences. Compare simple DB filtering with AI comparison to validate value. AI output alone never saves exchange intents/final consent.
 
-사진·설명·취향 또는 의류의 교환 상태가 바뀌면 이전 분석과 추천이 최신 상태인지 확인한다. 추천 결과를 캐시하는 경우에는 관련 변경 시 무효화하거나 다시 계산한다. AI 호출이 실패하면 수동 의류 탐색을 제공한다.
+After photos/descriptions/preferences or availability change, check analysis/recommendation freshness. Invalidate/recompute cached recommendations after related changes. Offer manual browsing on AI failure.
 
-## 6. 대체 의류 제안
+## 6. Alternative Garment Suggestions
 
-첫 버전에서는 `exchange_intents`와 `clothes`를 비교해 **본인의 다른 등록 의류로 변경하면 2인·3인 교환이 가능한 경우**를 계산할 수 있다. 별도 테이블은 필수가 아니다.
+The first version can compare `exchange_intents` and `clothes` to detect **two-/three-person exchanges enabled by offering another owned garment**. A separate table is optional.
 
-제안을 수락하기 전과 최종 확정 전에는 행사 상태, 의류 소유·사용 가능 여부, 관련 의향과 교환안 상태를 다시 확인한다. 사용자의 수락 없이 의향을 바꾸지 않으며, 수락은 최종 동의가 아니다.
+Before acceptance and final confirmation, recheck event state, ownership/availability, related intents, and proposal state. Never change intents without acceptance; acceptance is not final consent.
 
-제안의 거절·수락 이력을 남기거나 같은 제안을 반복해 보여주지 않아야 한다면, 이후 `alternative_suggestions` 테이블을 추가하는 방식을 검토한다.
+Consider adding `alternative_suggestions` later if acceptance/rejection history or suppressing repeated suggestions is needed.
 
-## 7. 무결성과 동시성
+## 7. Integrity and Concurrency
 
-- **의류 중복 확정 방지:** 같은 옷은 동시에 둘 이상의 교환에 확정될 수 없다. 참가자 자체의 여러 교환 참여는 막지 않는다. 미확정 교환안과 취소 후 재사용은 허용해야 하므로, 모든 참여 내역의 의류 ID에 무조건 고유 제약을 거는 방식은 적합하지 않다. 대신 `trade_participants.is_confirmed`가 참인 행에만 `offered_clothing_id` 부분 고유 인덱스를 걸고, 확정 시 `clothes.status`를 교환 가능일 때만 확정으로 바꾸는 조건부 변경을 함께 사용한다.
-- **최종 확정:** 서버가 행사 진행 상태, 같은 버전의 전원 동의, 의향과 의류의 유효성·소유권, 교환 가능 상태를 확인하고 상태 변경을 하나의 DB 트랜잭션으로 처리한다. 동시에 들어온 요청도 중복 확정을 만들지 않도록 직렬화한다.
-- **제안 변경:** 의류·의향 변경, 철회 또는 다른 교환의 확정으로 영향을 받는 미확정 교환안과 기존 동의를 무효화한다. 새로운 안은 새 버전으로 확인받는다.
-- **교환안 재계산:** 의향 등록·취소·변경, 의류 수정·철회, 대체 의류 수락, 확정 교환 취소와 **같은 트랜잭션**에서 영향받는 순환만 다시 찾는다. 이미 같은 `cycle_key`의 동의 대기 교환안이 있으면 새로 만들지 않는다.
-- **중복 요청:** 동의·거절·취소·행사 종료·의향 등록은 같은 요청이 두 번 와도 한 번 처리한 것과 같은 결과가 되게 한다(API 계약의 중복 처리 규칙).
-- **대체 의류 수락:** 제안은 저장하지 않으므로, 수락 시 같은 트랜잭션에서 현재 제공 의류·새 의류의 소유와 교환 가능 상태, 바꾼 의향으로 순환이 지금 닫히는지를 다시 계산한다. 실패하면 의향을 바꾸지 않는다.
-- **AI 분석 저장:** AI 호출은 트랜잭션 밖에서 하고, 결과 저장 시 의류 `content_version`·취향 `version`이 호출 당시와 같은지 비교한다. 다르면 최신 결과로 쓰지 않는다.
-- **이력 보존:** 확정 내역에서 당시 참가자가 확인한 옷 정보와 조건을 어떻게 보존할지는 상세 설계에서 정한다. 변경 가능한 의류 설명만 참조하면 과거 교환 내용이 달라 보일 수 있다.
-- **교환 취소:** 행사 종료 전 당사자가 취소하면 전체 교환을 취소하고, 실제 전달 전인 관련 의류를 다시 교환 가능하게 하는 변경을 함께 처리한다.
-- **행사 종료:** 종료와 최종 동의가 동시에 요청되어도 종료 이후 새로운 교환이 확정되지 않도록 서버와 DB에서 순서를 보장한다.
-- **실물 전달:** 교환안 확정과 실제 전달 완료는 다르다. 일부 물건이 전달된 뒤의 취소 및 완료 기록은 아직 결정되지 않았다.
+- **Duplicate garment confirmation:** no garment in two simultaneous confirmed exchanges. Do not restrict participants from multiple exchanges. Unconfirmed overlaps and reuse after cancellation are allowed, so unconditional garment uniqueness is unsuitable. Use a partial unique index on offered clothing where `trade_participants.is_confirmed` is true, plus conditional `clothes.status` updates from available to confirmed.
+- **Final confirmation:** check active event, unanimous same-version consent, valid intents/clothing, ownership, and availability; update in one transaction. Serialize concurrent requests to prevent duplicates.
+- **Proposal changes:** clothing/intent edits, withdrawal, or another confirmation invalidate affected unconfirmed proposals/consents. Review new proposals as new versions.
+- **Recalculation:** find only affected cycles in the **same transaction** as intent registration/withdrawal/change, clothing edit/withdrawal, alternative acceptance, or exchange cancellation. Reuse existing pending `cycle_key` proposals rather than duplicating.
+- **Duplicate requests:** consent/rejection/cancellation/closure/intent registration produce the same result when repeated, per API idempotency rules.
+- **Alternative acceptance:** suggestions are not stored. In one transaction, check current/new garment ownership/availability and recalculate whether the changed intent closes a cycle now. Failure leaves intents unchanged.
+- **AI persistence:** call AI outside transactions. On save, compare clothing `content_version`/preference `version` with request-time values. Mismatches must not become current results.
+- **History:** detailed design must decide how to preserve clothing information/conditions reviewed at confirmation. Referencing mutable descriptions alone may alter apparent past exchange contents.
+- **Cancellation:** before closure, cancellation by a party cancels the entire exchange and restores availability of garments not yet handed over together.
+- **Closure:** server/DB ordering prevents new confirmation after closure even with simultaneous final consent.
+- **Physical handover:** confirmation is separate from completed handover. Cancellation after partial handover and completion records remain undecided.
 
-## 8. 추후 검토할 테이블과 미결정 사항
+## 8. Future Tables and Open Decisions
 
-| 항목 | 필요한 경우 |
+| Item | When needed |
 |---|---|
-| `clothing_photos` | 의류별 여러 사진과 사진별 순서를 지원할 때 |
-| `alternative_suggestions` | 대체 의류 제안의 이력과 수락·거절 상태를 보관할 때 |
-| 추천 결과 테이블 | 이전 추천을 다시 보거나 추천 이력을 분석할 때 |
-| 인증·세션 관련 테이블 | 주최자·참가자 인증과 세션 복원 방식을 결정한 뒤 |
-| 전달 기록 테이블 | 현장 인수인계 완료를 누가 어떻게 기록할지 결정한 뒤 |
+| `clothing_photos` | Multiple photos and per-garment ordering |
+| `alternative_suggestions` | Suggestion history and acceptance/rejection state |
+| Recommendation results | Revisiting or analyzing recommendation history |
+| Authentication/session tables | After organizer/participant auth and recovery are decided |
+| Handover records | After deciding who records completion and how |
 
-사진 및 행사 내역 보관·삭제 기간, 참가자·의류 수의 상한, 교환안 이력 보관, 행사 종료 후 조회 권한은 별도로 정한다. 입장코드나 QR 코드만으로 참가자·주최자 권한을 판단하지 않는다.
+Decide photo/event retention/deletion, participant/garment limits, proposal history retention, and post-closure access separately. Never infer participant/organizer authorization from entry/QR codes alone.

@@ -1,1 +1,1 @@
-"AGENTS.md" 확인
+Read and follow [AGENTS.md](AGENTS.md).

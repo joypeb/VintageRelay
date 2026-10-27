@@ -29,7 +29,7 @@ export default defineConfig([
     },
   },
   {
-    // astryx theme 명령이 생성·관리하는 파일
+    // Files generated and managed by astryx theme commands.
     files: ['src/astryx-themes.ts'],
     rules: { 'import/order': 'off' },
   },

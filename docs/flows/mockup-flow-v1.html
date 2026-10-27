@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vintage Relay 화면 흐름 목업 v1</title>
+<title>Vintage Relay Screen Flow Mockup v1</title>
 <style>
   :root {
     --bg: #f4f1ec; --ink: #2b2622; --sub: #7a716a; --line: #e4ddd4;
@@ -16,7 +16,7 @@
   input, textarea { font: inherit; width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: #fff; }
   textarea { min-height: 96px; resize: none; }
 
-  /* 좌측 패널 */
+  /* Left panel */
   .panel { width: 240px; background: #fff; border-radius: 16px; padding: 18px; font-size: 13px; position: sticky; top: 32px; }
   .panel h2 { font-size: 15px; margin-bottom: 4px; }
   .panel p { color: var(--sub); margin-bottom: 12px; line-height: 1.5; }
@@ -28,7 +28,7 @@
   .jump button.on { background: var(--brand); color: #fff; }
   @media (max-width: 720px) { .panel { display: none; } body { padding: 0; } }
 
-  /* 폰 프레임 */
+  /* Phone frame */
   .phone { width: 390px; height: 800px; background: var(--bg); border-radius: 40px; border: 10px solid #1f1c1a; overflow: hidden; position: relative; display: flex; flex-direction: column; }
   @media (max-width: 720px) { .phone { width: 100vw; height: 100vh; border: none; border-radius: 0; } }
   .topbar { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--bg); border-bottom: 1px solid var(--line); flex-shrink: 0; }
@@ -47,7 +47,7 @@
   section { display: none; }
   section.on { display: block; }
 
-  /* 공통 요소 */
+  /* Common elements */
   .btn { display: block; width: 100%; padding: 14px; border-radius: 12px; background: var(--brand); color: #fff; font-weight: 700; text-align: center; margin-top: 10px; }
   .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
   .btn.danger { background: var(--warn); }
@@ -107,7 +107,7 @@
   .radio.dis { opacity: .45; cursor: not-allowed; }
   .link { color: var(--brand); font-size: 13px; text-decoration: underline; display: block; text-align: center; margin-top: 14px; }
 
-  /* 오버레이 */
+  /* Overlays */
   .dim { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: none; z-index: 10; }
   .dim.on { display: block; }
   .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 20px 20px 0 0; padding: 18px 16px 24px; z-index: 11; transform: translateY(110%); transition: transform .25s; }
@@ -122,16 +122,16 @@
 </head>
 <body>
 
-<!-- 좌측: 목업 조작 패널 -->
+<!-- Left: mockup controls -->
 <aside class="panel">
-  <h2>Vintage Relay 목업 v1</h2>
-  <p>화면 흐름만 확인하는 목업입니다. 데이터는 고정된 예시이고, 서버 동작은 흉내만 냅니다.</p>
-  <h3>상태 전환</h3>
-  <label><input type="checkbox" id="optOrg"> 주최자로 보기</label>
-  <label><input type="checkbox" id="optClosed"> 행사 종료 상태</label>
-  <h3>화면 바로가기</h3>
+  <h2>Vintage Relay Mockup v1</h2>
+  <p>This mockup demonstrates screen flows only. Data is fixed and server behavior is simulated.</p>
+  <h3>State controls</h3>
+  <label><input type="checkbox" id="optOrg"> View as organizer</label>
+  <label><input type="checkbox" id="optClosed"> Event closed</label>
+  <h3>Screen shortcuts</h3>
   <div class="jump" id="jump"></div>
-  <p style="margin-top:12px">상세 설명은 screen-flow-v1.md 참고</p>
+  <p style="margin-top:12px">See screen-flow-v1.md for details</p>
 </aside>
 
 <div class="phone" id="phone">
@@ -140,282 +140,282 @@
     <div class="title" id="title"></div>
     <span class="sid" id="sid"></span>
   </div>
-  <div class="closed-banner" id="closedBanner">행사가 종료되어 교환을 진행할 수 없어요. 확정 내역은 조회할 수 있어요.</div>
+  <div class="closed-banner" id="closedBanner">This event is closed. Exchanges are disabled; confirmed records remain viewable.</div>
 
   <div class="body" id="body">
 
-    <!-- S0 랜딩 -->
+    <!-- S0 Landing -->
     <section id="S0" data-title="" data-notab>
       <div class="hero">
         <div class="logo">🧥</div>
         <h1>Vintage Relay</h1>
-        <p class="muted">행사 의류 교환 코너<br>1벌을 주고 1벌을 받아요</p>
+        <p class="muted">Event clothing exchange corner<br>Give one garment, receive one garment</p>
       </div>
-      <button class="btn" data-go="H1">행사 만들기</button>
-      <button class="btn ghost" data-go="P1">입장코드로 참여</button>
-      <p class="muted" style="text-align:center;margin-top:14px">행사장 QR은 휴대폰 카메라로 찍으면 바로 입장할 수 있어요</p>
+      <button class="btn" data-go="H1">Create event</button>
+      <button class="btn ghost" data-go="P1">Join with entry code</button>
+      <p class="muted" style="text-align:center;margin-top:14px">Scan the event QR with your phone camera to join</p>
     </section>
 
-    <!-- H1 행사 생성 -->
-    <section id="H1" data-title="행사 만들기" data-notab>
-      <div class="label">행사 이름</div>
-      <input value="망원 골목 벼룩시장">
-      <div class="label">내 표시 이름</div>
-      <input value="하린">
-      <p class="muted" style="margin-top:6px">행사를 만들면 주최자도 참가자로 함께 등록돼요.</p>
-      <div class="note info">생성 즉시 행사가 시작돼요. 따로 시작 버튼은 없어요.</div>
-      <button class="btn" data-act="createEvent">행사 생성</button>
+    <!-- H1 Create event -->
+    <section id="H1" data-title="Create event" data-notab>
+      <div class="label">Event name</div>
+      <input value="Mangwon Neighborhood Flea Market">
+      <div class="label">My display name</div>
+      <input value="Harin">
+      <p class="muted" style="margin-top:6px">Creating an event also registers you as a participant.</p>
+      <div class="note info">The event starts immediately. There is no separate start button.</div>
+      <button class="btn" data-act="createEvent">Create event</button>
     </section>
 
-    <!-- H2 생성 완료·공유 -->
-    <section id="H2" data-title="행사가 만들어졌어요" data-notab data-noback>
-      <p class="muted" style="text-align:center">참가자에게 QR 코드나 입장코드를 공유하세요</p>
+    <!-- H2 Created and share -->
+    <section id="H2" data-title="Event created" data-notab data-noback>
+      <p class="muted" style="text-align:center">Share the QR code or entry code with participants</p>
       <div class="qr"></div>
       <div class="code">RELAY-4821</div>
-      <button class="btn ghost" data-act="copy">링크 복사</button>
-      <div class="note">주최자 권한은 이 기기에 저장돼요. 행사가 끝날 때까지 같은 기기로 접속해 주세요.</div>
-      <button class="btn" data-root="C1" data-go="C2">내 옷 등록하러 가기</button>
-      <button class="btn ghost" data-root="P2">홈으로</button>
+      <button class="btn ghost" data-act="copy">Copy link</button>
+      <div class="note">Organizer access is stored on this device. Use the same device until the event ends.</div>
+      <button class="btn" data-root="C1" data-go="C2">Register my clothes</button>
+      <button class="btn ghost" data-root="P2">Go home</button>
     </section>
 
-    <!-- P1 입장 -->
-    <section id="P1" data-title="행사 입장" data-notab>
-      <div class="card"><div class="muted">입장할 행사</div><h4 style="margin-top:4px">망원 골목 벼룩시장</h4><span class="tag">진행 중</span></div>
-      <div class="label">입장코드</div>
+    <!-- P1 Join -->
+    <section id="P1" data-title="Join event" data-notab>
+      <div class="card"><div class="muted">Event to join</div><h4 style="margin-top:4px">Mangwon Neighborhood Flea Market</h4><span class="tag">Active</span></div>
+      <div class="label">Entry code</div>
       <input value="RELAY-4821">
-      <div class="label">내 표시 이름</div>
-      <input placeholder="행사에서 보일 이름" value="하린">
-      <button class="btn" data-act="join">입장</button>
+      <div class="label">My display name</div>
+      <input placeholder="Name displayed at the event" value="Harin">
+      <button class="btn" data-act="join">Join</button>
     </section>
 
-    <!-- P2 홈 -->
-    <section id="P2" data-title="망원 골목 벼룩시장" data-tab="P2" data-noback>
+    <!-- P2 Home -->
+    <section id="P2" data-title="Mangwon Neighborhood Flea Market" data-tab="P2" data-noback>
       <div class="card org tap org-only" data-go="M1">
-        <div class="row" style="justify-content:space-between;align-items:center"><h4>행사 관리</h4><span class="tag org">주최자</span></div>
-        <p class="muted">참가자 12명 · 의류 31벌 · QR 다시 보기, 행사 종료</p>
+        <div class="row" style="justify-content:space-between;align-items:center"><h4>Manage event</h4><span class="tag org">Organizer</span></div>
+        <p class="muted">12 participants · 31 garments · View QR, close event</p>
       </div>
-      <div class="label">할 일</div>
-      <div class="card tap alert" data-go="T2"><h4>교환안 동의 대기 1건</h4><p class="muted">3인 교환 · 민준, 서연님과 함께</p></div>
-      <div class="card tap alert" data-go="A1"><h4>대체 의류 제안 1건</h4><p class="muted">검은 재킷을 내놓으면 3인 교환이 가능해요</p></div>
-      <div class="card tap" data-root="C1"><h4>내 옷 3벌</h4><p class="muted">교환 가능 2 · 확정 1</p></div>
-      <div class="card tap" data-root="B1" data-go="R1"><h4>내 취향</h4><p class="muted">“큰 로고 없는 짧은 초록 재킷, 진한 얼룩은 싫어요”</p></div>
-      <div class="card tap" data-root="B1"><h4>AI 추천 보기</h4><p class="muted">취향에 맞는 옷 4벌을 찾았어요</p></div>
+      <div class="label">Tasks</div>
+      <div class="card tap alert" data-go="T2"><h4>1 proposal awaiting consent</h4><p class="muted">Three-person exchange · Minjun and Seoyeon</p></div>
+      <div class="card tap alert" data-go="A1"><h4>1 alternative garment suggestion</h4><p class="muted">Offering your black jacket enables a three-person exchange</p></div>
+      <div class="card tap" data-root="C1"><h4>My 3 garments</h4><p class="muted">2 available · 1 confirmed</p></div>
+      <div class="card tap" data-root="B1" data-go="R1"><h4>My preferences</h4><p class="muted">“Cropped green jacket, no large logos or heavy stains”</p></div>
+      <div class="card tap" data-root="B1"><h4>View AI recommendations</h4><p class="muted">Found 4 garments matching your preferences</p></div>
     </section>
 
-    <!-- M1 행사 관리 -->
-    <section id="M1" data-title="행사 관리" data-tab="P2">
+    <!-- M1 Manage event -->
+    <section id="M1" data-title="Manage event" data-tab="P2">
       <div class="qr"></div>
       <div class="code">RELAY-4821</div>
-      <button class="btn ghost" data-act="copy">링크 복사</button>
+      <button class="btn ghost" data-act="copy">Copy link</button>
       <div class="stats">
-        <div><b>12</b><span>참가자</span></div>
-        <div><b>31</b><span>등록 의류</span></div>
-        <div><b>5</b><span>확정 교환</span></div>
+        <div><b>12</b><span>Participants</span></div>
+        <div><b>31</b><span>Registered garments</span></div>
+        <div><b>5</b><span>Confirmed exchanges</span></div>
       </div>
-      <button class="btn danger w" data-act="openClose">행사 종료</button>
-      <p class="muted" style="margin-top:8px">종료하면 새 교환과 동의·확정·취소를 할 수 없어요.</p>
+      <button class="btn danger w" data-act="openClose">Close event</button>
+      <p class="muted" style="margin-top:8px">Closing disables new exchanges, consent, confirmation, and cancellation.</p>
     </section>
 
-    <!-- B1 AI 추천 -->
-    <section id="B1" data-title="둘러보기" data-tab="B1" data-noback>
-      <div class="seg"><button class="on">AI 추천</button><button data-root="B1" data-go="B2" data-replace>전체 목록</button></div>
-      <div class="card tap" data-go="R1" style="padding:10px 14px"><span class="muted">내 취향 · </span><b style="font-size:13px">로고 없는 짧은 초록 재킷</b> <span class="muted">수정 ›</span></div>
+    <!-- B1 AI recommendations -->
+    <section id="B1" data-title="Browse" data-tab="B1" data-noback>
+      <div class="seg"><button class="on">AI recommendations</button><button data-root="B1" data-go="B2" data-replace>All clothing</button></div>
+      <div class="card tap" data-go="R1" style="padding:10px 14px"><span class="muted">My preferences · </span><b style="font-size:13px">Cropped green jacket without a logo</b> <span class="muted">Edit ›</span></div>
       <div class="card tap" data-go="B3">
-        <div class="item"><div class="ph s" style="background:#cfe3d2">🧥</div><div><h4>초록 숏 재킷</h4><p class="muted">민준 · <span class="tag">교환 가능</span></p></div></div>
-        <p class="muted" style="margin-top:8px">💡 초록색에 허리 위 기장으로 보여요</p>
-        <p class="muted">🔍 로고 유무는 사진으로 확인하기 어려워요</p>
+        <div class="item"><div class="ph s" style="background:#cfe3d2">🧥</div><div><h4>Cropped green jacket</h4><p class="muted">Minjun · <span class="tag">Available</span></p></div></div>
+        <p class="muted" style="margin-top:8px">💡 Looks green and cropped above the waist</p>
+        <p class="muted">🔍 The photo does not clearly show whether there is a logo</p>
       </div>
       <div class="card tap" data-go="B3">
-        <div class="item"><div class="ph s" style="background:#d9e6c8">🧥</div><div><h4>올리브 필드 재킷</h4><p class="muted">지우 · <span class="tag">교환 가능</span></p></div></div>
-        <p class="muted" style="margin-top:8px">💡 녹색 계열이고 큰 로고가 보이지 않아요</p>
-        <p class="muted">🔍 기장이 원하는 만큼 짧은지 확인해 보세요</p>
+        <div class="item"><div class="ph s" style="background:#d9e6c8">🧥</div><div><h4>Olive field jacket</h4><p class="muted">Jiwoo · <span class="tag">Available</span></p></div></div>
+        <p class="muted" style="margin-top:8px">💡 Green tones; no large logo is visible</p>
+        <p class="muted">🔍 Check whether it is cropped enough for you</p>
       </div>
-      <a class="link" data-root="B1" data-go="B2" data-replace>추천이 마음에 안 드나요? 전체 목록 보기</a>
+      <a class="link" data-root="B1" data-go="B2" data-replace>Want other options? Browse all clothing</a>
     </section>
 
-    <!-- B2 전체 목록 -->
-    <section id="B2" data-title="둘러보기" data-tab="B1" data-noback>
-      <div class="seg"><button data-root="B1">AI 추천</button><button class="on">전체 목록</button></div>
+    <!-- B2 All clothing -->
+    <section id="B2" data-title="Browse" data-tab="B1" data-noback>
+      <div class="seg"><button data-root="B1">AI recommendations</button><button class="on">All clothing</button></div>
       <div class="grid">
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#cfe3d2">🧥</div><b style="font-size:13px">초록 숏 재킷</b><p class="muted">민준</p></div>
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#d6d6d6">👕</div><b style="font-size:13px">검은 후드티</b><p class="muted">서연</p></div>
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#e9dcc6">👗</div><b style="font-size:13px">린넨 원피스</b><p class="muted">지우</p></div>
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#d4dbe8">👖</div><b style="font-size:13px">연청 데님</b><p class="muted">도윤</p></div>
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#f0d9d2">🧶</div><b style="font-size:13px">핑크 니트</b><p class="muted">서연</p></div>
-        <div class="card tap" data-go="B3"><div class="ph" style="background:#d9e6c8">🧥</div><b style="font-size:13px">올리브 재킷</b><p class="muted">지우</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#cfe3d2">🧥</div><b style="font-size:13px">Cropped green jacket</b><p class="muted">Minjun</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#d6d6d6">👕</div><b style="font-size:13px">Black hoodie</b><p class="muted">Seoyeon</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#e9dcc6">👗</div><b style="font-size:13px">Linen dress</b><p class="muted">Jiwoo</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#d4dbe8">👖</div><b style="font-size:13px">Light-wash jeans</b><p class="muted">Doyun</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#f0d9d2">🧶</div><b style="font-size:13px">Pink sweater</b><p class="muted">Seoyeon</p></div>
+        <div class="card tap" data-go="B3"><div class="ph" style="background:#d9e6c8">🧥</div><b style="font-size:13px">Olive jacket</b><p class="muted">Jiwoo</p></div>
       </div>
     </section>
 
-    <!-- B3 의류 상세 -->
-    <section id="B3" data-title="의류 상세" data-tab="B1">
+    <!-- B3 Clothing detail -->
+    <section id="B3" data-title="Clothing detail" data-tab="B1">
       <div class="ph l" style="background:#cfe3d2">🧥</div>
-      <div class="row" style="justify-content:space-between;align-items:center;margin-top:14px"><h3>초록 숏 재킷</h3><span class="tag">교환 가능</span></div>
-      <p class="muted">민준님의 옷</p>
-      <div class="label">등록자 설명</div>
-      <p class="muted">두세 번 입었어요. 봄가을용 얇은 재킷입니다.</p>
-      <div class="label">AI가 정리한 특징 <span class="tag wait">추정</span></div>
-      <span class="chip">재킷</span><span class="chip">초록색</span><span class="chip">짧은 기장</span><span class="chip">지퍼 여밈</span>
-      <div class="label">직접 확인할 점</div>
-      <span class="chip gray">로고 유무 확인 필요</span><span class="chip gray">소매 얼룩 여부 확인 필요</span>
-      <div id="intentBox" class="note info" style="display:none">내 <b>하얀 바지</b>를 주고 이 옷을 받고 싶다고 표시했어요. 아직 최종 동의는 아니에요.</div>
-      <button class="btn w" id="wantBtn" data-act="openSheet">이 옷 받고 싶어요</button>
-      <button class="btn ghost w" id="cancelIntentBtn" data-act="cancelIntent" style="display:none">의향 취소</button>
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:14px"><h3>Cropped green jacket</h3><span class="tag">Available</span></div>
+      <p class="muted">Minjun's garment</p>
+      <div class="label">Owner's description</div>
+      <p class="muted">Worn two or three times. A lightweight spring/autumn jacket.</p>
+      <div class="label">AI-extracted features <span class="tag wait">Estimated</span></div>
+      <span class="chip">Jacket</span><span class="chip">Green</span><span class="chip">Cropped length</span><span class="chip">Zip closure</span>
+      <div class="label">Check in person</div>
+      <span class="chip gray">Check for a logo</span><span class="chip gray">Check sleeves for stains</span>
+      <div id="intentBox" class="note info" style="display:none">My <b>White pants</b> are offered for this garment. This is not final consent.</div>
+      <button class="btn w" id="wantBtn" data-act="openSheet">I want this garment</button>
+      <button class="btn ghost w" id="cancelIntentBtn" data-act="cancelIntent" style="display:none">Withdraw intent</button>
     </section>
 
-    <!-- R1 취향 입력 -->
-    <section id="R1" data-title="내 취향" data-tab="B1">
-      <p class="muted">원하는 스타일과 피하고 싶은 조건을 자유롭게 적어 주세요.</p>
-      <textarea style="margin-top:10px">큰 로고가 없는 짧은 초록색 재킷을 원해요. 진한 얼룩은 싫어요.</textarea>
-      <button class="btn w" data-go="R2">AI로 정리하기</button>
+    <!-- R1 Enter preferences -->
+    <section id="R1" data-title="My preferences" data-tab="B1">
+      <p class="muted">Describe desired styles and anything you want to avoid.</p>
+      <textarea style="margin-top:10px">I want a cropped green jacket without a large logo. No heavy stains.</textarea>
+      <button class="btn w" data-go="R2">Interpret with AI</button>
     </section>
 
-    <!-- R2 취향 해석 확인 -->
-    <section id="R2" data-title="취향 확인" data-tab="B1">
-      <p class="muted">AI가 정리한 조건이 맞는지 확인하고 고쳐 주세요.</p>
-      <div class="label">원하는 조건</div>
-      <span class="chip x">재킷</span><span class="chip x">초록색</span><span class="chip x">짧은 기장</span><span class="chip gray">+ 추가</span>
-      <div class="label">피하는 조건</div>
-      <span class="chip neg x">큰 로고</span><span class="chip neg x">진한 얼룩</span><span class="chip gray">+ 추가</span>
-      <div class="note">“짧은”은 허리 위 기장으로 이해했어요. 다르면 수정해 주세요.</div>
-      <button class="btn w" data-act="savePref">저장하고 추천 보기</button>
+    <!-- R2 Review preference interpretation -->
+    <section id="R2" data-title="Review preferences" data-tab="B1">
+      <p class="muted">Review and correct the conditions interpreted by AI.</p>
+      <div class="label">Wanted</div>
+      <span class="chip x">Jacket</span><span class="chip x">Green</span><span class="chip x">Cropped length</span><span class="chip gray">+ Add</span>
+      <div class="label">Avoid</div>
+      <span class="chip neg x">Large logos</span><span class="chip neg x">Heavy stains</span><span class="chip gray">+ Add</span>
+      <div class="note">“Cropped” was interpreted as above the waist. Edit if needed.</div>
+      <button class="btn w" data-act="savePref">Save and view recommendations</button>
     </section>
 
-    <!-- C1 내 옷 목록 -->
-    <section id="C1" data-title="내 옷" data-tab="C1" data-noback>
-      <button class="btn w" data-go="C2" style="margin:0 0 14px">+ 옷 등록</button>
-      <div class="card tap" data-go="C4"><div class="item"><div class="ph s" style="background:#f3f0ea">👖</div><div><h4>하얀 바지</h4><p class="muted"><span class="tag">교환 가능</span> 의향 1 · 교환안 1</p></div></div></div>
-      <div class="card tap" data-go="C4"><div class="item"><div class="ph s" style="background:#d6d6d6">🧥</div><div><h4>검은 재킷</h4><p class="muted"><span class="tag">교환 가능</span></p></div></div></div>
-      <div class="card tap" data-go="T3"><div class="item"><div class="ph s" style="background:#e8d6c8">👔</div><div><h4>체크 셔츠</h4><p class="muted"><span class="tag fixed">확정</span> 서연님과 교환 확정</p></div></div></div>
+    <!-- C1 My clothes -->
+    <section id="C1" data-title="My clothes" data-tab="C1" data-noback>
+      <button class="btn w" data-go="C2" style="margin:0 0 14px">+ Register clothing</button>
+      <div class="card tap" data-go="C4"><div class="item"><div class="ph s" style="background:#f3f0ea">👖</div><div><h4>White pants</h4><p class="muted"><span class="tag">Available</span> 1 intent · 1 proposal</p></div></div></div>
+      <div class="card tap" data-go="C4"><div class="item"><div class="ph s" style="background:#d6d6d6">🧥</div><div><h4>Black jacket</h4><p class="muted"><span class="tag">Available</span></p></div></div></div>
+      <div class="card tap" data-go="T3"><div class="item"><div class="ph s" style="background:#e8d6c8">👔</div><div><h4>Check shirt</h4><p class="muted"><span class="tag fixed">Confirmed</span> Exchange confirmed with Seoyeon</p></div></div></div>
     </section>
 
-    <!-- C2 옷 등록 -->
-    <section id="C2" data-title="옷 등록" data-tab="C1">
-      <div class="upload"><div style="font-size:32px">📷</div><div>사진 찍기 · 앨범에서 선택</div></div>
-      <div class="label">설명</div>
-      <textarea placeholder="사이즈, 착용감, 하자 등">하얀 와이드 바지예요. M 사이즈, 밑단에 작은 보풀이 있어요.</textarea>
-      <div class="note">등록된 옷을 고치면 이 옷이 들어간 미확정 교환안과 동의가 무효가 돼요.</div>
-      <button class="btn w" data-go="C3">등록하고 AI 분석</button>
+    <!-- C2 Register clothing -->
+    <section id="C2" data-title="Register clothing" data-tab="C1">
+      <div class="upload"><div style="font-size:32px">📷</div><div>Take photo · Choose from album</div></div>
+      <div class="label">Description</div>
+      <textarea placeholder="Size, fit, defects, etc.">White wide-leg pants, size M, with minor pilling at the hem.</textarea>
+      <div class="note">Editing invalidates unconfirmed proposals and consent involving this garment.</div>
+      <button class="btn w" data-go="C3">Register and analyze with AI</button>
     </section>
 
-    <!-- C3 AI 분석 확인 -->
-    <section id="C3" data-title="AI 분석 확인" data-tab="C1">
-      <p class="muted">AI가 사진과 설명으로 정리한 내용이에요. 틀린 부분을 고쳐 주세요.</p>
-      <div class="label">종류</div><input value="바지">
-      <div class="label">색상</div><input value="흰색">
-      <div class="label">특징</div>
-      <span class="chip x">와이드 핏</span><span class="chip x">밴딩 허리</span><span class="chip gray">+ 추가</span>
-      <div class="label">사진만으로 확인할 수 없는 점</div>
-      <span class="chip gray">정확한 길이</span><span class="chip gray">원단 두께</span>
-      <button class="btn" data-go="C4" data-replace>확인</button>
-      <a class="link" data-go="C4" data-replace>AI 분석 건너뛰기</a>
+    <!-- C3 Review AI analysis -->
+    <section id="C3" data-title="Review AI analysis" data-tab="C1">
+      <p class="muted">AI summarized the photo and description. Correct any mistakes.</p>
+      <div class="label">Type</div><input value="Pants">
+      <div class="label">Color</div><input value="White">
+      <div class="label">Features</div>
+      <span class="chip x">Wide fit</span><span class="chip x">Elastic waist</span><span class="chip gray">+ Add</span>
+      <div class="label">Not verifiable from photos</div>
+      <span class="chip gray">Exact length</span><span class="chip gray">Fabric thickness</span>
+      <button class="btn" data-go="C4" data-replace>Confirm</button>
+      <a class="link" data-go="C4" data-replace>Skip AI analysis</a>
     </section>
 
-    <!-- C4 내 옷 상세 -->
-    <section id="C4" data-title="내 옷 상세" data-tab="C1">
+    <!-- C4 My clothing detail -->
+    <section id="C4" data-title="My clothing detail" data-tab="C1">
       <div class="ph l" style="background:#f3f0ea">👖</div>
-      <div class="row" style="justify-content:space-between;align-items:center;margin-top:14px"><h3>하얀 바지</h3><span class="tag">교환 가능</span></div>
-      <p class="muted">하얀 와이드 바지예요. M 사이즈, 밑단에 작은 보풀이 있어요.</p>
-      <div class="label">이 옷이 들어간 의향</div>
-      <div class="card tap" data-go="B3"><p class="muted">하얀 바지 → <b>민준</b>의 초록 숏 재킷</p><span class="tag wait">연결 대기</span></div>
-      <div class="label">이 옷이 들어간 교환안</div>
-      <div class="card tap" data-go="T2"><p class="muted">3인 교환 · 동의 1/3</p><span class="tag wait">동의 대기</span></div>
-      <div class="row"><button class="btn ghost w" data-go="C2">수정</button><button class="btn ghost w" data-act="withdraw">등록 철회</button></div>
+      <div class="row" style="justify-content:space-between;align-items:center;margin-top:14px"><h3>White pants</h3><span class="tag">Available</span></div>
+      <p class="muted">White wide-leg pants, size M, with minor pilling at the hem.</p>
+      <div class="label">Intents involving this garment</div>
+      <div class="card tap" data-go="B3"><p class="muted">White pants → <b>Minjun</b>'s cropped green jacket</p><span class="tag wait">Awaiting match</span></div>
+      <div class="label">Proposals involving this garment</div>
+      <div class="card tap" data-go="T2"><p class="muted">Three-person exchange · Consent 1/3</p><span class="tag wait">Awaiting consent</span></div>
+      <div class="row"><button class="btn ghost w" data-go="C2">Edit</button><button class="btn ghost w" data-act="withdraw">Withdraw clothing</button></div>
     </section>
 
-    <!-- T1 교환 목록 -->
-    <section id="T1" data-title="교환" data-tab="T1" data-noback>
+    <!-- T1 Exchanges -->
+    <section id="T1" data-title="Exchange" data-tab="T1" data-noback>
       <div class="seg" id="tseg">
-        <button data-seg="t-intent">내 의향</button><button class="on" data-seg="t-prog">진행 중</button><button data-seg="t-fixed">확정</button><button data-seg="t-past">지난 내역</button>
+        <button data-seg="t-intent">My intents</button><button class="on" data-seg="t-prog">Active</button><button data-seg="t-fixed">Confirmed</button><button data-seg="t-past">History</button>
       </div>
       <div class="tpane" id="t-intent" style="display:none">
         <div class="card tap" data-go="B3">
-          <p class="muted">하얀 바지 → <b>민준</b>의 초록 숏 재킷</p>
-          <div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span class="tag wait">연결 대기</span><button class="muted w" data-act="cancelIntent" data-stop>의향 취소</button></div>
+          <p class="muted">White pants → <b>Minjun</b>'s cropped green jacket</p>
+          <div class="row" style="justify-content:space-between;align-items:center;margin-top:6px"><span class="tag wait">Awaiting match</span><button class="muted w" data-act="cancelIntent" data-stop>Withdraw intent</button></div>
         </div>
-        <div class="card tap" data-go="B3"><p class="muted">검은 재킷 → <b>도윤</b>의 연청 데님</p><span class="tag wait">연결 대기</span></div>
+        <div class="card tap" data-go="B3"><p class="muted">Black jacket → <b>Doyun</b>'s light-wash jeans</p><span class="tag wait">Awaiting match</span></div>
       </div>
       <div class="tpane" id="t-prog">
-        <div class="card tap alert" data-go="A1"><span class="tag wait">대체 제안</span><h4 style="margin-top:6px">검은 재킷을 내놓으면 3인 교환 가능</h4><p class="muted">하얀 바지 대신 · 민준, 서연</p></div>
-        <div class="card tap alert" data-go="T2"><span class="tag wait">동의 대기 1/3</span><h4 style="margin-top:6px">3인 교환안</h4><p class="muted">초록 숏 재킷을 받아요 · 민준, 서연</p></div>
+        <div class="card tap alert" data-go="A1"><span class="tag wait">Alternative suggestion</span><h4 style="margin-top:6px">Offer your black jacket for a three-person exchange</h4><p class="muted">Instead of white pants · Minjun, Seoyeon</p></div>
+        <div class="card tap alert" data-go="T2"><span class="tag wait">Awaiting consent 1/3</span><h4 style="margin-top:6px">Three-person proposal</h4><p class="muted">Receive a cropped green jacket · Minjun, Seoyeon</p></div>
       </div>
       <div class="tpane" id="t-fixed" style="display:none">
-        <div class="card tap" data-go="T3"><span class="tag fixed">확정</span><h4 style="margin-top:6px">2인 교환 · 서연</h4><p class="muted">체크 셔츠 ↔ 핑크 니트</p></div>
+        <div class="card tap" data-go="T3"><span class="tag fixed">Confirmed</span><h4 style="margin-top:6px">Two-person exchange · Seoyeon</h4><p class="muted">Check shirt ↔ Pink sweater</p></div>
       </div>
       <div class="tpane" id="t-past" style="display:none">
-        <div class="card"><span class="tag off">무효</span><h4 style="margin-top:6px">3인 교환안 v1</h4><p class="muted">의향이 바뀌어 무효가 됐어요</p></div>
-        <div class="card"><span class="tag off">거절</span><h4 style="margin-top:6px">2인 교환안 · 도윤</h4><p class="muted">도윤님이 거절했어요</p></div>
+        <div class="card"><span class="tag off">Invalidated</span><h4 style="margin-top:6px">Three-person proposal v1</h4><p class="muted">Invalidated by an intent change</p></div>
+        <div class="card"><span class="tag off">Reject</span><h4 style="margin-top:6px">Two-person proposal · Doyun</h4><p class="muted">Doyun rejected the proposal</p></div>
       </div>
     </section>
 
-    <!-- A1 대체 의류 제안 -->
-    <section id="A1" data-title="대체 의류 제안" data-tab="T1">
-      <h3 style="line-height:1.4">하얀 바지 대신 검은 재킷을 내놓으면<br>3인 교환이 가능해요</h3>
+    <!-- A1 Alternative garment suggestion -->
+    <section id="A1" data-title="Alternative garment suggestion" data-tab="T1">
+      <h3 style="line-height:1.4">Offer your black jacket instead of white pants<br>to enable a three-person exchange</h3>
       <div class="compare">
-        <div class="card"><div class="ph s" style="background:#f3f0ea">👖</div><b style="font-size:13px">하얀 바지</b><p class="muted">지금 의향</p></div>
+        <div class="card"><div class="ph s" style="background:#f3f0ea">👖</div><b style="font-size:13px">White pants</b><p class="muted">Current intent</p></div>
         <div style="font-size:20px">→</div>
-        <div class="card" style="border-color:var(--brand)"><div class="ph s" style="background:#d6d6d6">🧥</div><b style="font-size:13px">검은 재킷</b><p class="muted">제안</p></div>
+        <div class="card" style="border-color:var(--brand)"><div class="ph s" style="background:#d6d6d6">🧥</div><b style="font-size:13px">Black jacket</b><p class="muted">Suggestion</p></div>
       </div>
-      <div class="label">완성될 교환</div>
+      <div class="label">Resulting exchange</div>
       <div class="card cycle">
-        <div class="step"><div class="who">나</div><div class="what">검은 재킷 → 서연<br>초록 숏 재킷 ← 민준</div></div>
-        <div class="step"><div class="who">민준</div><div class="what">초록 숏 재킷 → 나<br>검은 후드티 ← 서연</div></div>
-        <div class="step"><div class="who">서연</div><div class="what">검은 후드티 → 민준<br>검은 재킷 ← 나</div></div>
+        <div class="step"><div class="who">Me</div><div class="what">Black jacket → Seoyeon<br>Cropped green jacket ← Minjun</div></div>
+        <div class="step"><div class="who">Minjun</div><div class="what">Cropped green jacket → Me<br>Black hoodie ← Seoyeon</div></div>
+        <div class="step"><div class="who">Seoyeon</div><div class="what">Black hoodie → Minjun<br>Black jacket ← Me</div></div>
       </div>
-      <div class="note">수락해도 교환이 바로 확정되지 않아요. 세 사람 모두 교환안에 동의해야 확정돼요.</div>
-      <div class="row"><button class="btn ghost w" data-act="rejectAlt">거절</button><button class="btn w" data-act="acceptAlt">수락하고 교환안 보기</button></div>
+      <div class="note">Acceptance does not confirm the exchange. All three participants must consent to the proposal.</div>
+      <div class="row"><button class="btn ghost w" data-act="rejectAlt">Reject</button><button class="btn w" data-act="acceptAlt">Accept and review proposal</button></div>
     </section>
 
-    <!-- T2 교환안 상세 -->
-    <section id="T2" data-title="교환안 확인" data-tab="T1">
-      <div class="row" style="justify-content:space-between;align-items:center"><h3>3인 교환안</h3><span class="muted">버전 2</span></div>
-      <p class="muted">모두 같은 교환안에 동의해야 확정돼요.</p>
+    <!-- T2 Proposal detail -->
+    <section id="T2" data-title="Review proposal" data-tab="T1">
+      <div class="row" style="justify-content:space-between;align-items:center"><h3>Three-person proposal</h3><span class="muted">Version 2</span></div>
+      <p class="muted">Everyone must consent to the same proposal for confirmation.</p>
       <div class="card cycle" style="margin-top:12px">
-        <div class="step"><div class="who">나 <span class="tag org org-only">주최자</span></div><div class="what">줄 옷: 검은 재킷 → 서연<br>받을 옷: 초록 숏 재킷</div><span class="tag wait" id="myResp">대기</span></div>
-        <div class="step"><div class="who">민준</div><div class="what">줄 옷: 초록 숏 재킷 → 나<br>받을 옷: 검은 후드티</div><span class="tag">동의</span></div>
-        <div class="step"><div class="who">서연</div><div class="what">줄 옷: 검은 후드티 → 민준<br>받을 옷: 검은 재킷</div><span class="tag wait">대기</span></div>
+        <div class="step"><div class="who">Me <span class="tag org org-only">Organizer</span></div><div class="what">Give: Black jacket → Seoyeon<br>Receive: Cropped green jacket</div><span class="tag wait" id="myResp">Pending</span></div>
+        <div class="step"><div class="who">Minjun</div><div class="what">Give: Cropped green jacket → Me<br>Receive: Black hoodie</div><span class="tag">Consent</span></div>
+        <div class="step"><div class="who">Seoyeon</div><div class="what">Give: Black hoodie → Minjun<br>Receive: Black jacket</div><span class="tag wait">Pending</span></div>
       </div>
-      <div class="card tap" data-go="B3"><div class="item"><div class="ph s" style="background:#cfe3d2">🧥</div><div><b style="font-size:14px">받을 옷 다시 보기</b><p class="muted">초록 숏 재킷 · 확인할 점 2개</p></div></div></div>
-      <div class="row"><button class="btn ghost w" data-act="rejectTrade">거절</button><button class="btn w" data-act="agree">동의</button></div>
+      <div class="card tap" data-go="B3"><div class="item"><div class="ph s" style="background:#cfe3d2">🧥</div><div><b style="font-size:14px">Review garment to receive</b><p class="muted">Cropped green jacket · 2 checks</p></div></div></div>
+      <div class="row"><button class="btn ghost w" data-act="rejectTrade">Reject</button><button class="btn w" data-act="agree">Consent</button></div>
     </section>
 
-    <!-- T3 확정·인수인계 -->
-    <section id="T3" data-title="확정된 교환" data-tab="T1">
-      <span class="tag fixed">확정</span>
-      <h3 style="margin:8px 0 4px">2인 교환 · 서연</h3>
-      <div class="note info">확정은 전달 완료가 아니에요. 현장에서 실물을 확인한 뒤 주고받으세요.</div>
-      <div class="label">내가 줄 옷</div>
-      <div class="card"><div class="item"><div class="ph s" style="background:#e8d6c8">👔</div><div><h4>체크 셔츠</h4><p class="muted">→ 서연님에게</p></div></div></div>
-      <div class="label">내가 받을 옷</div>
-      <div class="card"><div class="item"><div class="ph s" style="background:#f0d9d2">🧶</div><div><h4>핑크 니트</h4><p class="muted">← 서연님에게서</p></div></div></div>
-      <button class="btn danger w" data-act="cancelTrade">교환 취소</button>
-      <p class="muted" style="margin-top:8px">취소하면 교환 전체가 취소되고 두 옷은 다시 교환 가능해져요.</p>
+    <!-- T3 Confirmation and handover -->
+    <section id="T3" data-title="Confirmed exchange" data-tab="T1">
+      <span class="tag fixed">Confirmed</span>
+      <h3 style="margin:8px 0 4px">Two-person exchange · Seoyeon</h3>
+      <div class="note info">Confirmation is not completed handover. Inspect the garments on site before exchanging.</div>
+      <div class="label">I give</div>
+      <div class="card"><div class="item"><div class="ph s" style="background:#e8d6c8">👔</div><div><h4>Check shirt</h4><p class="muted">→ To Seoyeon</p></div></div></div>
+      <div class="label">I receive</div>
+      <div class="card"><div class="item"><div class="ph s" style="background:#f0d9d2">🧶</div><div><h4>Pink sweater</h4><p class="muted">← From Seoyeon</p></div></div></div>
+      <button class="btn danger w" data-act="cancelTrade">Cancel exchange</button>
+      <p class="muted" style="margin-top:8px">Cancellation cancels the whole exchange and makes both garments available again.</p>
     </section>
 
   </div>
 
   <nav class="tabs" id="tabs">
-    <button data-tabgo="P2"><span class="ic">🏠</span>홈</button>
-    <button data-tabgo="B1"><span class="ic">🔍</span>둘러보기</button>
-    <button data-tabgo="C1"><span class="ic">👕</span>내 옷</button>
-    <button data-tabgo="T1"><span class="ic">🔁</span>교환<span class="badge">2</span></button>
+    <button data-tabgo="P2"><span class="ic">🏠</span>Home</button>
+    <button data-tabgo="B1"><span class="ic">🔍</span>Browse</button>
+    <button data-tabgo="C1"><span class="ic">👕</span>My clothes</button>
+    <button data-tabgo="T1"><span class="ic">🔁</span>Exchange<span class="badge">2</span></button>
   </nav>
 
-  <!-- 오버레이 -->
+  <!-- Overlays -->
   <div class="dim" id="dim"></div>
   <div class="sheet" id="sheet">
     <div class="grab"></div>
-    <h3>어떤 옷을 내놓을까요?</h3>
-    <p class="muted" style="margin:4px 0 12px">초록 숏 재킷과 바꿀 내 옷 1벌을 골라 주세요.</p>
-    <div class="radio sel" data-radio><div class="ph s" style="background:#f3f0ea">👖</div><div><b>하얀 바지</b><p class="muted">교환 가능</p></div></div>
-    <div class="radio" data-radio><div class="ph s" style="background:#d6d6d6">🧥</div><div><b>검은 재킷</b><p class="muted">교환 가능</p></div></div>
-    <div class="radio dis"><div class="ph s" style="background:#e8d6c8">👔</div><div><b>체크 셔츠</b><p class="muted">다른 교환에 확정됨</p></div></div>
-    <button class="btn" data-act="registerIntent">의향 등록</button>
-    <a class="link" data-act="sheetToC2">+ 새 옷 등록하기</a>
+    <h3>Which garment will you offer?</h3>
+    <p class="muted" style="margin:4px 0 12px">Choose one of your garments to offer for the cropped green jacket.</p>
+    <div class="radio sel" data-radio><div class="ph s" style="background:#f3f0ea">👖</div><div><b>White pants</b><p class="muted">Available</p></div></div>
+    <div class="radio" data-radio><div class="ph s" style="background:#d6d6d6">🧥</div><div><b>Black jacket</b><p class="muted">Available</p></div></div>
+    <div class="radio dis"><div class="ph s" style="background:#e8d6c8">👔</div><div><b>Check shirt</b><p class="muted">Confirmed in another exchange</p></div></div>
+    <button class="btn" data-act="registerIntent">Register intent</button>
+    <a class="link" data-act="sheetToC2">+ Register a new garment</a>
   </div>
   <div class="modal" id="modal">
     <h3 id="mTitle"></h3>
     <p class="muted" id="mBody"></p>
-    <div class="row" style="margin-top:14px"><button class="btn ghost" id="mCancel">취소</button><button class="btn" id="mOk"></button></div>
+    <div class="row" style="margin-top:14px"><button class="btn ghost" id="mCancel">Cancel</button><button class="btn" id="mOk"></button></div>
   </div>
   <div class="toast" id="toast"></div>
 </div>
@@ -473,34 +473,34 @@
   const actions = {
     createEvent() { state.organizer = true; state.closed = false; state.stack = ['H2']; show('H2'); },
     join() { state.organizer = false; root('P2'); },
-    copy() { toast('입장 링크를 복사했어요'); },
+    copy() { toast('Entry link copied'); },
     openClose() {
-      confirmModal('행사를 종료할까요?', '종료하면 모든 참가자가 더 이상 교환할 수 없어요. 내가 참여한 것을 포함해 미확정 교환안은 모두 취소되고, 확정 내역은 조회용으로 남아요.', '종료하기',
-        () => { state.closed = true; render(); toast('행사를 종료했어요'); }, true);
+      confirmModal('Close this event?', 'Closing stops exchanges for everyone. All unconfirmed proposals, including yours, are cancelled. Confirmed records remain viewable.', 'Close event',
+        () => { state.closed = true; render(); toast('Event closed'); }, true);
     },
     openSheet() { $('#dim').classList.add('on'); $('#sheet').classList.add('on'); },
-    registerIntent() { closeOverlays(); state.intent = true; render(); toast('의향을 등록했어요. 최종 동의는 아니에요'); },
+    registerIntent() { closeOverlays(); state.intent = true; render(); toast('Intent registered. This is not final consent'); },
     sheetToC2() { closeOverlays(); state.stack = ['C1']; go('C2'); },
-    cancelIntent() { state.intent = false; render(); toast('의향을 취소했어요. 관련 교환안이 무효가 돼요'); },
-    savePref() { root('B1'); toast('취향을 저장했어요. 추천을 새로 찾았어요'); },
+    cancelIntent() { state.intent = false; render(); toast('Intent withdrawn. Related proposals are invalidated'); },
+    savePref() { root('B1'); toast('Preferences saved and recommendations refreshed'); },
     withdraw() {
-      confirmModal('등록을 철회할까요?', '이 옷이 들어간 의향과 미확정 교환안이 모두 무효가 돼요.', '철회',
-        () => { root('C1'); toast('등록을 철회했어요'); }, true);
+      confirmModal('Withdraw this garment?', 'All intents and unconfirmed proposals involving this garment will be invalidated.', 'Withdraw',
+        () => { root('C1'); toast('Garment withdrawn'); }, true);
     },
-    acceptAlt() { go('T2', { replace: true }); toast('의향을 바꿨어요. 이제 교환안에 동의해 주세요'); },
-    rejectAlt() { back(); toast('제안을 거절했어요. 기존 의향은 그대로예요'); },
+    acceptAlt() { go('T2', { replace: true }); toast('Intent changed. Please review and consent to the proposal'); },
+    rejectAlt() { back(); toast('Suggestion rejected. Your existing intent is unchanged'); },
     agree() {
-      $('#myResp').textContent = '동의'; $('#myResp').className = 'tag';
-      confirmModal('동의했어요', '(목업) 서연님까지 동의해 전원 동의로 확정된 상황을 보여 드릴게요.', '확정 화면 보기',
-        () => { go('T3', { replace: true }); toast('교환이 확정됐어요'); });
+      $('#myResp').textContent = 'Consent'; $('#myResp').className = 'tag';
+      confirmModal('Consent recorded', '(Mockup) Showing confirmation after Seoyeon consents and everyone agrees.', 'View confirmation',
+        () => { go('T3', { replace: true }); toast('Exchange confirmed'); });
     },
     rejectTrade() {
-      confirmModal('교환안을 거절할까요?', '거절하면 이 교환안은 무효가 되고 다른 참가자에게도 알려져요.', '거절',
-        () => { back(); toast('교환안을 거절했어요'); }, true);
+      confirmModal('Reject this proposal?', 'Rejection invalidates this proposal and notifies the other participants.', 'Reject',
+        () => { back(); toast('Proposal rejected'); }, true);
     },
     cancelTrade() {
-      confirmModal('교환을 취소할까요?', '교환 전체가 취소되고 두 사람의 옷이 다시 교환 가능해져요. 실물을 주고받기 전에만 취소해 주세요.', '교환 취소',
-        () => { root('T1'); toast('교환을 취소했어요'); }, true);
+      confirmModal('Cancel this exchange?', 'The entire exchange will be cancelled and both garments become available. Cancel only before physical handover.', 'Cancel exchange',
+        () => { root('T1'); toast('Exchange cancelled'); }, true);
     },
   };
 
@@ -530,7 +530,7 @@
   $('#optOrg').onchange = e => { state.organizer = e.target.checked; render(); };
   $('#optClosed').onchange = e => { state.closed = e.target.checked; render(); };
 
-  const names = { S0: '랜딩', H1: '행사 생성', H2: '생성 완료', P1: '입장', P2: '홈', M1: '행사 관리', B1: 'AI 추천', B2: '전체 목록', B3: '의류 상세', R1: '취향 입력', R2: '취향 확인', C1: '내 옷', C2: '옷 등록', C3: 'AI 분석', C4: '내 옷 상세', T1: '교환 목록', A1: '대체 제안', T2: '교환안', T3: '확정 교환' };
+  const names = { S0: 'Landing', H1: 'Create event', H2: 'Created', P1: 'Join', P2: 'Home', M1: 'Manage event', B1: 'AI recommendations', B2: 'All clothing', B3: 'Clothing detail', R1: 'Enter preferences', R2: 'Review preferences', C1: 'My clothes', C2: 'Register clothing', C3: 'AI analysis', C4: 'My clothing detail', T1: 'Exchanges', A1: 'Alternative suggestion', T2: 'Proposal', T3: 'Confirmed exchanges' };
   $('#jump').innerHTML = screens.map(id => `<button data-j="${id}">${id} ${names[id]}</button>`).join('');
   $$('#jump button').forEach(b => b.onclick = () => {
     const id = b.dataset.j, sec = document.getElementById(id);

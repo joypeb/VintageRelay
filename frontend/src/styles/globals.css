@@ -1,7 +1,6 @@
 /*
- * Astryx + Tailwind 공존을 위한 레이어 순서 (낮음 → 높음).
- * Astryx 레이어가 Tailwind 레이어보다 뒤에 생성되면 컴포넌트 스타일이
- * Tailwind 유틸리티를 이기므로 모든 레이어를 먼저 선언한다.
+ * Declare all layers first so Astryx component styles do not override
+ * Tailwind utilities. Layers are ordered from lowest to highest priority.
  */
 @layer reset, theme, base, astryx-base, astryx-theme, components, utilities;
 
@@ -10,6 +9,6 @@
 @import '@astryxdesign/core/reset.css';
 @import '@astryxdesign/core/astryx.css';
 @import '@astryxdesign/theme-chocolate/theme.css';
-/* Astryx 토큰을 bg-surface, text-primary 같은 Tailwind 유틸리티로 노출 */
+/* Expose Astryx tokens as Tailwind utilities such as bg-surface and text-primary. */
 @import '@astryxdesign/core/tailwind-theme.css';
 @import 'tailwindcss/utilities.css' layer(utilities);

@@ -1,17 +1,17 @@
-# 클라이언트 로깅
+# Client Logging
 
-프로토타입 단계에서는 외부 로그 수집 서비스(Sentry 등)를 도입하지 않는다. 브라우저 콘솔만 쓴다.
+Do not add external log collectors such as Sentry during the prototype. Use only the browser console.
 
-## 1. console 사용 기준
+## 1. Console Policy
 
-| 메서드 | 사용 | 운영 빌드 |
+| Method | Usage | Production build |
 |---|---|---|
-| `console.error` | 복구하지 못한 예상 밖 에러(`error.tsx`, `global-error.tsx`, `ApiError` 가 아닌 예외) | 유지 |
-| `console.warn` | 계약과 다른 응답 형태, 폴백 경로로 전환(예: AI 실패 후 수동 경로) | 유지 |
-| `console.log`, `console.debug`, `console.info` | 개발 중 디버깅 | **제거** |
+| `console.error` | Unexpected unrecovered errors (`error.tsx`, `global-error.tsx`, non-`ApiError` exceptions) | Keep |
+| `console.warn` | Contract shape mismatch or fallback (e.g. manual selection after AI failure) | Keep |
+| `console.log`, `console.debug`, `console.info` | Development debugging | **Remove** |
 
-- **반드시:** ESLint `no-console` 규칙으로 `warn`, `error` 외 사용을 막는다([code-style.md](code-style.md) 설정 참고). 디버깅용 `console.log` 는 커밋 전에 지운다.
-- **반드시:** 운영 빌드에서는 `next.config.ts` 의 `compiler.removeConsole` 로 `error`, `warn` 외 콘솔 호출을 제거한다.
+- **MUST:** restrict ESLint `no-console` to `warn`/`error` (see [code-style.md](code-style.md)). Remove debugging `console.log` before commits.
+- **MUST:** strip other console calls in production using `compiler.removeConsole` in `next.config.ts`.
 
 ```ts
 // next.config.ts
@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 ```
 
-- **반드시:** 직접 `console.*` 를 흩뿌리지 않고 `src/lib/logger.ts` 를 거친다. 나중에 수집 서비스를 붙일 때 이 파일만 바꾼다.
+- **MUST:** centralize calls through `src/lib/logger.ts` rather than scattering `console.*`. Change only this module when adding a collector later.
 
 ```ts
 // src/lib/logger.ts
@@ -37,18 +37,18 @@ export const logger = {
 };
 ```
 
-## 2. 무엇을 남기는가
+## 2. What to Record
 
-- **반드시:** 로그 메시지는 무엇을 하다 실패했는지 한 줄로 쓰고 식별자만 컨텍스트로 붙인다. 예: `logger.error('consent failed', err, { eventId, tradeId, version })`.
-- **권장:** `ApiError` 는 `code`, `status` 만 남긴다. 사용자에게 이미 안내한 예상된 에러(검증 실패, 버전 충돌, 행사 종료)는 로그를 남기지 않는다.
+- **MUST:** write a one-line message identifying the failed operation and attach only identifiers as context, e.g. `logger.error('consent failed', err, { eventId, tradeId, version })`.
+- **SHOULD:** log only `code`/`status` from `ApiError`. Do not log expected errors already shown to users (validation, version conflict, event closed).
 
-## 3. 민감정보 금지
+## 3. Sensitive Data
 
-아래는 로그에 **절대 남기지 않는다**.
+**Never log**:
 
-- 세션 토큰·인증 헤더·쿠키 값, 입장코드
-- 참가자 표시 이름, 사용자가 입력한 취향·거부 조건 원문, 의류 설명 원문
-- 사진 파일 내용, `File` 객체, 이미지 URL 전체(서명 쿼리 포함 가능)
-- 요청·응답 본문 전체
+- Session tokens, auth headers, cookie values, or entry codes.
+- Participant display names, raw preferences/exclusions, or clothing descriptions.
+- Photo contents, `File` objects, or full image URLs (may include signed queries).
+- Full request/response bodies.
 
-ID(`eventId`, `tradeId`, `itemId`)와 에러 코드만 남기는 것을 기본으로 한다.
+Default to IDs (`eventId`, `tradeId`, `itemId`) and error codes only.

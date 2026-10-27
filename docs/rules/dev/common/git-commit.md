@@ -1,76 +1,76 @@
-# 커밋 메시지 규칙
+# Commit Message Rules
 
-[Conventional Commits](https://www.conventionalcommits.org/) 형식을 따른다.
+Follow [Conventional Commits](https://www.conventionalcommits.org/).
 
-## 1. 형식
+## 1. Format
 
 ```text
 type(scope): subject
 
-본문(선택)
+Optional body
 
-꼬리말(선택)
+Optional footer
 ```
 
-- **반드시** `type`과 `scope`는 아래 목록의 영어 소문자.
-- **반드시** 콜론 뒤에 공백 한 칸. (기존 첫 커밋 `docs(docs):first commit`은 공백이 빠진 예외이며 이후에는 `docs(docs): first commit` 형식을 쓴다.)
-- **반드시** `subject`는 **한국어를 기본**으로 한다(영어도 허용). 무엇을 했는지 50자 이내로, 마침표 없이.
-- **권장:** 한국어 subject는 "~ 추가", "~ 수정"처럼 명사형으로 끝낸다.
-- **권장:** 본문에는 "왜" 바꿨는지를 적는다. 한 줄 72자 내외에서 줄바꿈.
-- **금지:** `update`, `fix bug`, `수정`, `wip`처럼 내용을 알 수 없는 subject.
+- **MUST:** use lowercase English `type` and `scope` from the lists below.
+- **MUST:** put one space after the colon. (The first commit, `docs(docs):first commit`, is a historical exception; use `docs(docs): first commit` going forward.)
+- **MUST:** write the subject, body, and footer in English. Describe the change in a subject of at most 50 characters with no final period.
+- **SHOULD:** start the subject with an imperative verb, such as "add" or "fix".
+- **SHOULD:** explain why in the body and wrap lines at about 72 characters.
+- **MUST NOT:** use vague subjects such as `update`, `fix bug`, `change`, or `wip`.
 
-## 2. type
+## 2. Type
 
-| type | 용도 |
+| Type | Purpose |
 |---|---|
-| `feat` | 새 기능 |
-| `fix` | 버그 수정 |
-| `refactor` | 동작 변화 없는 구조 개선 |
-| `docs` | 문서만 변경 |
-| `test` | 테스트 추가·수정 |
-| `style` | 포맷팅 등 동작 무관 변경 |
-| `chore` | 빌드 설정, 의존성, 기타 잡무 |
-| `perf` | 성능 개선 |
+| `feat` | New feature |
+| `fix` | Bug fix |
+| `refactor` | Structural improvement without behavior changes |
+| `docs` | Documentation only |
+| `test` | Add/update tests |
+| `style` | Formatting or other non-behavioral changes |
+| `chore` | Build configuration, dependencies, maintenance |
+| `perf` | Performance improvement |
 
-## 3. scope
+## 3. Scope
 
-| scope | 대상 |
+| Scope | Target |
 |---|---|
-| `backend` | `backend/` 전반 |
-| `frontend` | `frontend/` 전반 |
-| `api` | 백엔드·프론트엔드에 걸친 API 계약 변경 |
-| `ai` | 모델 API 연동, 프롬프트 |
-| `db` | 스키마, 마이그레이션 |
-| `docs` | `docs/` 및 루트 문서 |
-| `infra` | 배포, CI, 환경 설정 |
-| `deps` | 의존성 추가·업데이트 |
-| `repo` | 루트 설정(`.gitignore`, `.editorconfig` 등) |
+| `backend` | `backend/` |
+| `frontend` | `frontend/` |
+| `api` | API contracts spanning backend and frontend |
+| `ai` | Model API integration and prompts |
+| `db` | Schema and migrations |
+| `docs` | `docs/` and root documents |
+| `infra` | Deployment, CI, environment configuration |
+| `deps` | Dependency additions/updates |
+| `repo` | Root configuration (`.gitignore`, `.editorconfig`, etc.) |
 
-- **반드시** scope는 하나만 쓴다. 여러 영역을 크게 건드리면 커밋을 나눈다. 나누기 어려운 API 계약 변경은 `api`를 쓴다.
-- 새 scope가 필요하면 이 표에 먼저 추가한다.
+- **MUST:** use one scope. Split commits spanning major areas; use `api` for inseparable API contract changes.
+- Add new scopes to this table first.
 
-## 4. 예시
+## 4. Examples
 
 ```text
-feat(backend): 행사 생성 API 추가
-fix(frontend): 입장코드 입력 시 공백 처리 오류 수정
-feat(api): 교환안 응답에 version 필드 추가
-docs(docs): 공통 개발 규칙 추가
-chore(deps): fastapi 패치 버전 업데이트
+feat(backend): add event creation API
+fix(frontend): fix entry code whitespace handling
+feat(api): add version field to proposal response
+docs(docs): add common development rules
+chore(deps): update fastapi patch version
 ```
 
-## 5. Breaking change
+## 5. Breaking Changes
 
-API 계약을 깨는 변경은 `!`를 붙이고 꼬리말에 내용을 적는다.
+Add `!` and explain API-breaking changes in the footer.
 
 ```text
-feat(api)!: 의류 목록 응답을 items 객체로 변경
+feat(api)!: wrap clothing list in items object
 
-BREAKING CHANGE: GET /api/v1/events/{event_id}/clothing 응답이 배열에서 {items, nextCursor}로 바뀜
+BREAKING CHANGE: GET /api/v1/events/{event_id}/clothing now returns {items, nextCursor} instead of an array
 ```
 
-## 6. 커밋 단위
+## 6. Commit Scope
 
-- **반드시** 한 커밋은 하나의 논리적 변경. 빌드가 깨진 상태로 커밋하지 않는다.
-- **금지:** 비밀정보, `.env`, 빌드 산출물(`node_modules/`, `.next/`, `.venv/`, `__pycache__/`), 로컬 DB 파일(`*.db`, `*.sqlite3`) 커밋.
-- PR이 squash 머지되므로 브랜치 안의 커밋은 다소 자잘해도 되지만, **PR 제목은 반드시 이 형식**을 따른다(squash 커밋 메시지가 된다).
+- **MUST:** keep each commit to one logical change. Never commit a broken build.
+- **MUST NOT:** commit secrets, `.env`, build artifacts (`node_modules/`, `.next/`, `.venv/`, `__pycache__/`), or local DB files (`*.db`, `*.sqlite3`).
+- Branch commits may be small because PRs use squash merge, but **PR titles must follow this format** as they become squash commit messages.

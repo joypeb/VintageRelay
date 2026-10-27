@@ -1,46 +1,46 @@
-# 공통 코드 스타일
+# Common Code Style
 
-언어별 세부 규칙(포매터, 린터 설정)은 `backend/`, `frontend/` 문서를 따른다. 이 문서는 두 언어에 공통인 원칙만 다룬다.
+Language-specific formatter/linter details belong in `backend/` and `frontend/`. This document covers shared principles only.
 
-## 1. 언어 사용
+## 1. Language
 
-- **반드시** 식별자(변수·함수·클래스·파일·DB 컬럼·API 필드)는 영어로 쓴다.
-- **반드시** 문서, PR 설명, 사용자에게 보이는 문구는 한국어로 쓴다.
-- **권장:** 코드 주석은 한국어. 외부 라이브러리 관련 짧은 메모는 영어도 허용한다.
-- **금지:** 한글 로마자 표기 식별자(`otJangbu`, `gyohwan`). 도메인 용어는 아래 용어집을 쓴다.
+- **MUST:** write identifiers (variables, functions, classes, files, DB columns, API fields) in English.
+- **MUST:** write project documents, code comments/docstrings, review results, PR titles/descriptions/comments, and Git commit messages in English. Agent replies to the user must be in Korean.
+- **MUST:** use English for application UI, metadata, accessibility labels, user-facing API messages, and AI-generated application copy. Set the application's HTML language to `en`.
+- **MUST NOT:** use romanized Korean identifiers (`otJangbu`, `gyohwan`). Use the glossary below.
 
-| 도메인 용어 | 식별자 |
+| Domain term | Identifier |
 |---|---|
-| 행사 | `event` |
-| 주최자 | `organizer` |
-| 참가자 | `participant` |
-| 입장코드 | `entry_code` / `entryCode` |
-| 의류 | `clothing` (단수·복수 동일, 개별 항목은 `clothing_item` 허용) |
-| 취향 | `preference` |
-| 교환 의향 | `intent` |
-| 교환안 | `proposal` |
-| 대체 의류 제안 | `alternative_suggestion` |
-| 동의 | `consent` |
-| 확정 / 취소 / 종료 | `confirm` / `cancel` / `close` |
+| Event | `event` |
+| Organizer | `organizer` |
+| Participant | `participant` |
+| Entry code | `entry_code` / `entryCode` |
+| Clothing | `clothing` (same singular/plural; `clothing_item` allowed for an individual item) |
+| Preference | `preference` |
+| Exchange intent | `intent` |
+| Exchange proposal | `proposal` |
+| Alternative garment suggestion | `alternative_suggestion` |
+| Consent | `consent` |
+| Confirm / cancel / close | `confirm` / `cancel` / `close` |
 
-새 도메인 용어가 필요하면 이 표에 먼저 추가한다.
+Add new domain terms to this table before using them.
 
-## 2. 네이밍
+## 2. Naming
 
-- **반드시** 각 언어의 관례 케이스를 따른다 (Python: `snake_case` 함수·변수, `PascalCase` 클래스 / TypeScript: `camelCase` 변수·함수, `PascalCase` 타입·컴포넌트).
-- **반드시** 상수는 `UPPER_SNAKE_CASE`.
-- **반드시** 불리언은 `is_`/`has_`/`can_` (TS: `is`/`has`/`can`) 접두사로 시작한다. 예: `is_confirmed`, `canCancel`.
-- **반드시** 함수명은 동사로 시작한다. 예: `create_event`, `findCycles`.
-- **금지:** 의미 없는 이름(`data2`, `tmp`, `foo`, `handleClick2`). 반복문 인덱스 `i`, `j`는 허용.
-- **금지:** 팀이 합의하지 않은 약어. 허용 약어: `id`, `url`, `api`, `ai`, `db`, `qr`.
+- **MUST:** follow language conventions (Python: `snake_case` functions/variables, `PascalCase` classes; TypeScript: `camelCase` variables/functions, `PascalCase` types/components).
+- **MUST:** use `UPPER_SNAKE_CASE` for constants.
+- **MUST:** prefix booleans with `is_`/`has_`/`can_` (TS: `is`/`has`/`can`), e.g. `is_confirmed`, `canCancel`.
+- **MUST:** start function names with verbs, e.g. `create_event`, `findCycles`.
+- **MUST NOT:** use meaningless names (`data2`, `tmp`, `foo`, `handleClick2`). Loop indices `i`, `j` are allowed.
+- **MUST NOT:** use unapproved abbreviations. Allowed: `id`, `url`, `api`, `ai`, `db`, `qr`.
 
-## 3. 매직넘버·매직스트링
+## 3. Magic Numbers and Strings
 
-- **금지:** 의미가 있는 숫자·문자열을 코드에 직접 쓰는 것. 이름 있는 상수나 enum으로 뺀다.
-- 허용: `0`, `1`, `-1`, 빈 문자열처럼 의미가 자명한 값.
+- **MUST NOT:** embed meaningful numbers/strings directly in code. Extract named constants or enums.
+- Allowed: obvious values such as `0`, `1`, `-1`, and empty strings.
 
 ```python
-MAX_CYCLE_SIZE = 3          # 3인 순환까지 지원
+MAX_CYCLE_SIZE = 3          # Support cycles of up to three participants
 if len(cycle) > MAX_CYCLE_SIZE: ...
 ```
 
@@ -48,25 +48,25 @@ if len(cycle) > MAX_CYCLE_SIZE: ...
 const PROPOSAL_STATUS = { PENDING: "pending", CONFIRMED: "confirmed" } as const;
 ```
 
-- **반드시** 상태값(`active`, `closed`, `confirmed` 등)은 한 곳에 정의하고 재사용한다. API로 오가는 상태값은 [api-contract.md](api-contract.md)의 enum 규칙을 따른다.
+- **MUST:** define status values (`active`, `closed`, `confirmed`, etc.) once and reuse them. API status values follow [api-contract.md](api-contract.md).
 
-## 4. 함수와 파일 크기
+## 4. Function and File Size
 
-- **권장:** 함수 하나는 한 가지 일만 하고 50줄 이내.
-- **권장:** 파일 하나는 300줄 이내. 넘으면 역할별로 나눈다.
-- **권장:** 중첩(if/for)은 3단계 이내. 조기 반환(early return)을 쓴다.
-- **금지:** 같은 로직을 세 번 이상 복사. 세 번째에 함수로 뺀다(두 번까지는 허용).
+- **SHOULD:** keep each function focused on one task and within 50 lines.
+- **SHOULD:** keep files within 300 lines; split by responsibility when larger.
+- **SHOULD:** limit nesting to three levels and use early returns.
+- **MUST NOT:** copy the same logic three or more times. Extract a function on the third occurrence (two copies are allowed).
 
-## 5. 주석
+## 5. Comments
 
-- **반드시** "왜"를 적는다. 코드만 보고 알 수 있는 "무엇"은 적지 않는다.
-- **반드시** 도메인 규칙을 구현한 부분에는 근거 규칙을 짧게 남긴다. 예: `# 같은 옷은 한 교환에만 확정 가능 (AGENTS.md 핵심 교환 규칙)`
-- **반드시** 임시 처리나 미정 사항은 `TODO(이름): 내용` 형식으로 남긴다.
-- **금지:** 주석 처리한 죽은 코드 커밋. 필요하면 git 히스토리에서 찾는다.
+- **MUST:** explain why, rather than what is already evident from code.
+- **MUST:** briefly cite the relevant rule where implementing domain logic, e.g. `# A garment can be confirmed in only one exchange (AGENTS.md: Core Exchange Rules)`.
+- **MUST:** mark temporary behavior/open decisions as `TODO(name): description`.
+- **MUST NOT:** commit commented-out dead code. Use Git history if needed.
 
-## 6. 기타
+## 6. Other Rules
 
-- **반드시** 포매터를 적용한 상태로 커밋한다(도구는 각 영역 문서 참고).
-- **반드시** 파일 인코딩 UTF-8, 줄바꿈 LF, 파일 끝 개행 1개.
-- **금지:** 사용하지 않는 import·변수·함수 남기기.
-- **권장:** 외부 입력(요청, AI 응답, 환경변수)은 경계에서 한 번 검증하고 내부에서는 검증된 타입을 믿고 쓴다.
+- **MUST:** apply the formatter before committing (see area-specific tools).
+- **MUST:** use UTF-8, LF, and exactly one trailing newline.
+- **MUST NOT:** leave unused imports, variables, or functions.
+- **SHOULD:** validate external input (requests, AI output, environment variables) once at the boundary and trust validated internal types.

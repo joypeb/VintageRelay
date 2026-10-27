@@ -1,66 +1,66 @@
-# 프로젝트 구조
+# Project Structure
 
-## 디렉토리
+## Directories
 
 ```text
 backend/
-├── pyproject.toml          # 의존성, ruff·mypy·pytest 설정
-├── uv.lock                 # 반드시 커밋
+├── pyproject.toml          # Dependencies and ruff/mypy/pytest configuration
+├── uv.lock                 # Must be committed
 ├── alembic.ini
-├── alembic/versions/       # 마이그레이션 파일
+├── alembic/versions/       # Migrations
 ├── app/
-│   ├── main.py             # FastAPI 앱 생성, 라우터·미들웨어·예외 핸들러 등록
+│   ├── main.py             # Create FastAPI app; register routers, middleware, handlers
 │   ├── core/
-│   │   ├── config.py       # pydantic-settings 기반 설정
+│   │   ├── config.py       # pydantic-settings configuration
 │   │   ├── db.py           # engine, SessionLocal, SQLite pragma
-│   │   └── logging.py      # 로깅 설정, 요청 ID 미들웨어
+│   │   └── logging.py      # Logging and request ID middleware
 │   ├── api/
 │   │   ├── deps.py         # get_db, get_current_participant, require_organizer
-│   │   ├── errors.py       # 전역 exception handler
+│   │   ├── errors.py       # Global exception handlers
 │   │   └── routers/        # events.py, clothes.py, intents.py, trades.py ...
-│   ├── schemas/            # Pydantic 요청·응답 모델 (리소스별 파일)
-│   ├── services/           # 유스케이스, 트랜잭션 경계, 권한·상태 검사
-│   ├── repositories/       # SQLAlchemy 쿼리
-│   ├── models/             # SQLAlchemy ORM 모델 (테이블별 파일)
+│   ├── schemas/            # Pydantic requests/responses (one file per resource)
+│   ├── services/           # Use cases, transaction boundaries, authorization/state checks
+│   ├── repositories/       # SQLAlchemy queries
+│   ├── models/             # SQLAlchemy ORM models (one file per table)
 │   ├── domain/
-│   │   ├── errors.py       # 도메인 예외 계층
-│   │   ├── enums.py        # 상태 값 (EventStatus, ClothingStatus ...)
-│   │   └── matching.py     # 2인·3인 순환 탐색, 대체 의류 감지 (순수 함수)
+│   │   ├── errors.py       # Domain exception hierarchy
+│   │   ├── enums.py        # Status values (EventStatus, ClothingStatus, etc.)
+│   │   └── matching.py     # Two-/three-person cycles and alternatives (pure functions)
 │   └── ai/
-│       ├── client.py       # Meta Model API 호출
-│       └── schemas.py      # AI 구조화 출력 모델
+│       ├── client.py       # Meta Model API calls
+│       └── schemas.py      # AI structured output models
 └── tests/
 ```
 
-리소스 단위 파일명은 DB 테이블과 맞춘다(예: `models/clothing.py`, `schemas/clothing.py`, `services/clothing.py`, `repositories/clothing.py`).
+Match resource filenames to DB tables, e.g. `models/clothing.py`, `schemas/clothing.py`, `services/clothing.py`, `repositories/clothing.py`.
 
-## 계층 책임
+## Layer Responsibilities
 
-| 계층 | 한다 | 하지 않는다 |
+| Layer | Does | Does not |
 |---|---|---|
-| `api/routers` | 경로 정의, 요청 파싱, 의존성 주입, 서비스 호출, 응답 모델 반환 | 비즈니스 규칙, 쿼리, 커밋 |
-| `services` | 유스케이스 흐름, 행사 상태·소유권·버전 검사, 트랜잭션 커밋, AI 호출 | HTTP 개념(`Request`, `HTTPException`, 상태 코드) |
-| `repositories` | `select`/`insert`/`update` 작성, 조건부 업데이트 | 커밋, 비즈니스 판단 |
-| `models` | 테이블·컬럼·제약 정의 | 로직 |
-| `domain` | 순수 규칙(순환 탐색 등), 예외, enum | DB·HTTP·AI 접근 |
-| `ai` | 외부 모델 호출과 응답 파싱 | DB 접근, 의향·동의 변경 |
+| `api/routers` | Paths, request parsing, dependency injection, service calls, response models | Business rules, queries, commits |
+| `services` | Use cases, event/ownership/version checks, transaction commits, AI calls | HTTP concepts (`Request`, `HTTPException`, status codes) |
+| `repositories` | `select`/`insert`/`update`, conditional updates | Commits, business decisions |
+| `models` | Tables, columns, constraints | Logic |
+| `domain` | Pure rules (cycle detection), exceptions, enums | DB/HTTP/AI access |
+| `ai` | External model calls and response parsing | DB access, intent/consent changes |
 
-## 의존성 방향
+## Dependency Direction
 
 ```text
 api → services → repositories → models
           ↓            ↓
         domain  ←──────┘
           ↑
-          ai (services에서만 호출)
+          ai (called only by services)
 ```
 
-- **반드시** 위 방향으로만 import 한다. 역방향(예: `services`가 `api`를, `repositories`가 `services`를 import)은 **금지**.
-- `domain`은 다른 앱 패키지를 import 하지 않는다(표준 라이브러리만).
-- 라우터가 `repositories`나 `models`를 직접 쓰는 것은 **금지**. 단순 조회라도 서비스를 거친다.
-- `schemas`(API 모델)를 `repositories`에서 쓰는 것은 **금지**. 서비스가 ORM 객체 → 스키마 변환을 담당하거나 `model_validate(obj)`로 라우터에서 변환한다.
+- **MUST:** import only in the direction above. **No** reverse dependencies (e.g. services importing api or repositories importing services).
+- `domain` imports no other app packages, only the standard library.
+- **No** direct router access to repositories/models. Even simple reads go through services.
+- **No** API `schemas` in repositories. Services convert ORM objects to schemas, or routers use `model_validate(obj)`.
 
-## 교환 로직 배치
+## Exchange Logic
 
-- 2인·3인 순환 탐색과 대체 의류 제안 감지는 `domain/matching.py`의 **순수 함수**로 작성한다. 입력은 의향 목록(dataclass/tuple), 출력은 후보 순환 목록이다. DB 없이 단위 테스트할 수 있어야 한다.
-- 교환안 생성·동의·확정·취소의 트랜잭션은 `services/trade.py`가 담당한다.
+- Implement two-/three-person cycles and alternative garment detection as **pure functions** in `domain/matching.py`. Input: intent list (dataclasses/tuples); output: candidate cycles. Unit tests must run without a DB.
+- `services/trade.py` owns proposal creation, consent, confirmation, and cancellation transactions.
