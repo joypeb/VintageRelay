@@ -58,22 +58,22 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Cycle F1 — device session (`lib/session.ts`)
 
-- [ ] T010 [P] Write `frontend/src/lib/session.test.ts` (clear `localStorage` before each test) — agent: `test-author`. It covers:
+- [X] T010 [P] Write `frontend/src/lib/session.test.ts` (clear `localStorage` before each test) — agent: `test-author`. It covers:
   - Writing: `saveEventSession('e1', { participantToken: 't1', participantId: 'p1', share: { name: 'N', entryCode: 'K7P3QX', entryUrl: 'http://localhost:3000/join?code=K7P3QX' } })` stores JSON under exactly `vr:event:e1`.
   - Reading back: `getEventSession('e1')` returns that record, and `getEventShare('e1')` returns its `share`.
   - Isolation: saving `e2` leaves `vr:event:e1` unchanged.
   - Bad stored data: missing key, invalid JSON, an empty `participantToken`, and a missing `participantId` all read as `null` from both getters, without throwing.
   - Session headers: `getSessionHeaders('e1')` returns `{ Authorization: 'Bearer t1' }`, and returns `{}` for an unknown event.
   - Storage probe: `isStorageAvailable()` returns `true` normally and leaves no probe key behind. It returns `false` when `Storage.prototype.setItem` throws (`vi.spyOn`).
-- [ ] T011 Implement `frontend/src/lib/session.ts`, the only module that uses `localStorage`. The key is `vr:event:{eventId}`. Reads go through `JSON.parse` and then a Zod schema (`participantToken`: non-empty string; `participantId`: non-empty string; `share`: optional `{ name, entryCode, entryUrl }` strings), and failures return `null`. No `as` casts. It never logs values. Makes T010 pass (R4, data-model.md §2) — agent: `implementer-fe`
+- [X] T011 Implement `frontend/src/lib/session.ts`, the only module that uses `localStorage`. The key is `vr:event:{eventId}`. Reads go through `JSON.parse` and then a Zod schema (`participantToken`: non-empty string; `participantId`: non-empty string; `share`: optional `{ name, entryCode, entryUrl }` strings), and failures return `null`. No `as` casts. It never logs values. Makes T010 pass (R4, data-model.md §2) — agent: `implementer-fe`
 
 ### Cycle F2 — API errors and client (`lib/api/api-error.ts`, `lib/api/client.ts`)
 
-- [ ] T012 [P] Write `frontend/src/lib/api/api-error.test.ts` against `toApiError(res: Response)` — agent: `test-author`. It covers:
+- [X] T012 [P] Write `frontend/src/lib/api/api-error.test.ts` against `toApiError(res: Response)` — agent: `test-author`. It covers:
   - A standard error body (`{ error: { code: 'BAD_REQUEST', message: 'Malformed JSON.', details: null, requestId: 'r1' } }`, status 400) gives an `ApiError` with that status, code, message, details, and requestId, and `name === 'ApiError'`.
   - An HTML body with status 502 gives `ApiError(502, 'UNKNOWN_ERROR', 'Please try again shortly.')`.
   - JSON without an `error` object gives `UNKNOWN_ERROR`.
-- [ ] T013 [P] Write `frontend/src/lib/api/client.test.ts`. Stub `fetch` with `vi.stubGlobal` and mock `@/lib/session` `getSessionHeaders` — agent: `test-author`. It covers:
+- [X] T013 [P] Write `frontend/src/lib/api/client.test.ts`. Stub `fetch` with `vi.stubGlobal` and mock `@/lib/session` `getSessionHeaders` — agent: `test-author`. It covers:
   - URL and headers: `apiFetch(null, '/events', { method: 'POST', body: '{}' })` calls `http://api.test/api/v1/events` with `Content-Type: application/json` and no `Authorization` header, and doesn't call `getSessionHeaders`.
   - Session header: `apiFetch('e1', '/x')` adds the header returned by `getSessionHeaders('e1')`.
   - Responses: a 2xx response returns the parsed JSON, and a 204 returns `undefined`.
@@ -82,7 +82,7 @@ description: "Task list for feature 002-create-event-frontend"
   - Timeout:
     - With `{ timeoutMs: 15000 }`, `fetch` receives a `signal`.
     - A rejection with `new DOMException('t', 'TimeoutError')` rejects with `ApiError(0, 'NETWORK_ERROR', "The connection timed out. Your event may have been created; if you don't see it, create it again.")`.
-- [ ] T014 Implement `frontend/src/lib/api/api-error.ts` (`ApiError` class and `toApiError`, as in `error-handling.md` §1) and `frontend/src/lib/api/client.ts`. The client signature is `apiFetch<T>(eventId: string | null, path: string, init: RequestInit = {}, options: { timeoutMs?: number } = {})`, with:
+- [X] T014 Implement `frontend/src/lib/api/api-error.ts` (`ApiError` class and `toApiError`, as in `error-handling.md` §1) and `frontend/src/lib/api/client.ts`. The client signature is `apiFetch<T>(eventId: string | null, path: string, init: RequestInit = {}, options: { timeoutMs?: number } = {})`, with:
   - the `${env.apiBaseUrl}/api/v1${path}` prefix;
   - the `AbortSignal.timeout` timeout;
   - normalization of `TypeError` and `TimeoutError` to `NETWORK_ERROR`.
@@ -91,8 +91,8 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Cycle F3 — routes (`lib/routes.ts`)
 
-- [ ] T015 [P] Write `frontend/src/lib/routes.test.ts`. It checks that the builders return `/`, `/events/new`, `/events/e1/created`, `/join`, `/events/e1`, and `/events/e1/my-items/new`, and that `routes.eventCreated('a/b')` returns `/events/a%2Fb/created` (contracts/ui-screens.md "Routes") — agent: `test-author`
-- [ ] T016 Implement `frontend/src/lib/routes.ts` with `routes.landing()`, `routes.createEvent()`, `routes.eventCreated(eventId)`, `routes.join()`, `routes.eventHome(eventId)`, and `routes.newItem(eventId)`, encoding `eventId` with `encodeURIComponent`. Makes T015 pass — agent: `implementer-fe`
+- [X] T015 [P] Write `frontend/src/lib/routes.test.ts`. It checks that the builders return `/`, `/events/new`, `/events/e1/created`, `/join`, `/events/e1`, and `/events/e1/my-items/new`, and that `routes.eventCreated('a/b')` returns `/events/a%2Fb/created` (contracts/ui-screens.md "Routes") — agent: `test-author`
+- [X] T016 Implement `frontend/src/lib/routes.ts` with `routes.landing()`, `routes.createEvent()`, `routes.eventCreated(eventId)`, `routes.join()`, `routes.eventHome(eventId)`, and `routes.newItem(eventId)`, encoding `eventId` with `encodeURIComponent`. Makes T015 pass — agent: `implementer-fe`
 
 **Checkpoint**: Foundation ready. Run the checks; commit F1, F2, and F3 separately after `commit-reviewer`.
 
