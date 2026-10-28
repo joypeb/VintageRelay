@@ -190,3 +190,103 @@ describe('US3 validation', () => {
     expect(name).toHaveAccessibleDescription('Please enter an event name.');
   });
 });
+
+describe('US4 failures', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mocks.createEvent.mockReset();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('shows a network error, preserves input, and allows retry', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockRejectedValue(
+      new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+    );
+    const { container } = renderWithClient(<CreateEventScreen />);
+    const name = screen.getByRole('textbox', { name: 'Event name' });
+    const displayName = screen.getByRole('textbox', { name: 'My display name' });
+    const button = screen.getByRole('button', { name: 'Create event' });
+    await user.type(name, 'Market');
+    await user.type(displayName, 'Mina');
+    await user.click(button);
+    const message = await within(container).findByText('Please check your network connection.');
+    expect(message.closest('[role="alert"]')).not.toBeNull();
+    expect(name).toHaveValue('Market');
+    expect(displayName).toHaveValue('Mina');
+    expect(button).toBeEnabled();
+    expect(button).not.toHaveAttribute('aria-busy', 'true');
+    expect(button).not.toHaveAttribute('aria-disabled', 'true');
+    await user.click(button);
+    await waitFor(() => expect(mocks.createEvent).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows the server message for an internal error', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockRejectedValue(
+      new ApiError(500, 'INTERNAL_ERROR', 'Server error. Please retry.'),
+    );
+    const { container } = renderWithClient(<CreateEventScreen />);
+    await user.type(screen.getByRole('textbox', { name: 'Event name' }), 'Market');
+    await user.type(screen.getByRole('textbox', { name: 'My display name' }), 'Mina');
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(await within(container).findByText('Server error. Please retry.')).toBeVisible();
+  });
+
+  it('shows a generic message for an unexpected error', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockRejectedValue(new Error('boom'));
+    const { container } = renderWithClient(<CreateEventScreen />);
+    await user.type(screen.getByRole('textbox', { name: 'Event name' }), 'Market');
+    await user.type(screen.getByRole('textbox', { name: 'My display name' }), 'Mina');
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(
+      await within(container).findByText('Something went wrong. Please try again.'),
+    ).toBeVisible();
+    expect(within(container).queryByText('boom')).not.toBeInTheDocument();
+  });
+
+  it('explains when the event was created but organizer access could not be saved', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockResolvedValue(session);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key) => {
+      if (key.startsWith('vr:event:')) throw new DOMException('full', 'QuotaExceededError');
+    });
+    const { container } = renderWithClient(<CreateEventScreen />);
+    await user.type(screen.getByRole('textbox', { name: 'Event name' }), 'Market');
+    await user.type(screen.getByRole('textbox', { name: 'My display name' }), 'Mina');
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    await waitFor(() => expect(mocks.createEvent).toHaveBeenCalledOnce());
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(container).not.toHaveTextContent('t1');
+    const message = await within(container).findByText(
+      "Your event was created, but this browser couldn't keep your organizer access. Free up browser storage or open a regular (non-private) window, then create the event again.",
+      { exact: true },
+    );
+    expect(message).toBeVisible();
+    expect(message.closest('[role="alert"]')).not.toBeNull();
+  });
+
+  it('prevents submission when the device cannot store organizer access', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockReturnValue(new Promise<EventSession>(() => {}));
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('quota');
+    });
+    const { container } = renderWithClient(<CreateEventScreen />);
+    await user.type(screen.getByRole('textbox', { name: 'Event name' }), 'Market');
+    await user.type(screen.getByRole('textbox', { name: 'My display name' }), 'Mina');
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(
+      await within(container).findByText(
+        "This browser can't keep your organizer access. Open the app in a regular (non-private) window and try again.",
+      ),
+    ).toBeVisible();
+    expect(mocks.createEvent).not.toHaveBeenCalled();
+  });
+});

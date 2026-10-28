@@ -11,11 +11,19 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { ApiError } from '@/lib/api/api-error';
+import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { useCreateEventMutation } from '@/lib/api/events';
+import { logger } from '@/lib/logger';
 import { routes } from '@/lib/routes';
-import { saveEventSession } from '@/lib/session';
+import { isStorageAvailable, saveEventSession } from '@/lib/session';
 import { mapServerFieldErrors, validateCreateEventForm } from '@/lib/validation/event';
 import type { CreateEventField, CreateEventFieldErrors } from '@/lib/validation/event';
+
+const STORAGE_UNAVAILABLE_MESSAGE =
+  "This browser can't keep your organizer access. Open the app in a regular (non-private) window and try again.";
+
+const SESSION_SAVE_FAILED_MESSAGE =
+  "Your event was created, but this browser couldn't keep your organizer access. Free up browser storage or open a regular (non-private) window, then create the event again.";
 
 function errorStatus(message: string | undefined) {
   return message === undefined ? undefined : ({ type: 'error', message } as const);
@@ -47,6 +55,10 @@ export function CreateEventScreen() {
   function submit() {
     if (mutation.isPending) return;
     setFormError(null);
+    if (!isStorageAvailable()) {
+      setFormError(STORAGE_UNAVAILABLE_MESSAGE);
+      return;
+    }
     const result = validateCreateEventForm({ name, organizerDisplayName: displayName });
     if (!result.ok) {
       setFieldErrors(result.errors);
@@ -56,15 +68,21 @@ export function CreateEventScreen() {
     setFieldErrors({});
     mutation.mutate(result.value, {
       onSuccess: ({ event, participantToken }) => {
-        saveEventSession(event.id, {
-          participantToken,
-          participantId: event.me.participantId,
-          share: {
-            name: event.name,
-            entryCode: event.entryCode,
-            entryUrl: event.entryUrl,
-          },
-        });
+        try {
+          saveEventSession(event.id, {
+            participantToken,
+            participantId: event.me.participantId,
+            share: {
+              name: event.name,
+              entryCode: event.entryCode,
+              entryUrl: event.entryUrl,
+            },
+          });
+        } catch (err) {
+          logger.error('create event session save failed', err);
+          setFormError(SESSION_SAVE_FAILED_MESSAGE);
+          return;
+        }
         router.replace(routes.eventCreated(event.id));
       },
       onError: (error) => {
@@ -73,7 +91,10 @@ export function CreateEventScreen() {
           setFieldErrors(mapped.fieldErrors);
           setFormError(mapped.formError);
           focusFirstInvalid(mapped.fieldErrors);
+          return;
         }
+        if (!(error instanceof ApiError)) logger.error('create event failed', error);
+        setFormError(getFormErrorMessage(error));
       },
     });
   }

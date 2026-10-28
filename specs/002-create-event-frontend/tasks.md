@@ -234,8 +234,8 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Tests for User Story 4 (REQUIRED - write first) ⚠️
 
-- [ ] T035 [P] [US4] Write `frontend/src/lib/api/error-messages.test.ts` for `getFormErrorMessage(error: unknown): string`. An `ApiError` of any code (`NETWORK_ERROR`, `BAD_REQUEST`, `INTERNAL_ERROR`, `UNKNOWN_ERROR`) returns its `message`. A non-`ApiError` (e.g., `new Error('boom')`, `'x'`) returns "Something went wrong. Please try again." and never the raw message — agent: `test-author`
-- [ ] T036 [US4] Add a "US4 failures" block to `frontend/src/components/event/CreateEventScreen.test.tsx` — agent: `test-author`:
+- [X] T035 [P] [US4] Write `frontend/src/lib/api/error-messages.test.ts` for `getFormErrorMessage(error: unknown): string`. An `ApiError` of any code (`NETWORK_ERROR`, `BAD_REQUEST`, `INTERNAL_ERROR`, `UNKNOWN_ERROR`) returns its `message`. A non-`ApiError` (e.g., `new Error('boom')`, `'x'`) returns "Something went wrong. Please try again." and never the raw message — agent: `test-author`
+- [X] T036 [US4] Add a "US4 failures" block to `frontend/src/components/event/CreateEventScreen.test.tsx` — agent: `test-author`:
   - Network failure: if `createEvent` rejects with `ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.')`, an `alert` shows that text. Both inputs keep their values, the button is enabled, and clicking it again calls `createEvent` a second time.
   - Server error: an `INTERNAL_ERROR` rejection shows the server message.
   - Unexpected error: a rejection with `new Error('boom')` shows "Something went wrong. Please try again." and not "boom".
@@ -243,8 +243,8 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Implementation for User Story 4
 
-- [ ] T037 [P] [US4] Implement `getFormErrorMessage` in `frontend/src/lib/api/error-messages.ts`. Makes T035 pass — agent: `implementer-fe`
-- [ ] T038 [US4] Integrate failure handling into `frontend/src/components/event/CreateEventScreen.tsx`:
+- [X] T037 [P] [US4] Implement `getFormErrorMessage` in `frontend/src/lib/api/error-messages.ts`. Makes T035 pass — agent: `implementer-fe`
+- [X] T038 [US4] Integrate failure handling into `frontend/src/components/event/CreateEventScreen.tsx`:
   - Storage probe: `isStorageAvailable()` runs before validation and the request (FR-017).
   - Errors: non-validation errors go through `getFormErrorMessage` into a `role="alert"` message near the button. That message clears on the next submit.
   - Logging: an unexpected non-`ApiError` calls `logger.error('create event failed', err)` with no values or tokens. Expected `ApiError`s are not logged.
