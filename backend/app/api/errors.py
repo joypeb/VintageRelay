@@ -3,11 +3,13 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from pydantic.alias_generators import to_camel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
 from app.core.logging import request_id_var
 from app.domain.errors import AppError, InternalError
+from app.schemas.common import ValidationReason
 from app.schemas.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
@@ -44,9 +46,34 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
-        fields = [
-            {"field": str(error["loc"][-1]), "reason": error["type"]} for error in exc.errors()
-        ]
+        errors = exc.errors()
+        if any(error["type"] == "json_invalid" or error["loc"] == ("body",) for error in errors):
+            return JSONResponse(
+                _body("BAD_REQUEST", "Unable to process this request."), status_code=400
+            )
+
+        fields: list[dict[str, str]] = []
+        seen_fields: set[str] = set()
+        for error in errors:
+            error_type = error["type"]
+            field = str(error["loc"][-1])
+            if error_type == "extra_forbidden":
+                reason = ValidationReason.UNKNOWN_FIELD
+            else:
+                field = to_camel(field)
+                if error_type in {"missing", "string_too_short"} or error.get("input") is None:
+                    reason = ValidationReason.REQUIRED
+                elif error_type == "string_too_long":
+                    reason = ValidationReason.TOO_LONG
+                elif error_type == "string_type":
+                    reason = ValidationReason.INVALID_TYPE
+                elif error_type == "invalid_characters":
+                    reason = ValidationReason.INVALID_CHARACTERS
+                else:
+                    reason = ValidationReason.INVALID
+            if field not in seen_fields:
+                fields.append({"field": field, "reason": reason.value})
+                seen_fields.add(field)
         return JSONResponse(
             _body("VALIDATION_ERROR", "Please check your input.", {"fields": fields}),
             status_code=422,

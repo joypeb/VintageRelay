@@ -32,3 +32,16 @@ def test_create_event_openapi_describes_success_and_errors(client):
         assert "error" in error_response["required"]
         error = resolve(document, error_response["properties"]["error"])
         assert {"code", "message", "details", "requestId"} <= set(error["required"])
+
+
+def test_create_event_openapi_request_describes_validation_constraints(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events"]["post"]
+    schema = resolve(document, operation["requestBody"]["content"]["application/json"]["schema"])
+
+    assert {"name", "organizerDisplayName"} <= set(schema["required"])
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["name"]["minLength"] == 1
+    assert schema["properties"]["name"]["maxLength"] == 60
+    assert schema["properties"]["organizerDisplayName"]["minLength"] == 1
+    assert schema["properties"]["organizerDisplayName"]["maxLength"] == 30

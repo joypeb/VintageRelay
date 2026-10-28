@@ -336,7 +336,7 @@ description: "Task list for feature 001-create-event"
 
 ### Tests (write first, confirm Red) ⚠️ — agent: `test-author`
 
-- [ ] T048 [P] [US3] Write `backend/tests/api/test_create_event_validation.py`, using `client` and `db`.
+- [X] T048 [P] [US3] Write `backend/tests/api/test_create_event_validation.py`, using `client` and `db`.
   - **Rejection (parametrized):** after every rejection case, both tables have 0 rows and `error.requestId` equals the `X-Request-ID` header. Each case returns 422 `VALIDATION_ERROR` with `details.fields` equal to:
     - missing `name` → `[{"field": "name", "reason": "required"}]`
     - `"name": null` → `required`
@@ -363,22 +363,22 @@ description: "Task list for feature 001-create-event"
     - 30-code-point `organizerDisplayName`
     - `"가" * 30`
     - `"Mina\n"` → stored and returned as `"Mina"`
-- [ ] T049 [P] [US3] Extend `backend/tests/api/test_openapi_contract.py`. The request body schema of `POST /api/v1/events`, after resolving its `$ref`, has:
+- [X] T049 [P] [US3] Extend `backend/tests/api/test_openapi_contract.py`. The request body schema of `POST /api/v1/events`, after resolving its `$ref`, has:
   - `required ⊇ ["name", "organizerDisplayName"]` and `additionalProperties: false`.
   - `name.minLength == 1` and `name.maxLength == 60`.
   - `organizerDisplayName.minLength == 1` and `organizerDisplayName.maxLength == 30`.
 
 ### Implementation (Green → Refactor) — agent: `implementer-be`
 
-- [ ] T050 [US3] In `backend/app/schemas/common.py`:
+- [X] T050 [US3] In `backend/app/schemas/common.py`:
   - Add `class ValidationReason(StrEnum)` with `REQUIRED = "required"`, `TOO_LONG = "too_long"`, `INVALID_TYPE = "invalid_type"`, `INVALID_CHARACTERS = "invalid_characters"`, `UNKNOWN_FIELD = "unknown_field"`, and `INVALID = "invalid"`.
   - Add `reject_control_characters(value: str) -> str`, which raises `PydanticCustomError("invalid_characters", "Control characters are not allowed.")` if any character has `unicodedata.category(c) == "Cc"`.
-- [ ] T051 [US3] In `backend/app/schemas/event.py`:
+- [X] T051 [US3] In `backend/app/schemas/event.py`:
   - Constrain `EventCreate.name: str = Field(min_length=1, max_length=60)` and `EventCreate.organizer_display_name: str = Field(min_length=1, max_length=30)`.
   - Add `field_validator("name", "organizer_display_name", mode="after")` that calls `reject_control_characters`.
   - Keep the inherited `extra="forbid"` (R5).
   - Makes T049 pass.
-- [ ] T052 [US3] Refine the `RequestValidationError` handler in `backend/app/api/errors.py` (R3, R4):
+- [X] T052 [US3] Refine the `RequestValidationError` handler in `backend/app/api/errors.py` (R3, R4):
   - **400 first:** if any error has type `json_invalid`, or has `loc == ("body",)`, return 400 `BAD_REQUEST` with `details: None`.
   - **422 otherwise:** map each error with the first matching rule, in this order:
 

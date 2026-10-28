@@ -1,10 +1,17 @@
+from pydantic import Field, field_validator
+
 from app.domain.enums import EventStatus
-from app.schemas.common import ApiModel, UtcDatetime
+from app.schemas.common import ApiModel, UtcDatetime, reject_control_characters
 
 
 class EventCreate(ApiModel):
-    name: str
-    organizer_display_name: str
+    name: str = Field(min_length=1, max_length=60)
+    organizer_display_name: str = Field(min_length=1, max_length=30)
+
+    @field_validator("name", "organizer_display_name", mode="after")
+    @classmethod
+    def validate_control_characters(cls, value: str) -> str:
+        return reject_control_characters(value)
 
 
 class EventMe(ApiModel):
