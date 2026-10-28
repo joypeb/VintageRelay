@@ -19,6 +19,16 @@ Before writing code, read and follow only the rules for the area being changed.
 - **Documentation and Git:** read only `docs/rules/dev/common/`.
 - `docs/rules/dev/common/api-contract.md` is the sole source of truth for the API contract shared by backend and frontend.
 
+## Test-Driven Development
+
+- **MUST:** follow Red → Green → Refactor for all backend behavior and non-trivial frontend logic: write a failing test, run it and confirm it fails for the expected reason, write the minimum code to pass, then refactor with all tests green.
+- **MUST:** start bug fixes with a reproducing test. Never delete or skip failing tests to pass; use `xfail(reason=...)` for unimplemented cases.
+- Test scope and tooling follow `docs/rules/dev/common/testing.md` and the area-specific `testing.md`.
+- **MUST:** before reporting work as done, run the checks for every changed area and report the actual results:
+  - Backend: `cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest`
+  - Frontend: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
+- CI (`.github/workflows/ci.yml`) runs the same checks on every PR and push to `main`.
+
 ## Code Review Before Commits and PRs
 
 - Before an agent commits or creates/updates a PR, it **must** delegate an OCR delegate review to a Paseo subagent and wait for the results. Use Paseo's `commit-reviewer` profile before committing and the `pr-reviewer` profile before PR work. Run separate reviews for each stage.

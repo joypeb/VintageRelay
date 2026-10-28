@@ -25,7 +25,7 @@ Rules for implementing Vintage Relay's backend (FastAPI + SQLite). This hackatho
 | uv | 0.13.x | Packages and virtual environments |
 | ruff | 0.17.x | Lint and format |
 | mypy | 2.4.x | Type checking |
-| pytest | 9.1.x | Tests |
+| pytest | 9.2.x | Tests |
 
 - Set lower bounds (`>=`) in `pyproject.toml` and commit `uv.lock` to pin versions.
 - Add dependencies only with `uv add <pkg>` (`uv add --dev` for development). **No** `pip install`.
