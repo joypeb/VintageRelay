@@ -148,7 +148,7 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Tests for User Story 2 (REQUIRED - write first) ⚠️
 
-- [ ] T026 [US2] Write `frontend/src/components/event/EventCreatedScreen.test.tsx`. Mock `qrcode.react` so `QRCodeSVG` records its props; seed `localStorage` via `saveEventSession`; stub `navigator.clipboard` per test. It covers — agent: `test-author`:
+- [X] T026 [US2] Write `frontend/src/components/event/EventCreatedScreen.test.tsx`. Mock `qrcode.react` so `QRCodeSVG` records its props; seed `localStorage` via `saveEventSession`; stub `navigator.clipboard` per test. It covers — agent: `test-author`:
   - With a record: the screen shows the heading "Event created", the event name as visible text, and the text "Share the QR code or entry code with participants". It shows the exact `entryCode`. The QR has `role="img"` with accessible name "QR code to join {name}", and `QRCodeSVG` received `value` equal to the exact `entryUrl`. It shows the notice "Organizer access is stored on this device. Use the same device until the event ends.". "Register my clothes" links to `/events/e1/my-items/new`, and "Go home" links to `/events/e1`.
   - Copy works: if `writeText` resolves, clicking "Copy link" calls it with `entryUrl`, and a status region (`role="status"`) shows "Link copied".
   - Copy fails: if `writeText` rejects, or `navigator.clipboard` is undefined, the screen shows a read-only textbox whose value is `entryUrl`, plus "Copy this link manually.".
@@ -157,7 +157,7 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Implement `frontend/src/components/event/EventCreatedScreen.tsx` (`'use client'`, prop `eventId`):
+- [X] T027 [US2] Implement `frontend/src/components/event/EventCreatedScreen.tsx` (`'use client'`, prop `eventId`):
   - Data: read `getEventShare(eventId)` after mount, rendering nothing before the read so there is no hydration mismatch.
   - Event name: render `share.name` as visible text (contract H2 row).
   - QR: `QRCodeSVG` with `value={entryUrl}`, `size={224}`, `level="M"`, `marginSize={4}`, and fixed `fgColor="#000000"` / `bgColor="#FFFFFF"`. Add a code comment justifying the token-rule exception (scan reliability, R10).
@@ -165,8 +165,8 @@ description: "Task list for feature 002-create-event-frontend"
   - Copy: `navigator.clipboard.writeText`, with the `role="status"` result and the manual fallback (R9).
   - Buttons: links via `routes.newItem` / `routes.eventHome`, built from Astryx components.
   - Makes T026 pass — agent: `implementer-fe`
-- [ ] T028 [US2] Create the H2 route `frontend/src/app/events/[eventId]/created/page.tsx`. It is a server component that awaits `params: Promise<{ eventId: string }>` and renders `<EventCreatedScreen eventId={eventId} />` — agent: `implementer-fe`
-- [ ] T029 [P] [US2] UI-only, no automated test:
+- [X] T028 [US2] Create the H2 route `frontend/src/app/events/[eventId]/created/page.tsx`. It is a server component that awaits `params: Promise<{ eventId: string }>` and renders `<EventCreatedScreen eventId={eventId} />` — agent: `implementer-fe`
+- [X] T029 [P] [US2] UI-only, no automated test:
   - Add the P2 placeholder `frontend/src/app/events/[eventId]/(tabs)/page.tsx` (title "Event home") and the C2 placeholder `frontend/src/app/events/[eventId]/(tabs)/my-items/new/page.tsx` (title "Register clothing"), both rendering `ComingSoonScreen`.
   - Don't add a `(tabs)/layout.tsx` or an `events/[eventId]/layout.tsx` (R11).
   - Agent: `implementer-fe`.
