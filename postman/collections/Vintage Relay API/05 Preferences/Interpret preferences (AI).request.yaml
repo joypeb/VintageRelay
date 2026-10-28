@@ -1,0 +1,22 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/participants/{{participantId}}/preferences/interpretation'
+order: 3000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "version": "{{preferenceVersionNumber}}"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.variables.set('preferenceVersionNumber', Number(pm.collectionVariables.get('preferenceVersion') || 0));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is one of [200, 503]', () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));

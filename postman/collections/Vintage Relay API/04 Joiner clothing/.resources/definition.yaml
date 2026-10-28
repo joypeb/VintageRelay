@@ -1,0 +1,8 @@
+$kind: collection
+name: '04 Joiner clothing'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{joinerToken}}'

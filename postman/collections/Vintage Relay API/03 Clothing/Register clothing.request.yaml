@@ -1,0 +1,28 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/clothing'
+order: 2000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "photoId": "{{photoId}}",
+      "description": "Cropped green denim jacket, size M. Worn a few times."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 201', () => pm.response.to.have.status(201));
+      const b = pm.response.json();
+      pm.test('Created clothing is available, version 1, not analyzed', () => {
+        pm.expect(b).to.include.keys(['id','eventId','owner','isMine','photo','description','status','contentVersion','analysis','createdAt','updatedAt']);
+        pm.expect(b.status).to.eql('available');
+        pm.expect(b.contentVersion).to.eql(1);
+        pm.expect(b.analysis).to.eql(null);
+        pm.expect(b.isMine).to.eql(true);
+      });
+      pm.collectionVariables.set('clothingId', b.id);

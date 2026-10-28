@@ -1,0 +1,24 @@
+$kind: http-request
+method: PATCH
+url: '{{baseUrl}}/api/v1/participants/{{participantId}}/preferences'
+order: 2000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "version": "{{preferenceVersionNumber}}",
+      "originalText": "I want a cropped green or khaki jacket. No large logos."
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      pm.variables.set('preferenceVersionNumber', Number(pm.collectionVariables.get('preferenceVersion') || 0));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.collectionVariables.set('preferenceVersion', String(pm.response.json().version));

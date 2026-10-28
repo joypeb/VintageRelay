@@ -1,0 +1,22 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/intents'
+order: 1000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "offeredClothingId": "{{clothingId}}",
+      "wantedClothingId": "{{joinerClothingId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 201', () => pm.response.to.have.status(201));
+      const b = pm.response.json();
+      pm.test('Intent is active', () => pm.expect(b.status).to.eql('active'));
+      pm.collectionVariables.set('intentId', b.id);

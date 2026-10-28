@@ -1,0 +1,14 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/close'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test('Event closed', () => {
+        pm.expect(b.status).to.eql('closed');
+        pm.expect(b.closedAt).to.be.a('string');
+      });

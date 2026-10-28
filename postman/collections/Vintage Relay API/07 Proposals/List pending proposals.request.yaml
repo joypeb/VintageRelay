@@ -1,0 +1,27 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/proposals?status=pending'
+order: 1000
+queryParams:
+  - key: status
+    value: 'pending'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('List shape', () => {
+        const b = pm.response.json();
+        pm.expect(b.items).to.be.an('array');
+        pm.expect(b.nextCursor).to.eql(null);
+      });
+      const items = pm.response.json().items;
+      pm.test('Two-person cycle was proposed', () => {
+        pm.expect(items.length).to.be.above(0);
+        pm.expect(items[0].cycleSize).to.eql(2);
+        pm.expect(items[0].canConsent).to.eql(true);
+      });
+      if (items.length) {
+        pm.collectionVariables.set('proposalId', items[0].id);
+        pm.collectionVariables.set('proposalVersion', String(items[0].version));
+      }

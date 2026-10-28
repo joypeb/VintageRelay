@@ -1,0 +1,29 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/participants'
+order: 2000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "entryCode": "{{entryCode}}",
+      "displayName": "Joon"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 201', () => pm.response.to.have.status(201));
+      const b = pm.response.json();
+      pm.test('Joiner is not organizer and has no stats', () => {
+        pm.expect(b.participantToken).to.be.a('string').and.not.empty;
+        pm.expect(b.event.me.isOrganizer).to.eql(false);
+        pm.expect(b.event.stats).to.eql(null);
+      });
+      pm.collectionVariables.set('joinerToken', b.participantToken);
+      pm.collectionVariables.set('joinerParticipantId', b.event.me.participantId);

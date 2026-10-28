@@ -1,0 +1,57 @@
+$kind: collection
+name: 'Vintage Relay API'
+description: 'Requests and contract tests for the Vintage Relay backend. Folders run top to bottom as one end-to-end scenario: the organizer creates an event, a second participant joins, both register clothing, and their intents form a two-person proposal. Source of truth: docs/rules/dev/common/api-contract.md and docs/plans/api/.'
+variables:
+  - key: eventId
+    value: ''
+  - key: entryCode
+    value: ''
+  - key: participantToken
+    value: ''
+  - key: participantId
+    value: ''
+  - key: joinerToken
+    value: ''
+  - key: joinerParticipantId
+    value: ''
+  - key: photoId
+    value: ''
+  - key: clothingId
+    value: ''
+  - key: joinerPhotoId
+    value: ''
+  - key: joinerClothingId
+    value: ''
+  - key: intentId
+    value: ''
+  - key: joinerIntentId
+    value: ''
+  - key: proposalId
+    value: ''
+  - key: proposalVersion
+    value: ''
+  - key: suggestionId
+    value: ''
+  - key: preferenceVersion
+    value: ''
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{participantToken}}'
+scripts:
+  - type: http:afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('X-Request-ID response header is present', () => {
+        pm.response.to.have.header('X-Request-ID');
+      });
+      if (pm.response.code >= 400) {
+        pm.test('Error body follows the API contract', () => {
+          const e = pm.response.json().error;
+          pm.expect(e).to.be.an('object');
+          pm.expect(e).to.include.keys('code', 'message', 'details', 'requestId');
+          pm.expect(e.code).to.match(/^[A-Z][A-Z0-9_]*$/);
+          pm.expect(e.requestId).to.eql(pm.response.headers.get('X-Request-ID'));
+        });
+      }

@@ -1,0 +1,22 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/clothing?ownership=others&status=available'
+order: 4000
+queryParams:
+  - key: ownership
+    value: 'others'
+  - key: status
+    value: 'available'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('List shape', () => {
+        const b = pm.response.json();
+        pm.expect(b.items).to.be.an('array');
+        pm.expect(b.nextCursor).to.eql(null);
+      });
+      pm.test('Includes organizer clothing', () => {
+        pm.expect(pm.response.json().items.map(i => i.id)).to.include(pm.collectionVariables.get('clothingId'));
+      });

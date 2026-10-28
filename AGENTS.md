@@ -65,3 +65,7 @@ Before writing code, read and follow only the rules for the area being changed.
 ## Open Decisions
 
 Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. Specifying an offered garment when recording an intent is an initial design proposal. API path structure, bearer-token authentication, the 403/404 authorization policy (404 only to hide private resources), and feature error codes are decided in `docs/rules/dev/common/api-contract.md`. The proposal re-proposal suppression rule is decided in `docs/plans/api/11-proposals.md`; per-function request/response details are drafted in `docs/plans/api/` and `docs/plans/ai-features-v1.md`, where items marked proposed still need agreement. Do not treat open decisions as settled rules.
+
+<API_TASKS>
+Before responding to any non-trivial API engineering task — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API or Postman Flow — read `postman/skills/api-engineer/SKILL.md` and follow it. It is the default entry point for API work in this repository. Pure questions and trivial one-line edits do not need it.
+</API_TASKS>
