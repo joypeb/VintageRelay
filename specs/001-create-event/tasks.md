@@ -62,24 +62,24 @@ description: "Task list for feature 001-create-event"
 
 ### Cycle F2 — settings, schema base, logging formatters, database
 
-- [ ] T010 [P] Write `backend/tests/unit/test_config.py`:
+- [X] T010 [P] Write `backend/tests/unit/test_config.py`:
   - With `monkeypatch.delenv` for all four keys, `Settings()` from `app.core.config` has `database_url == "sqlite:///./data/app.db"`, `app_base_url == "http://localhost:3000"`, `log_level == "INFO"`, and `log_format == "text"`.
   - `monkeypatch.setenv` of `DATABASE_URL`, `APP_BASE_URL`, `LOG_LEVEL`, and `LOG_FORMAT=json` overrides each value.
   - `LOG_FORMAT=xml` raises `ValidationError`.
   - A `.env` file in the working directory is *not* read (create one in `tmp_path` and `monkeypatch.chdir`).
   - Agent: `test-author`.
-- [ ] T011 [P] Write `backend/tests/unit/test_schemas_common.py`, using an `ApiModel` subclass from `app.schemas.common` with fields `created_at: UtcDatetime` and `display_name: str`:
+- [X] T011 [P] Write `backend/tests/unit/test_schemas_common.py`, using an `ApiModel` subclass from `app.schemas.common` with fields `created_at: UtcDatetime` and `display_name: str`:
   - `model_dump(by_alias=True, mode="json")` of `datetime(2026, 10, 27, 5, 30, tzinfo=UTC)` gives `"createdAt": "2026-10-27T05:30:00.000Z"`.
   - The input `{"createdAt": ..., "displayName": "  Mina  "}` validates, and `display_name == "Mina"` (stripped).
   - An unknown key raises a `ValidationError` of type `extra_forbidden`.
   - Agent: `test-author`.
-- [ ] T012 [P] Write `backend/tests/unit/test_logging.py`, testing `app.core.logging`:
+- [X] T012 [P] Write `backend/tests/unit/test_logging.py`, testing `app.core.logging`:
   - `mask()` replaces with `"***"` the value of any key containing `authorization`, `cookie`, `token`, `session`, `api_key`, `entry_code`, or `image` (case-insensitive), and keeps `event_id`.
   - `JsonFormatter().format(record)` parses as JSON with `ts`, `level`, `logger`, `msg`, `request_id`, and the `extra` keys, and masks an `extra` key `participant_token`.
   - For a record whose `exc_info` comes from `raise ValueError("token=SECRET123") from KeyError("code=K7P3QX")`, both `JsonFormatter` and `TextFormatter` output contain `ValueError`, `KeyError`, and a traceback frame line, but neither `SECRET123` nor `K7P3QX` (R12).
   - After `setup_logging(Settings(log_format="json"))` has been called twice, the root logger has exactly one handler owned by the app, and `logging.getLogger("app.services.event").propagate is True` (R13).
   - Agent: `test-author`.
-- [ ] T013 [P] Write `backend/tests/services/test_db.py`, using `Db(f"sqlite:///{tmp_path / 'db.sqlite'}")` from `app.core.db`:
+- [X] T013 [P] Write `backend/tests/services/test_db.py`, using `Db(f"sqlite:///{tmp_path / 'db.sqlite'}")` from `app.core.db`:
   - Inside `db.read()`, `PRAGMA foreign_keys` is 1, `PRAGMA journal_mode` is `"wal"`, and `PRAGMA busy_timeout` is 5000.
   - `db.write()` commits on normal exit and rolls back when the block raises.
   - Calling `execute` on a session created by the write sessionmaker outside `begin()` raises, because `autobegin=False`.
@@ -87,21 +87,21 @@ description: "Task list for feature 001-create-event"
   - Inserting a duplicate value `"SECRET123"` into a unique column raises `sqlalchemy.exc.IntegrityError`, and `"SECRET123"` does not appear in `str(exc)` (`hide_parameters=True`, R12).
   - `db.dispose()` closes both engines.
   - Agent: `test-author`.
-- [ ] T014 [P] Implement `backend/app/core/config.py`:
+- [X] T014 [P] Implement `backend/app/core/config.py`:
   - `Settings(BaseSettings)` with `database_url: str = "sqlite:///./data/app.db"`, `app_base_url: str = "http://localhost:3000"`, `log_level: str = "INFO"`, and `log_format: Literal["text", "json"] = "text"`.
   - `model_config = SettingsConfigDict(env_file=None)`, so no `.env` is read.
   - `get_settings()` wrapped in `functools.lru_cache`.
   - Makes T010 pass — agent: `implementer-be`.
-- [ ] T015 [P] Implement `backend/app/schemas/common.py`:
+- [X] T015 [P] Implement `backend/app/schemas/common.py`:
   - `ApiModel(BaseModel)` with `ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid", from_attributes=True, str_strip_whitespace=True)`.
   - `UtcDatetime = Annotated[datetime, PlainSerializer(...)]`, which serializes as `YYYY-MM-DDTHH:MM:SS.mmmZ` after converting to UTC (R9).
   - Makes T011 pass — agent: `implementer-be`.
-- [ ] T016 [P] Implement `backend/app/core/logging.py`, without the middleware (that comes in T026):
+- [X] T016 [P] Implement `backend/app/core/logging.py`, without the middleware (that comes in T026):
   - `request_id_var: ContextVar[str]` (default `"-"`), `SENSITIVE_KEYS`, and `mask()`.
   - `JsonFormatter` and `TextFormatter`. Both render exceptions safely: for each exception in the `__cause__`/`__context__` chain, emit `type(exc).__qualname__` and `traceback.format_tb(exc.__traceback__)`, never `str(exc)` (R12).
   - `setup_logging(settings)`: install or replace one app-owned stdout `StreamHandler` on the root logger, set the level from `settings.log_level`, choose the formatter from `settings.log_format`, disable `uvicorn.access`, never set `propagate=False`, and never use `disable_existing_loggers`. The function is idempotent.
   - Makes T012 pass — agent: `implementer-be`.
-- [ ] T017 Implement `backend/app/core/db.py`, following `docs/rules/dev/backend/database.md`:
+- [X] T017 Implement `backend/app/core/db.py`, following `docs/rules/dev/backend/database.md`:
   - `make_engine(url: str, begin_sql: str) -> Engine`:
     - `create_engine(url, connect_args={"check_same_thread": False, "timeout": 5}, hide_parameters=True)`.
     - A `connect` listener that sets `isolation_level = None` and the pragmas `foreign_keys = ON`, `journal_mode = WAL`, `busy_timeout = 5000`, and `synchronous = NORMAL`.
@@ -111,7 +111,7 @@ description: "Task list for feature 001-create-event"
     - `read()` and `write()` are context managers that yield a `Session` inside `s.begin()`.
     - A `write_engine` property and `dispose()`.
   - Makes T013 pass. Depends on T014 — agent: `implementer-be`.
-- [ ] T018 [P] Implement `backend/app/models/base.py`:
+- [X] T018 [P] Implement `backend/app/models/base.py`:
   - `Base(DeclarativeBase)` with `metadata = MetaData(naming_convention={"ix": "ix_%(column_0_label)s", "uq": "uq_%(table_name)s_%(column_0_name)s", "ck": "ck_%(table_name)s_%(constraint_name)s", "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s", "pk": "pk_%(table_name)s"})`.
   - A `UtcDateTime` `TypeDecorator` (`impl = DateTime`, `cache_ok = True`) that converts aware values to naive UTC on bind, rejects naive input with `ValueError`, and attaches `UTC` on result (R9).
   - Makes the `UtcDateTime` part of T013 pass — agent: `implementer-be`.
