@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -7,9 +8,22 @@ from starlette.responses import JSONResponse
 
 from app.core.logging import request_id_var
 from app.domain.errors import AppError, InternalError
+from app.schemas.error import ErrorResponse
 
 logger = logging.getLogger(__name__)
 _HTTP_CODES = {400: "BAD_REQUEST", 401: "UNAUTHENTICATED", 403: "FORBIDDEN", 404: "NOT_FOUND"}
+ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
+    status: {
+        "model": ErrorResponse,
+        "description": description,
+        "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}},
+    }
+    for status, description in (
+        (400, "Malformed request."),
+        (422, "Field validation failed."),
+        (500, "A temporary error occurred."),
+    )
+}
 
 
 def _body(code: str, message: str, details: object = None) -> dict[str, object]:

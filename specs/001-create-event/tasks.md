@@ -194,7 +194,7 @@ description: "Task list for feature 001-create-event"
 
 ### Tests (write first, confirm Red) ⚠️ — agent: `test-author`
 
-- [ ] T028 [P] [US1] Write `backend/tests/api/test_create_event.py`, using `client`. Post `{"name": "Mangwon Flea Market Swap Corner", "organizerDisplayName": "Mina"}`.
+- [X] T028 [P] [US1] Write `backend/tests/api/test_create_event.py`, using `client`. Post `{"name": "Mangwon Flea Market Swap Corner", "organizerDisplayName": "Mina"}`.
   - The response is 201, and the body has exactly the keys `event` and `participantToken`.
   - `event` has exactly the keys `id`, `name`, `status`, `entryCode`, `entryUrl`, `organizerParticipantId`, `createdAt`, `closedAt`, `me`, and `stats`.
   - `status == "active"` and `closedAt is None`.
@@ -208,21 +208,21 @@ description: "Task list for feature 001-create-event"
   - `Authorization: Bearer whatever` still gets 201.
   - Two identical posts produce different `id`, `organizerParticipantId`, `entryCode`, and `participantToken` (FR-014).
   - The `X-Request-ID` request header is echoed.
-- [ ] T029 [P] [US1] Write `backend/tests/services/test_event_service.py`. Use the API through `client` and query rows through the `db` fixture.
+- [X] T029 [P] [US1] Write `backend/tests/services/test_event_service.py`. Use the API through `client` and query rows through the `db` fixture.
   - Stored `session_token_hash == hashlib.sha256(token.encode()).hexdigest()`, and no `participants` column value equals the raw token.
   - A lookup by `hash_participant_token(token)` returns exactly one participant, with `id == events.organizer_participant_id` (US1 AS2).
   - Stored `name` and `display_name` are trimmed.
   - With `caplog` at INFO, exactly one record has `msg == "event_created"` and `record.event_id == <event id>`.
   - The raw token and the raw entry code appear in no record's `getMessage()` or `__dict__` values (FR-013, SC-005).
-- [ ] T030 [P] [US4] Write `backend/tests/services/test_event_atomicity.py`:
+- [X] T030 [P] [US4] Write `backend/tests/services/test_event_atomicity.py`:
   - (a) `monkeypatch.setattr("app.repositories.event.set_organizer", <raise RuntimeError>)`, then call `EventService(db, settings).create(EventCreate(name="Swap", organizer_display_name="Mina"))`. It raises `RuntimeError`, and afterwards `count_rows(db, "events") == count_rows(db, "participants") == 0` (US4 AS1).
   - (b) The same with `monkeypatch.setattr("app.services.event.build_event_session", <raise RuntimeError>)` → 0 rows (R8, a response-construction failure).
   - (c) After three successful creates, every `events` row has a non-null `organizer_participant_id` whose participant has `event_id == events.id` (US4 AS2, SC-002).
   - (d) No `event_created` record is logged in (a) or (b).
-- [ ] T031 [P] [US4] Write `backend/tests/api/test_create_event_atomicity.py`, using `client_no_raise` and the T030 (a) injection:
+- [X] T031 [P] [US4] Write `backend/tests/api/test_create_event_atomicity.py`, using `client_no_raise` and the T030 (a) injection:
   - The response is 500 with `error.code == "INTERNAL_ERROR"` and `error.details is None`, and `error.requestId` equals the `X-Request-ID` header.
   - Afterwards both tables have 0 rows.
-- [ ] T032 [P] [US1] Write `backend/tests/test_migrations.py`:
+- [X] T032 [P] [US1] Write `backend/tests/test_migrations.py`:
   - Build an `alembic.config.Config` pointing `script_location` at `backend/alembic`, with `sqlalchemy.url = sqlite:///{tmp_path}/m.db`, and run `command.upgrade(cfg, "head")` on the empty file.
   - Then, with SQLAlchemy `inspect`, assert:
     - Tables `events` and `participants` exist.
@@ -230,7 +230,7 @@ description: "Task list for feature 001-create-event"
     - A check constraint `ck_events_status` exists.
     - `events.organizer_participant_id` is nullable.
     - FKs exist from `events.organizer_participant_id` to `participants.id` and from `participants.event_id` to `events.id`.
-- [ ] T033 [P] [US1] Write `backend/tests/api/test_openapi_contract.py`. `GET /openapi.json`; for `paths["/api/v1/events"]["post"]`:
+- [X] T033 [P] [US1] Write `backend/tests/api/test_openapi_contract.py`. `GET /openapi.json`; for `paths["/api/v1/events"]["post"]`:
   - The response keys include `"201"`, `"400"`, `"422"`, and `"500"`.
   - The 400, 422, and 500 JSON schemas resolve to the component `ErrorResponse`, whose `error` object requires `code`, `message`, `details`, and `requestId`.
   - No `HTTPValidationError` reference appears anywhere in this operation.
@@ -240,8 +240,8 @@ description: "Task list for feature 001-create-event"
 
 ### Implementation (Green → Refactor) — agent: `implementer-be`
 
-- [ ] T034 [P] [US1] Implement `backend/app/domain/enums.py`: `class EventStatus(StrEnum)` with `ACTIVE = "active"` and `CLOSED = "closed"`.
-- [ ] T035 [P] [US1] Implement `backend/app/models/event.py` (`Event`, table `events`), following data-model.md:
+- [X] T034 [P] [US1] Implement `backend/app/domain/enums.py`: `class EventStatus(StrEnum)` with `ACTIVE = "active"` and `CLOSED = "closed"`.
+- [X] T035 [P] [US1] Implement `backend/app/models/event.py` (`Event`, table `events`), following data-model.md:
   - `id` `String(36)` PK (UUID v4 string).
   - `name` `String(60)` NOT NULL.
   - `status` `String(16)` NOT NULL, with `CheckConstraint("status IN ('active','closed')", name="status")` → `ck_events_status`.
@@ -249,34 +249,34 @@ description: "Task list for feature 001-create-event"
   - `organizer_participant_id` `String(36)` NULL, an FK to `participants.id` with `use_alter=True`, named by the convention.
   - `created_at` `UtcDateTime` NOT NULL.
   - `closed_at` `UtcDateTime` NULL.
-- [ ] T036 [P] [US1] Implement `backend/app/models/participant.py` (`Participant`, table `participants`), following data-model.md:
+- [X] T036 [P] [US1] Implement `backend/app/models/participant.py` (`Participant`, table `participants`), following data-model.md:
   - `id` `String(36)` PK.
   - `event_id` `String(36)` NOT NULL, an FK to `events.id`.
   - `display_name` `String(30)` NOT NULL. No uniqueness index; that is deferred to the join feature.
   - `session_token_hash` `String(64)` NOT NULL UNIQUE.
   - `created_at` `UtcDateTime` NOT NULL.
   - Export `Event` and `Participant` from `backend/app/models/__init__.py`.
-- [ ] T037 [US1] Generate the first revision with `DATABASE_URL=sqlite:///$(mktemp -d)/autogen.db uv run alembic revision --autogenerate -m "create events and participants"` (a throwaway database, so no `data/` directory is needed). Then hand-edit `backend/alembic/versions/<rev>_create_events_and_participants.py`:
+- [X] T037 [US1] Generate the first revision with `DATABASE_URL=sqlite:///$(mktemp -d)/autogen.db uv run alembic revision --autogenerate -m "create events and participants"` (a throwaway database, so no `data/` directory is needed). Then hand-edit `backend/alembic/versions/<rev>_create_events_and_participants.py`:
   - Render `UtcDateTime` columns as `sa.DateTime()`, with no `app.*` imports.
   - Confirm `ck_events_status`, both UNIQUE constraints, and both named FKs are present.
   - Makes T032 pass. Depends on T027, T035, and T036.
-- [ ] T038 [P] [US1] Implement `backend/app/repositories/event.py` as **module-level functions**:
+- [X] T038 [P] [US1] Implement `backend/app/repositories/event.py` as **module-level functions**:
   - `add(s: Session, event: Event) -> None` adds and flushes.
   - `entry_code_exists(s: Session, code: str) -> bool` runs a `select` on `events.entry_code`.
   - `set_organizer(s: Session, event: Event, participant_id: str) -> None` sets the field and flushes.
   - No commits and no business decisions.
-- [ ] T039 [P] [US1] Implement `backend/app/repositories/participant.py` as a module-level function: `add(s: Session, participant: Participant) -> None` adds and flushes.
-- [ ] T040 [P] [US1] Implement `backend/app/schemas/error.py`, all on `ApiModel`:
+- [X] T039 [P] [US1] Implement `backend/app/repositories/participant.py` as a module-level function: `add(s: Session, participant: Participant) -> None` adds and flushes.
+- [X] T040 [P] [US1] Implement `backend/app/schemas/error.py`, all on `ApiModel`:
   - `ValidationFieldError`: `field: str`, `reason: str`.
   - `ErrorBody`: `code: str`, `message: str`, `details: dict[str, object] | None`, `request_id: str`.
   - `ErrorResponse`: `error: ErrorBody` (R17).
-- [ ] T041 [US1] Implement `backend/app/schemas/event.py`, all on `ApiModel`:
+- [X] T041 [US1] Implement `backend/app/schemas/event.py`, all on `ApiModel`:
   - `EventCreate`: `name: str`, `organizer_display_name: str`. T051 adds the constraints.
   - `EventMe`: `participant_id: str`, `display_name: str`, `is_organizer: bool`.
   - `EventStats`: `participant_count: int`, `available_clothing_count: int`, `confirmed_exchange_count: int`.
   - `EventRead`: `id`, `name`, `status: EventStatus`, `entry_code`, `entry_url`, `organizer_participant_id`, `created_at: UtcDatetime`, `closed_at: UtcDatetime | None`, `me: EventMe`, `stats: EventStats | None`.
   - `EventSession`: `event: EventRead`, `participant_token: str`.
-- [ ] T042 [US1] Implement `backend/app/services/event.py`:
+- [X] T042 [US1] Implement `backend/app/services/event.py`:
   - Import `from app.repositories import event as event_repo, participant as participant_repo`, and always call through the module (`event_repo.set_organizer(...)`) so T030's patches take effect.
   - Module-level `build_event_session(event: Event, organizer: Participant, token: str, settings: Settings) -> EventSession`. It uses keyword arguments only (`EventStats(participant_count=1, available_clothing_count=0, confirmed_exchange_count=0)`), `entry_url=f"{settings.app_base_url}/join?code={event.entry_code}"`, and `me=EventMe(participant_id=organizer.id, display_name=organizer.display_name, is_organizer=True)`.
   - `class EventService.__init__(self, db: Db, settings: Settings, *, entry_code_generator: Callable[[], str] = generate_entry_code, token_generator: Callable[[], str] = generate_participant_token, clock: Callable[[], datetime] = lambda: datetime.now(UTC))`.
@@ -289,7 +289,7 @@ description: "Task list for feature 001-create-event"
   - After the block exits, call `logger.info("event_created", extra={"event_id": event.id})` and return `session`.
   - Raise only domain errors, and never swallow an exception.
   - Makes T029–T031 pass. Depends on T034–T041.
-- [ ] T043 [US1] Wire the endpoint:
+- [X] T043 [US1] Wire the endpoint:
   - In `backend/app/api/errors.py`, add `ERROR_RESPONSES: dict[int | str, dict[str, Any]]` for 400, 422, and 500, each `{"model": ErrorResponse, "description": ..., "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}}`.
   - In `backend/app/api/deps.py`, add `get_event_service(db: DbDep, settings: SettingsDep) -> EventService` and `EventServiceDep`.
   - Create `backend/app/api/routers/events.py`:

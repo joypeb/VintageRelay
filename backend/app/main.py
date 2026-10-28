@@ -5,6 +5,7 @@ from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.errors import register_error_handlers
+from app.api.routers import events
 from app.core.config import Settings, get_settings
 from app.core.db import Db
 from app.core.logging import request_context, setup_logging
@@ -46,6 +47,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    api_router.include_router(events.router)
     app.include_router(api_router)
     return app
 
