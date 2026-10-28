@@ -10,10 +10,16 @@ import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { ApiError } from '@/lib/api/api-error';
 import { useCreateEventMutation } from '@/lib/api/events';
 import { routes } from '@/lib/routes';
 import { saveEventSession } from '@/lib/session';
-import { toCreateEventRequest } from '@/lib/validation/event';
+import { mapServerFieldErrors, validateCreateEventForm } from '@/lib/validation/event';
+import type { CreateEventField, CreateEventFieldErrors } from '@/lib/validation/event';
+
+function errorStatus(message: string | undefined) {
+  return message === undefined ? undefined : ({ type: 'error', message } as const);
+}
 
 export function CreateEventScreen() {
   const router = useRouter();
@@ -21,10 +27,34 @@ export function CreateEventScreen() {
   const formRef = useRef<HTMLFormElement>(null);
   const [name, setName] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<CreateEventFieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function focusField(field: CreateEventField) {
+    const input = formRef.current?.elements.namedItem(field);
+    if (input instanceof HTMLInputElement) input.focus();
+  }
+
+  function focusFirstInvalid(errors: CreateEventFieldErrors) {
+    if (errors.name !== undefined) focusField('name');
+    else if (errors.organizerDisplayName !== undefined) focusField('organizerDisplayName');
+  }
+
+  function clearFieldError(field: CreateEventField) {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+  }
 
   function submit() {
     if (mutation.isPending) return;
-    mutation.mutate(toCreateEventRequest({ name, organizerDisplayName: displayName }), {
+    setFormError(null);
+    const result = validateCreateEventForm({ name, organizerDisplayName: displayName });
+    if (!result.ok) {
+      setFieldErrors(result.errors);
+      focusFirstInvalid(result.errors);
+      return;
+    }
+    setFieldErrors({});
+    mutation.mutate(result.value, {
       onSuccess: ({ event, participantToken }) => {
         saveEventSession(event.id, {
           participantToken,
@@ -37,6 +67,14 @@ export function CreateEventScreen() {
         });
         router.replace(routes.eventCreated(event.id));
       },
+      onError: (error) => {
+        if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') {
+          const mapped = mapServerFieldErrors(error.details);
+          setFieldErrors(mapped.fieldErrors);
+          setFormError(mapped.formError);
+          focusFirstInvalid(mapped.fieldErrors);
+        }
+      },
     });
   }
 
@@ -48,12 +86,7 @@ export function CreateEventScreen() {
   function handleNameKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key !== 'Enter' || e.nativeEvent.isComposing) return;
     e.preventDefault();
-    focusDisplayName();
-  }
-
-  function focusDisplayName() {
-    const field = formRef.current?.elements.namedItem('organizerDisplayName');
-    if (field instanceof HTMLInputElement) field.focus();
+    focusField('organizerDisplayName');
   }
 
   return (
@@ -65,7 +98,12 @@ export function CreateEventScreen() {
             label="Event name"
             htmlName="name"
             value={name}
-            onChange={setName}
+            onChange={(value) => {
+              setName(value);
+              clearFieldError('name');
+            }}
+            status={errorStatus(fieldErrors.name)}
+            statusVariant="detached"
             onKeyDown={handleNameKeyDown}
             autoComplete="off"
             size="lg"
@@ -75,7 +113,12 @@ export function CreateEventScreen() {
             label="My display name"
             htmlName="organizerDisplayName"
             value={displayName}
-            onChange={setDisplayName}
+            onChange={(value) => {
+              setDisplayName(value);
+              clearFieldError('organizerDisplayName');
+            }}
+            status={errorStatus(fieldErrors.organizerDisplayName)}
+            statusVariant="detached"
             autoComplete="nickname"
             size="lg"
             width="100%"
@@ -89,6 +132,11 @@ export function CreateEventScreen() {
             The event starts immediately. There is no separate start button.
           </Text>
         </VStack>
+        {formError !== null && (
+          <Text type="body" color="accent" as="p">
+            <span role="alert">{formError}</span>
+          </Text>
+        )}
         <Button
           label="Create event"
           type="submit"

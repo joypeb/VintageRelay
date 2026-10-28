@@ -183,7 +183,7 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Tests for User Story 3 (REQUIRED - write first) ⚠️
 
-- [ ] T030 [P] [US3] Add a "validateCreateEventForm" block to `frontend/src/lib/validation/event.test.ts`. The function returns `{ ok: true, value: CreateEventRequest } | { ok: false, errors: Partial<Record<'name' | 'organizerDisplayName', string>> }`. Cases — agent: `test-author`:
+- [X] T030 [P] [US3] Add a "validateCreateEventForm" block to `frontend/src/lib/validation/event.test.ts`. The function returns `{ ok: true, value: CreateEventRequest } | { ok: false, errors: Partial<Record<'name' | 'organizerDisplayName', string>> }`. Cases — agent: `test-author`:
   - Empty: `''` and `'   '` give "Please enter an event name." / "Please enter your display name.".
   - Event name length: 60 code points are accepted and 61 give "Use at most 60 characters.".
   - Korean: 60 Korean syllables are accepted and 61 are rejected.
@@ -193,28 +193,28 @@ description: "Task list for feature 002-create-event-frontend"
   - Precedence: per field the order is `required` → `too_long` → `invalid_characters`, with one message per field.
   - Both invalid: both errors are returned.
   - Exports: `EVENT_NAME_MAX === 60` and `DISPLAY_NAME_MAX === 30`.
-- [ ] T031 [P] [US3] Add a "mapServerFieldErrors" block to `frontend/src/lib/validation/event.test.ts`. The function returns `{ fieldErrors, formError: string | null }`. Cases — agent: `test-author`:
+- [X] T031 [P] [US3] Add a "mapServerFieldErrors" block to `frontend/src/lib/validation/event.test.ts`. The function returns `{ fieldErrors, formError: string | null }`. Cases — agent: `test-author`:
   - `{ fields: [{ field: 'name', reason: 'too_long' }] }` gives `fieldErrors.name === 'Use at most 60 characters.'` and `formError === null`.
   - `organizerDisplayName` with `required` gives "Please enter your display name.".
   - `invalid_type` gives "Please enter text.".
   - `invalid_characters` gives "Remove line breaks and tabs.".
   - Two fields are both mapped.
   - The form-level fallback: `{ field: 'theme', reason: 'unknown_field' }`, an unknown reason on `name`, `details: null`, `details: 'x'`, and `{ fields: 'x' }` each give `formError === 'Something went wrong. Please try again.'`.
-- [ ] T032 [US3] Add a "US3 validation" block to `frontend/src/components/event/CreateEventScreen.test.tsx` — agent: `test-author`:
+- [X] T032 [US3] Add a "US3 validation" block to `frontend/src/components/event/CreateEventScreen.test.tsx` — agent: `test-author`:
   - Empty submit: submitting both fields empty doesn't call `createEvent`. Both messages appear, and both inputs have `aria-invalid="true"` with `aria-describedby` pointing at their message. Focus is on "Event name".
   - Server 422: if `createEvent` rejects with `new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', { fields: [{ field: 'organizerDisplayName', reason: 'too_long' }] })`, the screen shows "Use at most 30 characters." under "My display name", and both typed values remain.
   - Editing: typing in "My display name" clears only that field's error.
 
 ### Implementation for User Story 3
 
-- [ ] T033 [US3] Extend `frontend/src/lib/validation/event.ts` with:
+- [X] T033 [US3] Extend `frontend/src/lib/validation/event.ts` with:
   - the limit constants;
   - the Zod-based `validateCreateEventForm` (trim, then `[...value].length` for code points, then `/\p{Cc}/u`);
   - the `FIELD_ERROR_MESSAGES` table (research R6, data-model.md §4);
   - `mapServerFieldErrors(details: unknown)`, which validates `details.fields[]` with Zod (no `as`).
 
   Makes T030–T031 pass — agent: `implementer-fe`
-- [ ] T034 [US3] Integrate validation into `frontend/src/components/event/CreateEventScreen.tsx`:
+- [X] T034 [US3] Integrate validation into `frontend/src/components/event/CreateEventScreen.tsx`:
   - Submit: `validateCreateEventForm` runs before `mutate`.
   - Errors: field errors go through `TextInput` `status={{ type: 'error', message }}`. A `VALIDATION_ERROR` rejection goes through `mapServerFieldErrors`.
   - Focus moves to the first invalid field, via DOM id if `TextInput` has no ref (R7).

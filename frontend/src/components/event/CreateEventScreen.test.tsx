@@ -1,8 +1,9 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { CreateEventScreen } from '@/components/event/CreateEventScreen';
+import { ApiError } from '@/lib/api/api-error';
 import { renderWithClient } from '@/test/render';
 import type { CreateEventRequest, EventSession } from '@/types/event';
 
@@ -21,7 +22,8 @@ vi.mock('@/lib/api/events', async () => {
   const { useMutation } = await import('@tanstack/react-query');
   return {
     createEvent: mocks.createEvent,
-    useCreateEventMutation: () => useMutation({ mutationFn: (body: CreateEventRequest) => mocks.createEvent(body), retry: 0 }),
+    useCreateEventMutation: () =>
+      useMutation({ mutationFn: (body: CreateEventRequest) => mocks.createEvent(body), retry: 0 }),
   };
 });
 
@@ -123,5 +125,68 @@ describe('US1 create', () => {
     await user.keyboard('{Enter}');
     expect(screen.getByRole('textbox', { name: 'My display name' })).toHaveFocus();
     expect(mocks.createEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('US3 validation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mocks.createEvent.mockReset();
+    mocks.createEvent.mockReturnValue(new Promise<EventSession>(() => {}));
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('shows associated required errors and focuses the event name without submitting', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<CreateEventScreen />);
+    const name = screen.getByRole('textbox', { name: 'Event name' });
+    const displayName = screen.getByRole('textbox', { name: 'My display name' });
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(await screen.findByText('Please enter an event name.')).toBeVisible();
+    expect(screen.getByText('Please enter your display name.')).toBeVisible();
+    expect(name).toHaveAttribute('aria-invalid', 'true');
+    expect(displayName).toHaveAttribute('aria-invalid', 'true');
+    expect(name).toHaveAccessibleDescription('Please enter an event name.');
+    expect(displayName).toHaveAccessibleDescription('Please enter your display name.');
+    expect(name).toHaveFocus();
+    expect(mocks.createEvent).not.toHaveBeenCalled();
+  });
+
+  it('associates a server validation error with the display name and preserves both values', async () => {
+    const user = userEvent.setup();
+    mocks.createEvent.mockRejectedValue(
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', {
+        fields: [{ field: 'organizerDisplayName', reason: 'too_long' }],
+      }),
+    );
+    renderWithClient(<CreateEventScreen />);
+    const name = screen.getByRole('textbox', { name: 'Event name' });
+    const displayName = screen.getByRole('textbox', { name: 'My display name' });
+    await user.type(name, 'Market');
+    await user.type(displayName, 'Mina');
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(await screen.findByText('Use at most 30 characters.')).toBeVisible();
+    expect(displayName).toHaveAccessibleDescription('Use at most 30 characters.');
+    expect(name).toHaveValue('Market');
+    expect(displayName).toHaveValue('Mina');
+  });
+
+  it('clears only the edited field error', async () => {
+    const user = userEvent.setup();
+    const { container } = renderWithClient(<CreateEventScreen />);
+    await user.click(screen.getByRole('button', { name: 'Create event' }));
+    expect(await within(container).findByText('Please enter your display name.')).toBeVisible();
+    expect(within(container).getByText('Please enter an event name.')).toBeVisible();
+    const displayName = screen.getByRole('textbox', { name: 'My display name' });
+    const name = screen.getByRole('textbox', { name: 'Event name' });
+    await user.type(displayName, 'M');
+    expect(displayName).not.toHaveAttribute('aria-invalid', 'true');
+    expect(displayName).not.toHaveAccessibleDescription('Please enter your display name.');
+    expect(name).toHaveAttribute('aria-invalid', 'true');
+    expect(name).toHaveAccessibleDescription('Please enter an event name.');
   });
 });
