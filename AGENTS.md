@@ -29,6 +29,20 @@ Before writing code, read and follow only the rules for the area being changed.
   - Frontend: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
 - CI (`.github/workflows/ci.yml`) runs the same checks on every PR and push to `main`.
 
+## Agent Delegation (Spec Kit)
+
+- The agent running Spec Kit is the orchestrator. It writes Spec Kit artifacts itself but must not edit application code under `backend/` or `frontend/`.
+- Before delegating, call Paseo `list_profiles` and choose a profile by its notes. Do not hardcode models; pass the profile's provider, model, modeId, thinkingOptionId, and featureValues to `create_agent`.
+- Stage mapping:
+  - **plan:** delegate codebase research to `explorer` first.
+  - **analyze:** delegate cross-validation to `advisor`.
+  - **implement:** for each task in `tasks.md`, run `test-author` (Red) → `implementer-be` or `implementer-fe` (Green → Refactor) → `commit-reviewer` → commit. Resolve Critical/High findings, re-run checks, and obtain re-review before committing, per the Code Review section. Use `scaffolder` only for boilerplate tasks.
+  - **Before PR work:** `pr-reviewer`.
+- Give each delegate the task ID and text, relevant spec/plan paths, allowed paths, `docs/rules/dev/common/api-contract.md` plus the applicable exchange and testing rules, and the checks to run. Re-run the checks yourself before marking a task done in `tasks.md`.
+- Run delegates in the same Paseo workspace as the feature branch. Run only one implementer per workspace at a time; use separate workspaces for parallel backend and frontend work, and run `commit-reviewer` separately in each workspace where changes were made.
+- Delegated agents must not delegate further.
+- If a required profile is unavailable, stop and report instead of doing the work inline.
+
 ## Code Review Before Commits and PRs
 
 - Before an agent commits or creates/updates a PR, it **must** delegate an OCR delegate review to a Paseo subagent and wait for the results. Use Paseo's `commit-reviewer` profile before committing and the `pr-reviewer` profile before PR work. Run separate reviews for each stage.
