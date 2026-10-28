@@ -9,5 +9,9 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    // Modules that import `env` need a base URL while running under Vitest.
+    env: {
+      NEXT_PUBLIC_API_BASE_URL: 'http://api.test',
+    },
   },
 });
