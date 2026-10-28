@@ -403,27 +403,27 @@ description: "Task list for feature 001-create-event"
 
 **Purpose**: Docker Compose runtime (R15), documentation sync (R14), performance verification (SC-006), and final validation.
 
-- [ ] T053 [P] Create `backend/Dockerfile` (R15):
+- [X] T053 [P] Create `backend/Dockerfile` (R15):
   - Base `ghcr.io/astral-sh/uv:python3.14-bookworm-slim`, with `WORKDIR /app`.
   - Copy `pyproject.toml`, `uv.lock`, and `.python-version` first, then `uv sync --locked --no-dev --no-install-project` as a dependency layer.
   - Copy `app/`, `alembic/`, and `alembic.ini`.
   - Set `ENV PATH="/app/.venv/bin:$PATH" DATABASE_URL=sqlite:////data/app.db` and `EXPOSE 8000`.
   - `CMD ["sh", "-c", "alembic upgrade head && exec fastapi run app/main.py --host 0.0.0.0 --port 8000"]` (one worker).
   - Boilerplate — agent: `scaffolder`.
-- [ ] T054 [P] Create `backend/.dockerignore`, excluding `.venv/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `data/`, `tests/`, `*.db*`, and `.env*` — agent: `scaffolder`.
-- [ ] T055 [P] Create root `compose.yaml` with a single service `backend` (no DB service and no replicas, R15) — agent: `scaffolder`:
+- [X] T054 [P] Create `backend/.dockerignore`, excluding `.venv/`, `__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `data/`, `tests/`, `*.db*`, and `.env*` — agent: `scaffolder`.
+- [X] T055 [P] Create root `compose.yaml` with a single service `backend` (no DB service and no replicas, R15) — agent: `scaffolder`:
   - `build: ./backend` and `ports: ["8000:8000"]`.
   - `environment`: `DATABASE_URL: sqlite:////data/app.db`, `APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}`, `LOG_FORMAT: ${LOG_FORMAT:-json}`, `LOG_LEVEL: ${LOG_LEVEL:-INFO}`.
   - `volumes: ["backend-data:/data"]` and `restart: unless-stopped`.
   - `healthcheck` with `test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]` and `interval: 10s`.
   - Top-level `volumes: {backend-data: {}}`.
-- [ ] T056 [P] Update `docs/plans/api/01-create-event.md` (R14) — orchestrator (docs):
+- [X] T056 [P] Update `docs/plans/api/01-create-event.md` (R14) — orchestrator (docs):
   - 400 row: the body is unparseable, missing, or not a JSON object.
   - 422 reasons: `required` (including `null`), `too_long`, `invalid_type`, `invalid_characters`, and `unknown_field`. Unknown fields are rejected.
   - 500 row: the transaction failed, or the entry-code retries (10) were exhausted.
   - Note CORS per api-contract §9.
-- [ ] T057 [P] Add `docker compose up --build -d`, `docker compose logs backend`, and `docker compose down` to Common Commands in `docs/rules/dev/backend/README.md`. Note that `down -v` deletes the SQLite volume (R15) — orchestrator (docs).
-- [ ] T058 [P] Add `postman/collections/Vintage Relay API/08 Auth errors/Create event with unknown field.request.yaml`, modeled on `Create event with empty name.request.yaml`, with `order: 5000` and body `{"name": "Swap", "organizerDisplayName": "Mina", "theme": "denim"}`. Its tests assert status 422, `error.code == "VALIDATION_ERROR"`, and that `details.fields` contains `{field: "theme", reason: "unknown_field"}` — orchestrator (API artifact).
+- [X] T057 [P] Add `docker compose up --build -d`, `docker compose logs backend`, and `docker compose down` to Common Commands in `docs/rules/dev/backend/README.md`. Note that `down -v` deletes the SQLite volume (R15) — orchestrator (docs).
+- [X] T058 [P] Add `postman/collections/Vintage Relay API/08 Auth errors/Create event with unknown field.request.yaml`, modeled on `Create event with empty name.request.yaml`, with `order: 5000` and body `{"name": "Swap", "organizerDisplayName": "Mina", "theme": "denim"}`. Its tests assert status 422, `error.code == "VALIDATION_ERROR"`, and that `details.fields` contains `{field: "theme", reason: "unknown_field"}` — orchestrator (API artifact).
 - [ ] T059 Run the full suites on Python 3.14 and record the actual results:
   - Backend: `cd backend && uv run python --version && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest`
   - Frontend (unchanged; regression check): `cd frontend && pnpm lint && pnpm typecheck && pnpm test`

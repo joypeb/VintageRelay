@@ -1,0 +1,26 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events'
+order: 5000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Swap",
+      "organizerDisplayName": "Mina",
+      "theme": "denim"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 422', () => pm.response.to.have.status(422));
+      pm.test('Error code is VALIDATION_ERROR', () => pm.expect(pm.response.json().error.code).to.eql('VALIDATION_ERROR'));
+      pm.test('Unknown field is reported verbatim', () => {
+        pm.expect(pm.response.json().error.details.fields).to.deep.include({ field: 'theme', reason: 'unknown_field' });
+      });
