@@ -262,7 +262,7 @@ description: "Task list for feature 002-create-event-frontend"
 - [X] T041 Run the full suites and record the actual results (orchestrator):
   - `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`
   - `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
-- [ ] T042 Run quickstart §3 rows 1–14 at 360 px and 430 px against the local backend, and capture screenshots of S0, H1 (with an error), and H2 for the PR (`docs/rules/dev/common/testing.md` §4) — orchestrator, using the browser
+- [X] T042 Run quickstart §3 rows 1–14 at 360 px and 430 px against the local backend, and capture screenshots of S0, H1 (with an error), and H2 for the PR (`docs/rules/dev/common/testing.md` §4) — orchestrator, using the browser
 - [ ] T043 Run quickstart §4 on real phones: the layout with the keyboard open, ≥ 9/10 QR scans on the first try, and the LAN copy fallback. This needs the user's devices, so record the result or mark it pending in the PR — user + orchestrator
 
 ---
