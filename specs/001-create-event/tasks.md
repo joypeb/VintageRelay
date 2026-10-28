@@ -33,11 +33,11 @@ description: "Task list for feature 001-create-event"
 
 **Purpose**: Set up the interpreter, dependencies, and package skeleton. This is pure boilerplate with no behavior, so there are no tests (`scaffolder` → `commit-reviewer` → commit).
 
-- [ ] T001 Pin the interpreter in `backend/` with `uv python pin 3.14`, which creates `backend/.python-version`. Then run `uv sync` so `.venv` is recreated on 3.14; it currently runs 3.15.0. Verify `uv run python --version` prints `3.14.x` (research R1) — agent: `scaffolder`
-- [ ] T002 Add runtime dependencies with `uv add "sqlalchemy>=2.1" "alembic>=1.20" "pydantic-settings>=2.16"` in `backend/`, updating `backend/pyproject.toml` and `backend/uv.lock` (R1) — agent: `scaffolder`
-- [ ] T003 [P] Create empty package files `backend/app/core/__init__.py`, `backend/app/api/__init__.py`, `backend/app/api/routers/__init__.py`, `backend/app/schemas/__init__.py`, `backend/app/services/__init__.py`, `backend/app/repositories/__init__.py`, and `backend/app/models/__init__.py` — agent: `scaffolder`
-- [ ] T004 [P] Add `data/` to `backend/.gitignore`, keeping the existing `*.db*` and `.env*` / `!.env.example` rules — agent: `scaffolder`
-- [ ] T005 [P] Create `backend/.env.example`. Each key gets a one-line `#` description and a safe value: `DATABASE_URL=sqlite:///./data/app.db`, `APP_BASE_URL=http://localhost:3000` (the frontend public origin, also the only CORS origin), `LOG_LEVEL=INFO`, and `LOG_FORMAT=text` (`text`|`json`) (R1, `docs/rules/dev/common/tech-stack.md`) — agent: `scaffolder`
+- [X] T001 Pin the interpreter in `backend/` with `uv python pin 3.14`, which creates `backend/.python-version`. Then run `uv sync` so `.venv` is recreated on 3.14; it currently runs 3.15.0. Verify `uv run python --version` prints `3.14.x` (research R1) — agent: `scaffolder`
+- [X] T002 Add runtime dependencies with `uv add "sqlalchemy>=2.1" "alembic>=1.20" "pydantic-settings>=2.16"` in `backend/`, updating `backend/pyproject.toml` and `backend/uv.lock` (R1) — agent: `scaffolder`
+- [X] T003 [P] Create empty package files `backend/app/core/__init__.py`, `backend/app/api/__init__.py`, `backend/app/api/routers/__init__.py`, `backend/app/schemas/__init__.py`, `backend/app/services/__init__.py`, `backend/app/repositories/__init__.py`, and `backend/app/models/__init__.py` — agent: `scaffolder`
+- [X] T004 [P] Add `data/` to `backend/.gitignore`, keeping the existing `*.db*` and `.env*` / `!.env.example` rules — agent: `scaffolder`
+- [X] T005 [P] Create `backend/.env.example`. Each key gets a one-line `#` description and a safe value: `DATABASE_URL=sqlite:///./data/app.db`, `APP_BASE_URL=http://localhost:3000` (the frontend public origin, also the only CORS origin), `LOG_LEVEL=INFO`, and `LOG_FORMAT=text` (`text`|`json`) (R1, `docs/rules/dev/common/tech-stack.md`) — agent: `scaffolder`
 
 ---
 
