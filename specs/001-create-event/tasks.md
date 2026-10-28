@@ -172,7 +172,7 @@ description: "Task list for feature 001-create-event"
   - Keep `GET /api/v1/health` (`async def`, returns `{"status": "ok"}`), create `api_router = APIRouter(prefix="/api/v1")` for feature routers, and set `app = create_app()` at module level.
   - Makes T019–T021 pass. Depends on T023–T025.
   - Agent: `implementer-be`.
-- [ ] T027 Scaffold Alembic: `backend/alembic.ini`, `backend/alembic/script.py.mako`, and `backend/alembic/env.py`.
+- [X] T027 Scaffold Alembic: `backend/alembic.ini`, `backend/alembic/script.py.mako`, and `backend/alembic/env.py`.
   - In `env.py`, use `render_as_batch=True` and `target_metadata = Base.metadata`, and `import app.models` so the models register.
   - Take the URL from `config.get_main_option("sqlalchemy.url")` when set, otherwise from `get_settings().database_url`.
   - Leave `versions/` empty.
