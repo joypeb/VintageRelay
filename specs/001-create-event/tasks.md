@@ -311,18 +311,18 @@ description: "Task list for feature 001-create-event"
 
 ### Tests (write first, confirm Red) ⚠️ — agent: `test-author`
 
-- [ ] T044 [P] [US2] Write `backend/tests/api/test_create_event_sharing.py`. Build `create_app(Settings(database_url=settings.database_url, app_base_url="https://vintage-relay.test/"), db)` (trailing slash) and assert:
+- [X] T044 [P] [US2] Write `backend/tests/api/test_create_event_sharing.py`. Build `create_app(Settings(database_url=settings.database_url, app_base_url="https://vintage-relay.test/"), db)` (trailing slash) and assert:
   - After a create, `entryUrl == f"https://vintage-relay.test/join?code={entryCode}"` (R10).
   - A preflight from `Origin: https://vintage-relay.test` gets `access-control-allow-origin: https://vintage-relay.test` (R16).
-- [ ] T045 [P] [US2] Write `backend/tests/services/test_entry_code_retry.py`:
+- [X] T045 [P] [US2] Write `backend/tests/services/test_entry_code_retry.py`:
   - (a) Create one event with `entry_code_generator=lambda: "AAAAAA"`. A second `EventService` whose generator yields `"AAAAAA"` and then `"BBBBBB"` stores `"BBBBBB"` (US2 AS3).
   - (b) A generator that always returns `"AAAAAA"` raises `InternalError`. The generator is called exactly 10 times, and the event and participant counts are unchanged.
   - (c) Through `client_no_raise`, with `app.dependency_overrides[get_event_service]` returning that always-colliding service, the response is 500 `INTERNAL_ERROR` and the row counts are unchanged.
 
 ### Implementation (Green → Refactor) — agent: `implementer-be`
 
-- [ ] T046 [US2] In `backend/app/core/config.py`, add `@field_validator("app_base_url")` that returns `value.rstrip("/")` (R10). Makes T044 pass.
-- [ ] T047 [US2] In `backend/app/services/event.py`, add `ENTRY_CODE_MAX_ATTEMPTS = 10`. Inside the same write block, call `entry_code_generator()` until `event_repo.entry_code_exists(s, code)` is false; when the attempts are used up, raise `InternalError()` (R6, FR-008). Makes T045 pass.
+- [X] T046 [US2] In `backend/app/core/config.py`, add `@field_validator("app_base_url")` that returns `value.rstrip("/")` (R10). Makes T044 pass.
+- [X] T047 [US2] In `backend/app/services/event.py`, add `ENTRY_CODE_MAX_ATTEMPTS = 10`. Inside the same write block, call `entry_code_generator()` until `event_repo.entry_code_exists(s, code)` is false; when the attempts are used up, raise `InternalError()` (R6, FR-008). Makes T045 pass.
 
 **Checkpoint**: US1, US2, and US4 pass.
 

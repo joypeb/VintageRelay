@@ -8,6 +8,7 @@ from app.core.db import Db
 from app.core.security import generate_participant_token, hash_participant_token
 from app.domain.entry_code import generate_entry_code
 from app.domain.enums import EventStatus
+from app.domain.errors import InternalError
 from app.models.event import Event
 from app.models.participant import Participant
 from app.repositories import event as event_repo
@@ -15,6 +16,8 @@ from app.repositories import participant as participant_repo
 from app.schemas.event import EventCreate, EventMe, EventRead, EventSession, EventStats
 
 logger = logging.getLogger(__name__)
+
+ENTRY_CODE_MAX_ATTEMPTS = 10
 
 
 def build_event_session(
@@ -62,7 +65,12 @@ class EventService:
     def create(self, body: EventCreate) -> EventSession:
         # Event creation also registers and links its organizer atomically (AGENTS.md).
         with self.db.write() as s:
-            code = self.entry_code_generator()
+            for _ in range(ENTRY_CODE_MAX_ATTEMPTS):
+                code = self.entry_code_generator()
+                if not event_repo.entry_code_exists(s, code):
+                    break
+            else:
+                raise InternalError()
             event = Event(
                 id=str(uuid4()),
                 name=body.name,

@@ -1,6 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +12,11 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:3000"
     log_level: str = "INFO"
     log_format: Literal["text", "json"] = "text"
+
+    @field_validator("app_base_url")
+    @classmethod
+    def normalize_app_base_url(cls, value: str) -> str:
+        return value.rstrip("/")
 
 
 @lru_cache
