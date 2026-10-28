@@ -1,50 +1,43 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# Vintage Relay Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Exchange Integrity First
+Exchange rules (two-/three-person cycles, consent on the same proposal version, no duplicate
+garment confirmation, cancellation, closed-event rejection, permissions) are enforced by
+regular code, the server, and the database. AI never changes intents or gives consent.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Test-First (NON-NEGOTIABLE)
+Every backend behavior and every non-trivial frontend logic change follows Red → Green → Refactor:
+write a failing test, confirm it fails for the expected reason, write the minimum code to pass,
+then refactor with all tests green. Bug fixes start with a reproducing test. In `tasks.md`,
+test tasks precede the implementation tasks they cover.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Test Scope by Risk
+Required backend tests are listed in `docs/rules/dev/common/testing.md` and
+`docs/rules/dev/backend/testing.md`. Frontend unit tests target pure logic (state
+transformations, validation); screens are verified manually at 360–430px widths.
+No numeric coverage target.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Isolated, Deterministic Tests
+Tests run without external services: AI is replaced with fakes, and each backend test uses a
+fresh SQLite file in `tmp_path`. Failing tests are never deleted or skipped to pass a check;
+unimplemented cases use `xfail(reason=...)`.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Simplicity
+This is a hackathon prototype. Build the practical minimum that satisfies the rules; defer
+open decisions instead of treating them as settled.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Development Workflow
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Backend: `uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest`.
+- Frontend: `pnpm lint && pnpm typecheck && pnpm test`.
+- All checks pass before commits and PRs, followed by the review procedure in `AGENTS.md`.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution guides spec-kit planning. `AGENTS.md` and `docs/rules/dev/` remain the
+detailed source of rules; on conflict, the latest user decision and `AGENTS.md` win.
+Amendments update the version below. Versioning is semantic: MAJOR for removed or redefined principles, MINOR for new principles or material expansion, PATCH for wording clarifications. Every amendment keeps `AGENTS.md` and `docs/rules/dev/` consistent in the same change.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-10-28
