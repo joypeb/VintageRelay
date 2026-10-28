@@ -154,9 +154,11 @@ export function CreateEventScreen() {
           </Text>
         </VStack>
         {formError !== null && (
-          <Text type="body" color="accent" as="p">
+          <Text type="body" as="p">
             {/* Text doesn't forward role, so a minimal span carries the alert. */}
-            <span role="alert">{formError}</span>
+            <span role="alert" className="text-[var(--color-error)]">
+              {formError}
+            </span>
           </Text>
         )}
         <Button

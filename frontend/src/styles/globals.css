@@ -12,3 +12,17 @@
 /* Expose Astryx tokens as Tailwind utilities such as bg-surface and text-primary. */
 @import '@astryxdesign/core/tailwind-theme.css';
 @import 'tailwindcss/utilities.css' layer(utilities);
+
+/*
+ * Touch targets and input text (FR-014, styling.md §4): Astryx `lg` controls are 36px tall with
+ * 14px input text. Raise the `lg` control height token to 44px for every Button and TextInput in
+ * one place, and use 16px input text to prevent iOS auto-zoom. Layout-only; no palette changes.
+ */
+.astryx-button[data-size='lg'],
+.astryx-text-input[data-size='lg'] {
+  --size-element-lg: 2.75rem;
+}
+
+.astryx-text-input[data-size='lg'] input {
+  font-size: 1rem;
+}
