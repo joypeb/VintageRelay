@@ -58,18 +58,20 @@ export function EventCreatedScreen({ eventId }: { eventId: string }) {
       </VStack>
       {/* Astryx layout components don't forward role/aria-label, so a minimal semantic element
           carries the accessible image. */}
-      <figure role="img" aria-label={`QR code to join ${share.name}`} className="mx-auto">
-        {/* Fixed black-on-white: scanner reliability needs maximum contrast regardless of
-            theme (documented token-rule exception, research R10). */}
-        <QRCodeSVG
-          value={share.entryUrl}
-          size={224}
-          level="M"
-          marginSize={4}
-          fgColor="#000000"
-          bgColor="#FFFFFF"
-        />
-      </figure>
+      <VStack hAlign="center">
+        <figure role="img" aria-label={`QR code to join ${share.name}`}>
+          {/* Fixed black-on-white: scanner reliability needs maximum contrast regardless of
+              theme (documented token-rule exception, research R10). */}
+          <QRCodeSVG
+            value={share.entryUrl}
+            size={224}
+            level="M"
+            marginSize={4}
+            fgColor="#000000"
+            bgColor="#FFFFFF"
+          />
+        </figure>
+      </VStack>
       <VStack gap={1} hAlign="center">
         <Text type="label">Entry code</Text>
         <Text type="code" size="4xl" weight="bold">
@@ -83,13 +85,12 @@ export function EventCreatedScreen({ eventId }: { eventId: string }) {
           width="100%"
           onClick={() => void copyLink(share.entryUrl)}
         />
-        {copyState === 'copied' && (
-          <Text type="body" as="p">
-            <span role="status" aria-live="polite">
-              Link copied
-            </span>
-          </Text>
-        )}
+        <Text type="body" as="p">
+          {/* Always mounted so screen readers announce the text change; Text doesn't forward role. */}
+          <span role="status" aria-live="polite">
+            {copyState === 'copied' ? 'Link copied' : ''}
+          </span>
+        </Text>
         {copyState === 'manual' && (
           <VStack gap={1}>
             <TextInput label="Join link" value={share.entryUrl} isReadOnly size="lg" width="100%" />

@@ -11,10 +11,10 @@ import { logger } from '@/lib/logger';
 
 type RootErrorProps = {
   error: unknown;
-  reset: () => void;
+  retry: () => void;
 };
 
-export default function RootError({ error, reset }: RootErrorProps) {
+export default function RootError({ error, retry }: RootErrorProps) {
   useEffect(() => {
     logger.error('unexpected render error', error);
   }, [error]);
@@ -28,7 +28,7 @@ export default function RootError({ error, reset }: RootErrorProps) {
         </Text>
       </VStack>
       <VStack gap={3}>
-        <Button label="Retry" variant="primary" size="lg" width="100%" onClick={reset} />
+        <Button label="Retry" variant="primary" size="lg" width="100%" onClick={retry} />
         <Button label="Home" size="lg" width="100%" href="/" />
       </VStack>
     </VStack>

@@ -13,11 +13,11 @@ import { logger } from '@/lib/logger';
 
 type GlobalErrorProps = {
   error: unknown;
-  reset: () => void;
+  retry: () => void;
 };
 
 // global-error replaces the root layout, so it renders its own document.
-export default function GlobalError({ error, reset }: GlobalErrorProps) {
+export default function GlobalError({ error, retry }: GlobalErrorProps) {
   useEffect(() => {
     logger.error('unexpected root error', error);
   }, [error]);
@@ -33,7 +33,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                 The app could not be loaded. Retry to reload this screen.
               </Text>
             </VStack>
-            <Button label="Retry" variant="primary" size="lg" width="100%" onClick={reset} />
+            <Button label="Retry" variant="primary" size="lg" width="100%" onClick={retry} />
           </VStack>
         </Theme>
       </body>
