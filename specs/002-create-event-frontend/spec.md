@@ -96,6 +96,7 @@ At a busy event the connection may be weak. If creation fails for a non-field re
 - Small or large screens: all of S0/H1/H2 is usable at widths 360–430px without horizontal scrolling; on H1 the [Create event] button stays reachable while the on-screen keyboard is open.
 - Pressing Enter/Go on the phone keyboard in the last field submits the form; in the first field it moves to the next field.
 - The browser cannot keep data on the device (e.g., storage disabled or full in a private mode): the app detects this before sending, does not create the event, and asks the organizer to use a regular browser window, because organizer access could not be kept.
+- The event is created but the device fails to keep organizer access at that moment (e.g., storage filled up between the pre-send check and the save): the app does not move to H2, and shows near the button: "Your event was created, but this browser couldn't keep your organizer access. Free up browser storage or open a regular (non-private) window, then create the event again." The orphaned event is not recoverable until session recovery is decided.
 - The raw access credential and entry code are never written to logs or shown anywhere other than where intended (the entry code only on H2).
 
 ## Requirements *(mandatory)*

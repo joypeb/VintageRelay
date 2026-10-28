@@ -46,7 +46,7 @@ description: "Task list for feature 002-create-event-frontend"
 - [X] T008 Set up the query client and test helper (agent: `scaffolder`):
   - Add `QueryClientProvider` to `frontend/src/app/providers.tsx`. Create the client once per mount with `useState`, using defaults `queries: { staleTime: 5_000, retry: 1, refetchOnWindowFocus: true }` and `mutations: { retry: 0 }`. Keep the existing `Theme` and `LinkProvider`.
   - Create `frontend/src/test/render.tsx`. It exports `renderWithClient(ui)`, which renders inside a fresh `QueryClient` with `queries.retry: false` and `mutations.retry: false`, plus the Astryx `Theme`.
-- [X] T009 [P] Create the root error boundaries `frontend/src/app/error.tsx` (client: [Retry] → `reset`, [Home] → `/`, `logger.error`), `frontend/src/app/not-found.tsx`, and `frontend/src/app/global-error.tsx` (client, own `<html><body>`). Copy is English and uses Astryx components (`error-handling.md` §3) — agent: `scaffolder`
+- [X] T009 [P] Create the root error boundaries `frontend/src/app/error.tsx` (client: [Retry] → `retry`, the stable prop in Next 16.3+, [Home] → `/`, `logger.error`), `frontend/src/app/not-found.tsx`, and `frontend/src/app/global-error.tsx` (client, own `<html><body>`). Copy is English and uses Astryx components (`error-handling.md` §3) — agent: `scaffolder`
 
 ---
 
@@ -257,9 +257,9 @@ description: "Task list for feature 002-create-event-frontend"
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T039 Run `cd frontend && pnpm exec astryx doctor --built src` and fix any findings in the screens. Re-run the checks — agent: `implementer-fe`
-- [ ] T040 [P] Search `frontend/src` for `console.` outside `lib/logger.ts`, and for any logging of `participantToken`, `Authorization`, or `entryCode` (FR-016, SC-007). Report what turns up — agent: `explorer` (read-only); fixes go to `implementer-fe`
-- [ ] T041 Run the full suites and record the actual results (orchestrator):
+- [X] T039 Run `cd frontend && pnpm exec astryx doctor --built src` and fix any findings in the screens. Re-run the checks — agent: `implementer-fe`
+- [X] T040 [P] Search `frontend/src` for `console.` outside `lib/logger.ts`, and for any logging of `participantToken`, `Authorization`, or `entryCode` (FR-016, SC-007). Report what turns up — agent: `explorer` (read-only); fixes go to `implementer-fe`
+- [X] T041 Run the full suites and record the actual results (orchestrator):
   - `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`
   - `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
 - [ ] T042 Run quickstart §3 rows 1–14 at 360 px and 430 px against the local backend, and capture screenshots of S0, H1 (with an error), and H2 for the PR (`docs/rules/dev/common/testing.md` §4) — orchestrator, using the browser
