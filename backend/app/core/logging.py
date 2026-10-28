@@ -1,11 +1,17 @@
 import json
 import logging
 import sys
+import time
 import traceback
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from types import TracebackType
 from typing import override
+from uuid import uuid4
+
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from app.core.config import Settings
 
@@ -13,6 +19,42 @@ request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 SENSITIVE_KEYS = {"authorization", "cookie", "token", "session", "api_key", "entry_code", "image"}
 _RESERVED = set(vars(logging.makeLogRecord({}))) | {"message", "asctime"}
 _HANDLER_NAME = "vintage_relay_stdout"
+logger = logging.getLogger(__name__)
+
+
+async def request_context(request: Request, call_next: RequestResponseEndpoint) -> Response:
+    rid = request.headers.get("X-Request-ID") or uuid4().hex
+    token = request_id_var.set(rid)
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = rid
+        logger.info(
+            "request",
+            extra={
+                "method": request.method,
+                "path": request.url.path,
+                "status": response.status_code,
+                "ms": round((time.perf_counter() - start) * 1000),
+            },
+        )
+        return response
+    except Exception:
+        logger.exception("unhandled_error", extra={"path": request.url.path})
+        return JSONResponse(
+            {
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "A temporary error occurred.",
+                    "details": None,
+                    "requestId": rid,
+                }
+            },
+            status_code=500,
+            headers={"X-Request-ID": rid},
+        )
+    finally:
+        request_id_var.reset(token)
 
 
 def mask(data: dict[str, object]) -> dict[str, object]:
@@ -35,7 +77,10 @@ class JsonFormatter(logging.Formatter):
         while exception is not None and id(exception) not in seen:
             seen.add(id(exception))
             rendered.append(type(exception).__qualname__)
-            rendered.extend(traceback.format_tb(exception.__traceback__))
+            # Source lines can contain secrets even when exception messages are omitted.
+            rendered.extend(
+                frame.split("\n", 1)[0] for frame in traceback.format_tb(exception.__traceback__)
+            )
             exception = exception.__cause__ or (
                 None if exception.__suppress_context__ else exception.__context__
             )

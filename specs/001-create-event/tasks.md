@@ -118,20 +118,20 @@ description: "Task list for feature 001-create-event"
 
 ### Cycle F3 — request ID, error format, CORS, app factory
 
-- [ ] T019 [P] Write `backend/tests/api/test_error_format.py`. Build a fresh app with `create_app(settings, db)` (fixtures from T021) and add test-only routes with `app.add_api_route`.
+- [X] T019 [P] Write `backend/tests/api/test_error_format.py`. Build a fresh app with `create_app(settings, db)` (fixtures from T021) and add test-only routes with `app.add_api_route`.
   - A provided `X-Request-ID: t-1` is echoed in the response header. Without the header, a non-empty ID is generated.
   - `GET /api/v1/does-not-exist` returns 404 with the body `{"error": {"code": "NOT_FOUND", "message": <str>, "details": null, "requestId": <X-Request-ID header>}}`.
   - A route raising a test-local `AppError` subclass (`status_code = 409`, `code = "CONFLICT"`) returns 409 and that code.
   - A route raising `RuntimeError("secret-detail")`, called through `client_no_raise`, returns 500 with `code: "INTERNAL_ERROR"`, `message: "A temporary error occurred."`, and `details: null`. Its `requestId` equals the `X-Request-ID` header, and `"secret-detail"` appears neither in the body nor in any `caplog` record's formatted output; one `unhandled_error` record exists (R12).
   - `GET /api/v1/health` returns 200 `{"status": "ok"}`.
   - Agent: `test-author`.
-- [ ] T020 [P] Write `backend/tests/api/test_cors.py`, using `client` with `app_base_url="https://vintage-relay.test"`:
+- [X] T020 [P] Write `backend/tests/api/test_cors.py`, using `client` with `app_base_url="https://vintage-relay.test"`:
   - A preflight `OPTIONS /api/v1/events` with `Origin: https://vintage-relay.test`, `Access-Control-Request-Method: POST`, and `Access-Control-Request-Headers: authorization, content-type, x-request-id` returns 200, `access-control-allow-origin: https://vintage-relay.test`, and an `access-control-allow-headers` value that includes all three headers (case-insensitive).
   - `GET /api/v1/health` with that `Origin` returns `access-control-expose-headers` containing `X-Request-ID`.
   - A preflight from `Origin: https://evil.test` has no `access-control-allow-origin` header.
   - The 500 response from a test-only failing route (via `client_no_raise`) with the allowed `Origin` still carries `access-control-allow-origin` (R16, FR-016).
   - Agent: `test-author`.
-- [ ] T021 Rewrite `backend/tests/conftest.py`:
+- [X] T021 Rewrite `backend/tests/conftest.py`:
   - `settings` fixture: `Settings(database_url=f"sqlite:///{tmp_path / 'test.db'}", app_base_url="https://vintage-relay.test")`.
   - `db` fixture: `Db(settings.database_url)`, then `Base.metadata.create_all(db.write_engine)`; on teardown, `db.dispose()`.
   - `app` fixture: `create_app(settings, db)`.
@@ -140,31 +140,31 @@ description: "Task list for feature 001-create-event"
   - Helper `count_rows(db, table_name) -> int`, which runs inside `db.read()`.
   - The existing `backend/tests/api/test_health.py` keeps using `client`.
   - Agent: `test-author`.
-- [ ] T022 [P] Implement `backend/app/domain/errors.py` (stdlib only):
+- [X] T022 [P] Implement `backend/app/domain/errors.py` (stdlib only):
   - `AppError(Exception)`, with class attributes `status_code = 400`, `code = "BAD_REQUEST"`, and `message = "Invalid request."`, and an `__init__(message=None, *, details=None)` as in `docs/rules/dev/backend/error-handling.md`.
   - `InternalError(AppError)` with `status_code = 500`, `code = "INTERNAL_ERROR"`, and `message = "A temporary error occurred."`.
   - No other subclasses yet (Constitution V).
   - Agent: `implementer-be`.
-- [ ] T023 [P] In `backend/app/core/logging.py`, add `async def request_context(request, call_next)`, the request ID middleware function:
+- [X] T023 [P] In `backend/app/core/logging.py`, add `async def request_context(request, call_next)`, the request ID middleware function:
   - Use `rid = request.headers.get("X-Request-ID") or uuid4().hex` and set `request_id_var`.
   - On success, set the response header and log `request` with `method`, `path`, `status`, and `ms`.
   - On `except Exception`, call `logger.exception("unhandled_error", extra={"path": request.url.path})` and return `JSONResponse({"error": {"code": "INTERNAL_ERROR", "message": "A temporary error occurred.", "details": None, "requestId": rid}}, status_code=500, headers={"X-Request-ID": rid})`.
   - Reset the context variable in `finally` (R12).
   - Agent: `implementer-be`.
-- [ ] T024 Implement `backend/app/api/errors.py` with `register_error_handlers(app)`. Every body has the shape `{"error": {"code", "message", "details" (None when empty), "requestId": request_id_var.get()}}`.
+- [X] T024 Implement `backend/app/api/errors.py` with `register_error_handlers(app)`. Every body has the shape `{"error": {"code", "message", "details" (None when empty), "requestId": request_id_var.get()}}`.
   - `AppError` → `exc.status_code`, `exc.code`, and `exc.message`.
   - `RequestValidationError` → 422 `VALIDATION_ERROR` with message `"Please check your input."` and `details = {"fields": [{"field": str(loc[-1]), "reason": <error type>}]}`, never including `input`. T052 refines this.
   - `StarletteHTTPException` → 400 `BAD_REQUEST`, 401 `UNAUTHENTICATED`, 403 `FORBIDDEN`, 404 `NOT_FOUND` (any other status → `BAD_REQUEST`), with message `"Unable to process this request."`.
   - `Exception` → 500 `INTERNAL_ERROR`, as a last resort.
   - Depends on T016 and T022.
   - Agent: `implementer-be`.
-- [ ] T025 Implement `backend/app/api/deps.py`:
+- [X] T025 Implement `backend/app/api/deps.py`:
   - `get_settings_dep(request: Request) -> Settings` returns `request.app.state.settings`.
   - `get_db(request: Request) -> Db` returns `request.app.state.db`.
   - Aliases `SettingsDep` and `DbDep`.
   - No module-global state.
   - Agent: `implementer-be`.
-- [ ] T026 Refactor `backend/app/main.py` to `create_app(settings: Settings | None = None, db: Db | None = None) -> FastAPI`:
+- [X] T026 Refactor `backend/app/main.py` to `create_app(settings: Settings | None = None, db: Db | None = None) -> FastAPI`:
   - Resolve `settings = settings or get_settings()` and call `setup_logging(settings)`.
   - Create `FastAPI(title="Vintage Relay API", lifespan=...)`. When `db` is `None`, the lifespan creates `Db(settings.database_url)` on startup and disposes it on shutdown. Set `app.state.settings` (and `app.state.db` when injected).
   - Call `register_error_handlers(app)` and `app.middleware("http")(request_context)`.
