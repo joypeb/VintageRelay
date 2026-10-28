@@ -106,9 +106,9 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Tests for User Story 1 (REQUIRED - write first) ⚠️
 
-- [ ] T017 [P] [US1] Write `frontend/src/lib/api/events.test.ts` (mock `./client`). `createEvent({ name: 'N', organizerDisplayName: 'Mina' })` must call `apiFetch(null, '/events', { method: 'POST', body: JSON.stringify({ name: 'N', organizerDisplayName: 'Mina' }) }, { timeoutMs: 15000 })` and resolve to the `EventSession` — agent: `test-author`
-- [ ] T018 [P] [US1] Write `frontend/src/lib/validation/event.test.ts`, block "toCreateEventRequest". It must return `{ name: 'Mangwon Flea Market Swap Corner', organizerDisplayName: 'Mina' }` for `'  Mangwon Flea Market Swap Corner  '` / `'  Mina  '`, and strip a trailing `\n` and a leading full-width space `U+3000` — agent: `test-author`
-- [ ] T019 [US1] Write `frontend/src/components/event/CreateEventScreen.test.tsx`, block "US1 create". Mock `@/lib/api/events` `createEvent` and `next/navigation` `useRouter`; use `renderWithClient` and `userEvent`. It covers — agent: `test-author`:
+- [X] T017 [P] [US1] Write `frontend/src/lib/api/events.test.ts` (mock `./client`). `createEvent({ name: 'N', organizerDisplayName: 'Mina' })` must call `apiFetch(null, '/events', { method: 'POST', body: JSON.stringify({ name: 'N', organizerDisplayName: 'Mina' }) }, { timeoutMs: 15000 })` and resolve to the `EventSession` — agent: `test-author`
+- [X] T018 [P] [US1] Write `frontend/src/lib/validation/event.test.ts`, block "toCreateEventRequest". It must return `{ name: 'Mangwon Flea Market Swap Corner', organizerDisplayName: 'Mina' }` for `'  Mangwon Flea Market Swap Corner  '` / `'  Mina  '`, and strip a trailing `\n` and a leading full-width space `U+3000` — agent: `test-author`
+- [X] T019 [US1] Write `frontend/src/components/event/CreateEventScreen.test.tsx`, block "US1 create". Mock `@/lib/api/events` `createEvent` and `next/navigation` `useRouter`; use `renderWithClient` and `userEvent`. It covers — agent: `test-author`:
   - Rendering: the screen shows textboxes labeled "Event name" and "My display name", the notes "Creating an event also registers you as a participant." and "The event starts immediately. There is no separate start button.", and a "Create event" button.
   - Valid submit: typing `'  Mangwon Flea Market Swap Corner  '` / `'  Mina  '` and clicking the button calls `createEvent` once with trimmed values.
   - Double tap: with `createEvent` pending (an unresolved promise), a second click doesn't call it again, and the button has `aria-busy="true"`.
@@ -118,20 +118,20 @@ description: "Task list for feature 002-create-event-frontend"
 
 ### Implementation for User Story 1
 
-- [ ] T020 [P] [US1] Implement `createEvent(body: CreateEventRequest): Promise<EventSession>` and `useCreateEventMutation()` (`useMutation`, `retry: 0`) in `frontend/src/lib/api/events.ts`. Makes T017 pass — agent: `implementer-fe`
-- [ ] T021 [P] [US1] Implement `toCreateEventRequest(values)` in `frontend/src/lib/validation/event.ts`, using `String.prototype.trim()` on both fields and never mutating input. Makes T018 pass — agent: `implementer-fe`
-- [ ] T022 [US1] Implement `frontend/src/components/event/CreateEventScreen.tsx` (`'use client'`):
+- [X] T020 [P] [US1] Implement `createEvent(body: CreateEventRequest): Promise<EventSession>` and `useCreateEventMutation()` (`useMutation`, `retry: 0`) in `frontend/src/lib/api/events.ts`. Makes T017 pass — agent: `implementer-fe`
+- [X] T021 [P] [US1] Implement `toCreateEventRequest(values)` in `frontend/src/lib/validation/event.ts`, using `String.prototype.trim()` on both fields and never mutating input. Makes T018 pass — agent: `implementer-fe`
+- [X] T022 [US1] Implement `frontend/src/components/event/CreateEventScreen.tsx` (`'use client'`):
   - Layout: start from an Astryx template (`pnpm exec astryx build "mobile create event form"`). Use Astryx `TextInput` with `width="100%"` and text ≥ 16 px, and an Astryx `Button` with `type="submit"` and `isLoading` while pending.
   - Submit: `<form onSubmit>` → `useCreateEventMutation` → `saveEventSession(event.id, { participantToken, participantId: event.me.participantId, share })` → `router.replace(routes.eventCreated(event.id))`.
   - Keyboard: Enter in "Event name" focuses "My display name"; Enter in the last field submits.
 
   Makes T019 pass — agent: `implementer-fe`
-- [ ] T023 [US1] Create the H1 route `frontend/src/app/events/new/page.tsx`, a server component that only renders `<CreateEventScreen />` — agent: `implementer-fe`
-- [ ] T024 [P] [US1] UI-only, no automated test (manual check at 360/430 px):
+- [X] T023 [US1] Create the H1 route `frontend/src/app/events/new/page.tsx`, a server component that only renders `<CreateEventScreen />` — agent: `implementer-fe`
+- [X] T024 [P] [US1] UI-only, no automated test (manual check at 360/430 px):
   - Create `frontend/src/components/event/LandingScreen.tsx` per contracts/ui-screens.md "S0". It shows "Vintage Relay", "Event clothing exchange corner", and "Give one garment, receive one garment", with buttons "Create event" → `routes.createEvent()` and "Join with entry code" → `routes.join()`, and helper text "Scan the event QR with your phone camera to join".
   - Make `frontend/src/app/page.tsx` render it.
   - Agent: `implementer-fe`.
-- [ ] T025 [P] [US1] UI-only, no automated test:
+- [X] T025 [P] [US1] UI-only, no automated test:
   - Create `frontend/src/components/ui/ComingSoonScreen.tsx` (prop `title`; shows "This screen is coming soon." and a "Go to start" button → `/`).
   - Add the P1 placeholder `frontend/src/app/join/page.tsx` with the title "Join event".
   - Agent: `implementer-fe`.
