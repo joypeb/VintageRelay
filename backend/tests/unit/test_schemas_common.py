@@ -1,8 +1,9 @@
 from datetime import UTC, datetime
 
 import pytest
-from app.schemas.common import ApiModel, UtcDatetime
 from pydantic import ValidationError
+
+from app.schemas.common import ApiModel, UtcDatetime
 
 
 class ExampleModel(ApiModel):

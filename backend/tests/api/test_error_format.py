@@ -1,11 +1,11 @@
 import logging
 
 import pytest
-from app.domain.errors import AppError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.core.logging import TextFormatter
+from app.domain.errors import AppError
 
 
 class ConflictError(AppError):

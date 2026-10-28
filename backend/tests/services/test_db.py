@@ -3,10 +3,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from app.core.db import Db
-from app.models.base import UtcDateTime
 from sqlalchemy import Column, Integer, MetaData, String, Table, event, select, text
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
+
+from app.core.db import Db
+from app.models.base import UtcDateTime
 
 
 @pytest.fixture
