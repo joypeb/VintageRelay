@@ -424,17 +424,17 @@ description: "Task list for feature 001-create-event"
   - Note CORS per api-contract §9.
 - [X] T057 [P] Add `docker compose up --build -d`, `docker compose logs backend`, and `docker compose down` to Common Commands in `docs/rules/dev/backend/README.md`. Note that `down -v` deletes the SQLite volume (R15) — orchestrator (docs).
 - [X] T058 [P] Add `postman/collections/Vintage Relay API/08 Auth errors/Create event with unknown field.request.yaml`, modeled on `Create event with empty name.request.yaml`, with `order: 5000` and body `{"name": "Swap", "organizerDisplayName": "Mina", "theme": "denim"}`. Its tests assert status 422, `error.code == "VALIDATION_ERROR"`, and that `details.fields` contains `{field: "theme", reason: "unknown_field"}` — orchestrator (API artifact).
-- [ ] T059 Run the full suites on Python 3.14 and record the actual results:
+- [X] T059 Run the full suites on Python 3.14 and record the actual results:
   - Backend: `cd backend && uv run python --version && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest`
   - Frontend (unchanged; regression check): `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
-- [ ] T060 Run the Docker Compose validation from [quickstart.md](quickstart.md) §2:
+- [X] T060 Run the Docker Compose validation from [quickstart.md](quickstart.md) §2:
   - The stack becomes healthy, and the logs show the migration.
   - The happy-path and error-path curls give the expected results.
   - The CORS preflight curl gives the expected result.
   - The stored-data check shows a 64-character hash, and no raw token appears in the DB or `docker compose logs`.
   - Data persists across `down` and `up`.
   - Report this as local, live, manual evidence.
-- [ ] T061 Run the SC-006 timing check from [quickstart.md](quickstart.md) §4 against the Compose stack: 100 `POST /api/v1/events` requests from 5 concurrent clients. Report p50, p95, and the error count. The pass condition is p95 < 1 s with 0 errors; record the result in the PR.
+- [X] T061 Run the SC-006 timing check from [quickstart.md](quickstart.md) §4 against the Compose stack: 100 `POST /api/v1/events` requests from 5 concurrent clients. Report p50, p95, and the error count. The pass condition is p95 < 1 s with 0 errors; record the result in the PR.
 
 ---
 
