@@ -78,9 +78,11 @@ Returns an `EventSession`.
 
 | Status | Code | When |
 |---|---|---|
-| 400 | `BAD_REQUEST` | Body is not valid JSON |
-| 422 | `VALIDATION_ERROR` | Missing field, empty after trimming, or too long. `details.fields[].reason`: `required`, `too_long` |
-| 500 | `INTERNAL_ERROR` | Transaction failed; nothing is persisted |
+| 400 | `BAD_REQUEST` | Body is not valid JSON, is missing, or is not a JSON object. `details` is `null` |
+| 422 | `VALIDATION_ERROR` | Field validation failed. `details.fields[].reason`: `required` (missing, `null`, or empty after trimming), `too_long` (over 60/30 Unicode code points after trimming), `invalid_type` (not a string), `invalid_characters` (control character, Unicode category Cc, after trimming), `unknown_field` (field not defined for this request; `field` is the key as received). Unknown fields are rejected, not ignored |
+| 500 | `INTERNAL_ERROR` | Transaction failed, or 10 consecutive entry code collisions; nothing is persisted |
+
+Browser calls are allowed only from the `APP_BASE_URL` origin (CORS per [api-contract.md](../../rules/dev/common/api-contract.md) §9).
 
 ### Idempotency
 

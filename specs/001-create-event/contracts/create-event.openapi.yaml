@@ -181,4 +181,4 @@ components:
             required: [field, reason]
             properties:
               field: { type: string, description: 'name, organizerDisplayName, or an unknown key as received' }
-              reason: { type: string, enum: [required, too_long, invalid_type, invalid_characters, unknown_field] }
+              reason: { type: string, enum: [required, too_long, invalid_type, invalid_characters, unknown_field, invalid], description: 'invalid is a defensive fallback not expected for this endpoint' }

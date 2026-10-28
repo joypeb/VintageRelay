@@ -54,6 +54,15 @@ uv run mypy app
 uv run pytest
 ```
 
+Run the backend with Docker Compose from the repository root. SQLite lives on the named volume `backend-data`; there is no separate DB container, and migrations run on container start.
+
+```bash
+docker compose up --build -d             # Build and start the backend (http://localhost:8000)
+docker compose logs backend              # View logs
+docker compose down                      # Stop; keeps the volume (data)
+docker compose down -v                   # Stop and DELETE the SQLite volume
+```
+
 Pass `ruff check`, `ruff format --check`, `mypy`, and `pytest` before PRs or commits.
 
 ## Governing Principles
