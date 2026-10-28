@@ -49,16 +49,16 @@ description: "Task list for feature 001-create-event"
 
 ### Cycle F1 — domain helpers
 
-- [ ] T006 [P] Write `backend/tests/unit/test_entry_code.py`:
+- [X] T006 [P] Write `backend/tests/unit/test_entry_code.py`:
   - `ENTRY_CODE_ALPHABET == "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"` (32 characters) and `ENTRY_CODE_LENGTH == 6`.
   - Across 1,000 calls, every result of `generate_entry_code()` from `app.domain.entry_code` is exactly 6 characters, all of them in the alphabet, with none of `0`, `O`, `1`, `I`.
   - Agent: `test-author`.
-- [ ] T007 [P] Write `backend/tests/unit/test_security.py`:
+- [X] T007 [P] Write `backend/tests/unit/test_security.py`:
   - `generate_participant_token()` from `app.core.security` returns a string of length ≥ 43 matching `^[A-Za-z0-9_-]+$`, and two calls return different values.
   - `hash_participant_token(t) == hashlib.sha256(t.encode()).hexdigest()`; the result is 64 lowercase hex characters and differs from `t`.
   - Agent: `test-author`.
-- [ ] T008 [P] Implement `backend/app/domain/entry_code.py` (stdlib only): `ENTRY_CODE_ALPHABET`, `ENTRY_CODE_LENGTH = 6`, and `generate_entry_code()` using `secrets.choice` (R6). Makes T006 pass — agent: `implementer-be`
-- [ ] T009 [P] Implement `backend/app/core/security.py`: `generate_participant_token()` returns `secrets.token_urlsafe(32)`, and `hash_participant_token(token)` returns the SHA-256 hex digest (R7). Makes T007 pass — agent: `implementer-be`
+- [X] T008 [P] Implement `backend/app/domain/entry_code.py` (stdlib only): `ENTRY_CODE_ALPHABET`, `ENTRY_CODE_LENGTH = 6`, and `generate_entry_code()` using `secrets.choice` (R6). Makes T006 pass — agent: `implementer-be`
+- [X] T009 [P] Implement `backend/app/core/security.py`: `generate_participant_token()` returns `secrets.token_urlsafe(32)`, and `hash_participant_token(token)` returns the SHA-256 hex digest (R7). Makes T007 pass — agent: `implementer-be`
 
 ### Cycle F2 — settings, schema base, logging formatters, database
 
