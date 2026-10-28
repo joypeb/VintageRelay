@@ -1,0 +1,19 @@
+$kind: http-request
+method: PATCH
+url: '{{baseUrl}}/api/v1/clothing/{{clothingId}}'
+order: 6000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "description": "Cropped green denim jacket, size M. Small stain on the left cuff."
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('contentVersion increments', () => pm.expect(pm.response.json().contentVersion).to.eql(2));

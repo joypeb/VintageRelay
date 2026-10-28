@@ -1,0 +1,16 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/entry-codes/{{entryCode}}'
+order: 1000
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('Returns public event preview', () => {
+        const b = pm.response.json();
+        pm.expect(b.eventId).to.eql(pm.collectionVariables.get('eventId'));
+        pm.expect(b.status).to.eql('active');
+      });

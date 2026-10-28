@@ -1,0 +1,21 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/proposals/{{proposalId}}/cancel'
+order: 9000
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('proposalId')) {
+        console.log('Skipped: missing proposalId');
+        pm.execution.skipRequest();
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test('Exchange cancelled', () => {
+        pm.expect(b.status).to.eql('cancelled');
+        pm.expect(b.endReason).to.eql('participant_cancelled');
+      });

@@ -1,0 +1,17 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/proposals/{{proposalId}}'
+order: 2000
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('proposalId')) {
+        console.log('Skipped: missing proposalId');
+        pm.execution.skipRequest();
+      }
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('Caller is listed first', () => pm.expect(pm.response.json().participants[0].isMe).to.eql(true));

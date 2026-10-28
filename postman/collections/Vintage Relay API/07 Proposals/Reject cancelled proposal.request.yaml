@@ -1,0 +1,27 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/proposals/{{proposalId}}/reject'
+order: 11000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "version": "{{proposalVersionNumber}}"
+    }
+scripts:
+  - type: beforeRequest
+    language: text/javascript
+    code: |-
+      if (!pm.collectionVariables.get('proposalId')) {
+        console.log('Skipped: missing proposalId');
+        pm.execution.skipRequest();
+      }
+      pm.variables.set('proposalVersionNumber', Number(pm.collectionVariables.get('proposalVersion')));
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 409', () => pm.response.to.have.status(409));
+      pm.test('Error code is PROPOSAL_VERSION_MISMATCH', () => pm.expect(pm.response.json().error.code).to.eql('PROPOSAL_VERSION_MISMATCH'));

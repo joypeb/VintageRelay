@@ -1,0 +1,16 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/clothing/{{clothingId}}/analysis'
+order: 7000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is one of [200, 503]', () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));
+      if (pm.response.code === 200) {
+        pm.test('Analysis is for the current version', () => {
+          const b = pm.response.json();
+          pm.expect(b.clothingId).to.eql(pm.collectionVariables.get('clothingId'));
+          pm.expect(b.status).to.eql('done');
+        });
+      }

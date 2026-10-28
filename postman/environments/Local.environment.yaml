@@ -1,0 +1,7 @@
+name: Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:8000'
+    enabled: true
+    type: default
+    description: Local FastAPI backend origin, without the /api/v1 prefix

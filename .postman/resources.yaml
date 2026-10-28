@@ -1,0 +1,10 @@
+cloudResources:
+  collections:
+    ../postman/collections/Vintage Relay API: 28430336-3dd58770-1110-4108-873e-00837aae9e19
+  environments:
+    ../postman/environments/Local.environment.yaml: 28430336-a3e2c5e5-6d2b-4b71-85f9-84da29b66767
+localResources:
+  collections:
+    - ../postman/collections/Vintage Relay API
+workspace:
+  id: 303a397e-844e-46f4-8dd5-6d296996550d

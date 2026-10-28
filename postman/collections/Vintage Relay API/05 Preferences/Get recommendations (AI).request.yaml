@@ -1,0 +1,9 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/events/{{eventId}}/recommendations'
+order: 5000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is one of [200, 503]', () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));

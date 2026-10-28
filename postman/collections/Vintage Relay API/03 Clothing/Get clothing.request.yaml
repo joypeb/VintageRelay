@@ -1,0 +1,10 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/clothing/{{clothingId}}'
+order: 5000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      pm.test('Clothing schema', () => pm.expect(pm.response.json()).to.include.keys(['id','eventId','owner','isMine','photo','description','status','contentVersion','analysis','createdAt','updatedAt']));

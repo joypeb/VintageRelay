@@ -1,0 +1,33 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/v1/events'
+order: 1000
+headers:
+  - key: Content-Type
+    value: 'application/json; charset=utf-8'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Mangwon Flea Market Swap Corner",
+      "organizerDisplayName": "Mina"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 201', () => pm.response.to.have.status(201));
+      const b = pm.response.json();
+      pm.test('Returns EventSession with organizer token', () => {
+        pm.expect(b.participantToken).to.be.a('string').and.not.empty;
+        pm.expect(b.event).to.include.keys(['id','name','status','entryCode','entryUrl','organizerParticipantId','createdAt','closedAt','me','stats']);
+        pm.expect(b.event.status).to.eql('active');
+        pm.expect(b.event.me.isOrganizer).to.eql(true);
+        pm.expect(b.event.organizerParticipantId).to.eql(b.event.me.participantId);
+      });
+      pm.collectionVariables.set('eventId', b.event.id);
+      pm.collectionVariables.set('entryCode', b.event.entryCode);
+      pm.collectionVariables.set('participantToken', b.participantToken);
+      pm.collectionVariables.set('participantId', b.event.me.participantId);

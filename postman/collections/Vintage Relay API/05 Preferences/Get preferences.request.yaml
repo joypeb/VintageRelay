@@ -1,0 +1,12 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/v1/participants/{{participantId}}/preferences'
+order: 1000
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test('Status is 200', () => pm.response.to.have.status(200));
+      const b = pm.response.json();
+      pm.test('Empty preference defaults', () => pm.expect(b.version).to.be.a('number'));
+      pm.collectionVariables.set('preferenceVersion', String(b.version));
