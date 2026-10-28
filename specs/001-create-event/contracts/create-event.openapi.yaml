@@ -1,0 +1,184 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Create Event (feature 001)
+  version: 0.1.0
+  description: >
+    Design contract for POST /api/v1/events. The implemented FastAPI schema at
+    /openapi.json is authoritative once built; it must match this document.
+    Shared rules: docs/rules/dev/common/api-contract.md. Draft: docs/plans/api/01-create-event.md.
+paths:
+  /api/v1/events:
+    post:
+      operationId: createEvent
+      summary: Create an active event and register the caller as organizer
+      tags: [events]
+      security: []  # No authentication; an Authorization header is ignored. CORS: only the APP_BASE_URL origin; allows Authorization, Content-Type, X-Request-ID; exposes X-Request-ID
+      parameters:
+        - name: X-Request-ID
+          in: header
+          required: false
+          schema: { type: string }
+          description: Correlation ID, echoed in the X-Request-ID response header and error.requestId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EventCreate' }
+            example:
+              name: Mangwon Flea Market Swap Corner
+              organizerDisplayName: Mina
+      responses:
+        '201':
+          description: Event created; not idempotent (each request creates a new event)
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventSession' }
+              example:
+                event:
+                  id: 9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d
+                  name: Mangwon Flea Market Swap Corner
+                  status: active
+                  entryCode: K7P3QX
+                  entryUrl: https://vintage-relay.example/join?code=K7P3QX
+                  organizerParticipantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                  createdAt: '2026-10-27T05:30:00.000Z'
+                  closedAt: null
+                  me:
+                    participantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                    displayName: Mina
+                    isOrganizer: true
+                  stats:
+                    participantCount: 1
+                    availableClothingCount: 0
+                    confirmedExchangeCount: 0
+                participantToken: q3Jx...base64url...
+        '400':
+          description: Body is unparseable JSON, missing, or not a JSON object
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: BAD_REQUEST, message: Unable to process this request., details: null, requestId: b7e2... }
+        '422':
+          description: Field validation failed; nothing is persisted
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error:
+                  code: VALIDATION_ERROR
+                  message: Please check your input.
+                  details:
+                    fields:
+                      - { field: name, reason: required }
+                      - { field: organizerDisplayName, reason: too_long }
+                  requestId: b7e2...
+        '500':
+          description: Transaction failed; nothing is persisted
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: INTERNAL_ERROR, message: A temporary error occurred., details: null, requestId: b7e2... }
+components:
+  headers:
+    XRequestId:
+      description: Request ID; equals error.requestId on error responses
+      schema: { type: string }
+  schemas:
+    EventCreate:
+      type: object
+      required: [name, organizerDisplayName]
+      additionalProperties: false  # Unknown fields → 422, reason unknown_field
+      properties:
+        name:
+          type: string
+          description: Trimmed (Unicode whitespace); 1-60 Unicode code points; no Cc control characters
+          minLength: 1
+          maxLength: 60
+        organizerDisplayName:
+          type: string
+          description: Trimmed (Unicode whitespace); 1-30 Unicode code points; no Cc control characters
+          minLength: 1
+          maxLength: 30
+    EventSession:
+      type: object
+      required: [event, participantToken]
+      properties:
+        event: { $ref: '#/components/schemas/Event' }
+        participantToken:
+          type: string
+          description: Opaque bearer token (32 random bytes, base64url). Returned only on create and join.
+    Event:
+      type: object
+      description: Same shape as GET /api/v1/events/{event_id} (docs/plans/api/02-read-event.md)
+      required: [id, name, status, entryCode, entryUrl, organizerParticipantId, createdAt, closedAt, me, stats]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [active, closed] }
+        entryCode:
+          type: string
+          pattern: '^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$'
+        entryUrl:
+          type: string
+          format: uri
+          description: '{APP_BASE_URL}/join?code={entryCode}'
+        organizerParticipantId: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time, description: UTC with Z suffix }
+        closedAt: { type: [string, 'null'], format: date-time }
+        me: { $ref: '#/components/schemas/EventMe' }
+        stats:
+          description: Organizer only; null for other participants (always present on create)
+          oneOf:
+            - { $ref: '#/components/schemas/EventStats' }
+            - { type: 'null' }
+    EventMe:
+      type: object
+      required: [participantId, displayName, isOrganizer]
+      properties:
+        participantId: { type: string, format: uuid }
+        displayName: { type: string }
+        isOrganizer: { type: boolean }
+    EventStats:
+      type: object
+      required: [participantCount, availableClothingCount, confirmedExchangeCount]
+      properties:
+        participantCount: { type: integer, minimum: 0 }
+        availableClothingCount: { type: integer, minimum: 0 }
+        confirmedExchangeCount: { type: integer, minimum: 0 }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details, requestId]
+          properties:
+            code: { type: string, enum: [BAD_REQUEST, VALIDATION_ERROR, INTERNAL_ERROR] }
+            message: { type: string }
+            details:
+              oneOf:
+                - $ref: '#/components/schemas/ValidationDetails'
+                - { type: 'null' }
+            requestId: { type: string }
+    ValidationDetails:
+      type: object
+      required: [fields]
+      properties:
+        fields:
+          type: array
+          items:
+            type: object
+            required: [field, reason]
+            properties:
+              field: { type: string, description: 'name, organizerDisplayName, or an unknown key as received' }
+              reason: { type: string, enum: [required, too_long, invalid_type, invalid_characters, unknown_field, invalid], description: 'invalid is a defensive fallback not expected for this endpoint' }
