@@ -1,7 +1,10 @@
+// Must stay first: globals.css holds the `@layer` order statement, which has to precede any
+// Astryx component CSS pulled in by later imports (docs/rules/dev/frontend/styling.md §1).
+import '@/styles/globals.css';
+
 import type { Metadata, Viewport } from 'next';
 
 import { Providers } from './providers';
-import '@/styles/globals.css';
 
 export const metadata: Metadata = {
   title: 'Vintage Relay',
