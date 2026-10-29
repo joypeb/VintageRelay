@@ -70,7 +70,7 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Cycle F2 — keys, close request, mutation, pending, stale-read guard (`lib/api/*`, R1–R3)
 
-- [ ] T007 Add to `frontend/src/lib/api/events.test.ts` — agent: `test-author`:
+- [X] T007 Add to `frontend/src/lib/api/events.test.ts` — agent: `test-author`:
   - "closeEvent" block (mock `@/lib/api/client`): calls `apiFetch('e1', '/events/e1/close', { method: 'POST' }, { timeoutMs: 15000, timeoutMessage: 'The connection timed out. The event may already be closed; check again.' })`; encodes the ID (`'a/b'` → `/events/a%2Fb/close`); returns the parsed event for a valid closed organizer response; rejects with `ApiError` code `UNKNOWN_ERROR` (status 200) when the body is malformed, when `status` is `'active'`, or when `closedAt` is `null`; propagates `ApiError`s from `apiFetch` unchanged.
   - "useCloseEventMutation" block (`renderHook` with one `QueryClient` seeded with active events under `queryKeys.event('e1')` and `queryKeys.event('e2')`):
     - on success the `e1` cache holds the returned closed event and `e1` is invalidated afterwards;
@@ -82,7 +82,7 @@ description: "Task list for feature 006-close-event-frontend"
     - `onSuccess`/`onSettled` effects still happen when the hook unmounts before the POST resolves.
   - "useIsCloseEventPending" block: `false` initially; `true` while an `e1` close POST is pending, including in a hook rendered after the first one unmounted (same client); `false` after it settles; unaffected by an `e2` close.
   - "useEventQuery structural sharing" block: with a closed event cached, a refetch that returns an active event leaves the cached data closed.
-- [ ] T008 Implement — agent: `implementer-fe`:
+- [X] T008 Implement — agent: `implementer-fe`:
   - `frontend/src/lib/api/query-keys.ts`: add `mutationKeys = { closeEvent: (eventId: string) => ['events', eventId, 'close'] as const }`.
   - `frontend/src/lib/api/events.ts`: `closeEvent(eventId)` (R1: 15 s timeout, the timeout message above, `parseEvent`, then throw `ApiError(200, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.')` unless `status === 'closed'`); `useCloseEventMutation(eventId)` with `mutationKey: mutationKeys.closeEvent(eventId)`, `retry: 0`, `onMutate` → `await cancelQueries({ queryKey: queryKeys.event(eventId), exact: true })`, `onSuccess(event)` → same `cancelQueries` then `setQueryData(queryKeys.event(eventId), event)`, `onSettled` → `void invalidateQueries({ queryKey: queryKeys.event(eventId), exact: true })` (not returned/awaited, R3 F12; callbacks on the hook options so they run after unmount); `useIsCloseEventPending(eventId)` via `useIsMutating({ mutationKey: mutationKeys.closeEvent(eventId), exact: true }) > 0`; add `structuralSharing: keepClosedEvent` to `useEventQuery`. Never log the token or entry code.
   - Makes T007 pass.
