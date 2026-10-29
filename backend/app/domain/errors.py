@@ -11,6 +11,18 @@ class AppError(Exception):
         self.details = details or {}
 
 
+class UnauthenticatedError(AppError):
+    status_code = 401
+    code = "UNAUTHENTICATED"
+    message = "Please join the event again."
+
+
+class NotFoundError(AppError):
+    status_code = 404
+    code = "NOT_FOUND"
+    message = "Resource not found."
+
+
 class InternalError(AppError):
     status_code = 500
     code = "INTERNAL_ERROR"

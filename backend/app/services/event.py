@@ -8,7 +8,7 @@ from app.core.db import Db
 from app.core.security import generate_participant_token, hash_participant_token
 from app.domain.entry_code import generate_entry_code
 from app.domain.enums import EventStatus
-from app.domain.errors import InternalError
+from app.domain.errors import InternalError, NotFoundError
 from app.models.event import Event
 from app.models.participant import Participant
 from app.repositories import event as event_repo
@@ -20,27 +20,40 @@ logger = logging.getLogger(__name__)
 ENTRY_CODE_MAX_ATTEMPTS = 10
 
 
+def build_event_read(
+    event: Event, me: Participant, stats: EventStats | None, settings: Settings
+) -> EventRead:
+    if event.organizer_participant_id is None:
+        raise InternalError()
+    return EventRead(
+        id=event.id,
+        name=event.name,
+        status=EventStatus(event.status),
+        entry_code=event.entry_code,
+        entry_url=f"{settings.app_base_url}/join?code={event.entry_code}",
+        organizer_participant_id=event.organizer_participant_id,
+        created_at=event.created_at,
+        closed_at=event.closed_at,
+        me=EventMe(
+            participant_id=me.id,
+            display_name=me.display_name,
+            is_organizer=me.id == event.organizer_participant_id,
+        ),
+        stats=stats,
+    )
+
+
 def build_event_session(
     event: Event, organizer: Participant, token: str, settings: Settings
 ) -> EventSession:
     return EventSession(
-        event=EventRead(
-            id=event.id,
-            name=event.name,
-            status=EventStatus(event.status),
-            entry_code=event.entry_code,
-            entry_url=f"{settings.app_base_url}/join?code={event.entry_code}",
-            organizer_participant_id=organizer.id,
-            created_at=event.created_at,
-            closed_at=event.closed_at,
-            me=EventMe(
-                participant_id=organizer.id,
-                display_name=organizer.display_name,
-                is_organizer=True,
-            ),
+        event=build_event_read(
+            event=event,
+            me=organizer,
             stats=EventStats(
                 participant_count=1, available_clothing_count=0, confirmed_exchange_count=0
             ),
+            settings=settings,
         ),
         participant_token=token,
     )
@@ -61,6 +74,22 @@ class EventService:
         self.entry_code_generator = entry_code_generator
         self.token_generator = token_generator
         self.clock = clock
+
+    def get(self, actor: Participant, event_id: str) -> EventRead:
+        with self.db.read() as s:
+            event = event_repo.get(s, event_id)
+            if event is None:
+                raise NotFoundError()
+            stats = None
+            if actor.id == event.organizer_participant_id:
+                stats = EventStats(
+                    participant_count=participant_repo.count_by_event(s, event.id),
+                    # TODO(feature 06/11): count from clothing/proposals
+                    available_clothing_count=0,
+                    # TODO(feature 06/11): count from clothing/proposals
+                    confirmed_exchange_count=0,
+                )
+            return build_event_read(event, actor, stats, self.settings)
 
     def create(self, body: EventCreate) -> EventSession:
         # Event creation also registers and links its organizer atomically (AGENTS.md).

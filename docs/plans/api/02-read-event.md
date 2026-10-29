@@ -63,9 +63,13 @@ Returns an `Event`.
 | `availableClothingCount` | integer | Garments with `status = available` |
 | `confirmedExchangeCount` | integer | Proposals with `status = confirmed` |
 
+`availableClothingCount` and `confirmedExchangeCount` are `0` until the clothing (06) and proposal (11) features add their tables.
+
 ### Processing Rules
 
+- Check the token first: a missing or unknown token returns `401`, even for an event that does not exist.
 - Resolve the caller from the token. If the token's event differs from `event_id`, return `404`.
+- `event_id` is not format-validated. A malformed ID, a non-existent ID, and another event's ID all return the same `404 NOT_FOUND`, so event existence is never revealed.
 - Readable after closure. The frontend shows the closed banner when `status = closed`.
 - No side effects.
 
@@ -73,8 +77,8 @@ Returns an `Event`.
 
 | Status | Code | When |
 |---|---|---|
-| 401 | `UNAUTHENTICATED` | Missing or invalid token |
-| 404 | `NOT_FOUND` | Event does not exist, or the token belongs to another event |
+| 401 | `UNAUTHENTICATED` | Missing header, non-Bearer scheme, empty token, or unknown token |
+| 404 | `NOT_FOUND` | Event does not exist, the ID is malformed, or the token belongs to another event |
 
 ## Open Decisions
 
