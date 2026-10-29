@@ -36,6 +36,10 @@ export function getEventSession(eventId: string): EventSessionRecord | null {
   }
 }
 
+export function hasEventSession(eventId: string): boolean {
+  return getEventSession(eventId) !== null;
+}
+
 export function getEventShare(eventId: string): EventShare | null {
   return getEventSession(eventId)?.share ?? null;
 }

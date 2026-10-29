@@ -56,10 +56,10 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle F2 — routes, session presence, date (`lib/routes.ts`, `lib/session.ts`, `lib/utils/date.ts`)
 
-- [ ] T004 [P] Add to `frontend/src/lib/routes.test.ts`: `routes.manageEvent('e1')` returns `/events/e1/manage`, and `routes.manageEvent('a/b')` returns `/events/a%2Fb/manage` — agent: `test-author`
-- [ ] T005 [P] Add to `frontend/src/lib/session.test.ts` a "hasEventSession" block: `true` after `saveEventSession('e1', { participantToken: 't1', participantId: 'p1' })`; `false` for an unknown event, invalid JSON, or an empty `participantToken` — agent: `test-author`
-- [ ] T006 [P] Write `frontend/src/lib/utils/date.test.ts` for `formatDateTime(iso, locale = 'en-US', timeZone?)`: `formatDateTime('2026-10-27T09:00:00Z', 'en-US', 'UTC')` returns `'Oct 27, 2026, 9:00 AM'`; with `'Asia/Seoul'` it returns `'Oct 27, 2026, 6:00 PM'` (`dateStyle: 'medium'`, `timeStyle: 'short'`, R9). Compare after replacing `\s` with a plain space, because some ICU versions put U+202F before AM/PM — agent: `test-author`
-- [ ] T007 Implement `routes.manageEvent(eventId)` in `frontend/src/lib/routes.ts` (encode with `encodeURIComponent`), `hasEventSession(eventId): boolean` (= `getEventSession(eventId) !== null`) in `frontend/src/lib/session.ts`, and `formatDateTime` in `frontend/src/lib/utils/date.ts` using `Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone })`. Makes T004–T006 pass — agent: `implementer-fe`
+- [X] T004 [P] Add to `frontend/src/lib/routes.test.ts`: `routes.manageEvent('e1')` returns `/events/e1/manage`, and `routes.manageEvent('a/b')` returns `/events/a%2Fb/manage` — agent: `test-author`
+- [X] T005 [P] Add to `frontend/src/lib/session.test.ts` a "hasEventSession" block: `true` after `saveEventSession('e1', { participantToken: 't1', participantId: 'p1' })`; `false` for an unknown event, invalid JSON, or an empty `participantToken` — agent: `test-author`
+- [X] T006 [P] Write `frontend/src/lib/utils/date.test.ts` for `formatDateTime(iso, locale = 'en-US', timeZone?)`: `formatDateTime('2026-10-27T09:00:00Z', 'en-US', 'UTC')` returns `'Oct 27, 2026, 9:00 AM'`; with `'Asia/Seoul'` it returns `'Oct 27, 2026, 6:00 PM'` (`dateStyle: 'medium'`, `timeStyle: 'short'`, R9). Compare after replacing `\s` with a plain space, because some ICU versions put U+202F before AM/PM — agent: `test-author`
+- [X] T007 Implement `routes.manageEvent(eventId)` in `frontend/src/lib/routes.ts` (encode with `encodeURIComponent`), `hasEventSession(eventId): boolean` (= `getEventSession(eventId) !== null`) in `frontend/src/lib/session.ts`, and `formatDateTime` in `frontend/src/lib/utils/date.ts` using `Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone })`. Makes T004–T006 pass — agent: `implementer-fe`
 
 ### Cycle F3 — response validation (`lib/validation/event-response.ts`, R3)
 

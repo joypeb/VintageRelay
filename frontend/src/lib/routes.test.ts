@@ -15,4 +15,9 @@ describe('routes', () => {
   it('encodes event IDs in the created screen path', () => {
     expect(routes.eventCreated('a/b')).toBe('/events/a%2Fb/created');
   });
+
+  it('builds and encodes the manage event path', () => {
+    expect(routes.manageEvent('e1')).toBe('/events/e1/manage');
+    expect(routes.manageEvent('a/b')).toBe('/events/a%2Fb/manage');
+  });
 });
