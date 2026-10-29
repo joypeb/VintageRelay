@@ -137,3 +137,15 @@ def test_lookup_entry_code_openapi_describes_public_operation(client):
     assert {"200", "404", "500"} <= operation["responses"].keys()
     assert "422" not in operation["responses"]
     assert "HTTPValidationError" not in json.dumps(operation)
+
+
+def test_join_event_openapi_describes_public_operation(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/participants"]["post"]
+    assert operation["operationId"] == "joinEvent"
+    assert not operation.get("security")
+    responses = operation["responses"]
+    assert {"201", "400", "404", "409", "422", "500"} <= responses.keys()
+    assert responses["201"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/EventSession"
+    }

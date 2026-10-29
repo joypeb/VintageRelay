@@ -1,8 +1,10 @@
+import hmac
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
@@ -10,7 +12,14 @@ from app.core.db import Db
 from app.core.security import generate_participant_token, hash_participant_token
 from app.domain.entry_code import generate_entry_code, normalize_entry_code
 from app.domain.enums import EventStatus
-from app.domain.errors import EntryCodeNotFoundError, ForbiddenError, InternalError, NotFoundError
+from app.domain.errors import (
+    DisplayNameTakenError,
+    EntryCodeNotFoundError,
+    EventClosedError,
+    ForbiddenError,
+    InternalError,
+    NotFoundError,
+)
 from app.models.event import Event
 from app.models.participant import Participant
 from app.repositories import event as event_repo
@@ -22,6 +31,7 @@ from app.schemas.event import (
     EventRead,
     EventSession,
     EventStats,
+    ParticipantCreate,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,6 +107,45 @@ class EventService:
         with self.db.read() as s:
             self._organizer_event(s, actor, event_id)
             return actor
+
+    def join(self, event_id: str, body: ParticipantCreate) -> EventSession:
+        with self.db.write() as s:
+            event = event_repo.get(s, event_id)
+            if event is None:
+                raise EntryCodeNotFoundError()
+            # Verify the code before disclosing closure (Join Event API, processing rules).
+            if not hmac.compare_digest(
+                normalize_entry_code(body.entry_code).encode(), event.entry_code.encode()
+            ):
+                raise EntryCodeNotFoundError()
+            if event.status == EventStatus.CLOSED:
+                raise EventClosedError("This event has ended, so you can't join it.")
+            names = participant_repo.list_display_names(s, event.id)
+            if body.display_name.casefold() in {name.casefold() for name in names}:
+                raise DisplayNameTakenError(details={"field": "displayName"})
+            token = self.token_generator()
+            participant = Participant(
+                id=str(uuid4()),
+                event_id=event.id,
+                display_name=body.display_name,
+                session_token_hash=hash_participant_token(token),
+                created_at=self.clock(),
+            )
+            try:
+                participant_repo.add(s, participant)
+            except IntegrityError as exc:
+                if "uq_participants_event_id_display_name_lower" in str(exc.orig):
+                    raise DisplayNameTakenError(details={"field": "displayName"}) from exc
+                raise
+            session = EventSession(
+                event=build_event_read(event, participant, None, self.settings),
+                participant_token=token,
+            )
+        logger.info(
+            "participant_joined",
+            extra={"event_id": event.id, "participant_id": participant.id},
+        )
+        return session
 
     def _organizer_event(self, s: Session, actor: Participant, event_id: str) -> Event:
         if actor.event_id != event_id:
