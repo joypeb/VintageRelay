@@ -58,8 +58,8 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Cycle F0 — parseable timestamps (`lib/validation/event-response.ts`, R1, F06)
 
-- [ ] T003 Add to `frontend/src/lib/validation/event-response.test.ts`: a closed event with `closedAt: ''` and with `closedAt: 'not-a-date'` each make `parseEvent` throw `ApiError` with code `UNKNOWN_ERROR` and status 200; `createdAt: ''` and `createdAt: 'not-a-date'` likewise; `closedAt: '2026-10-27T09:00:00Z'` on a closed event still parses — agent: `test-author`
-- [ ] T004 In `frontend/src/lib/validation/event-response.ts`, require `createdAt` and non-null `closedAt` to satisfy `!Number.isNaN(Date.parse(value))` (data-model.md: "`createdAt` and non-null `closedAt` must be parseable timestamps"). Error message and logging unchanged. Makes T003 pass — agent: `implementer-fe`
+- [X] T003 Add to `frontend/src/lib/validation/event-response.test.ts`: a closed event with `closedAt: ''` and with `closedAt: 'not-a-date'` each make `parseEvent` throw `ApiError` with code `UNKNOWN_ERROR` and status 200; `createdAt: ''` and `createdAt: 'not-a-date'` likewise; `closedAt: '2026-10-27T09:00:00Z'` on a closed event still parses — agent: `test-author`
+- [X] T004 In `frontend/src/lib/validation/event-response.ts`, require `createdAt` and non-null `closedAt` to satisfy `!Number.isNaN(Date.parse(value))` (data-model.md: "`createdAt` and non-null `closedAt` must be parseable timestamps"). Error message and logging unchanged. Makes T003 pass — agent: `implementer-fe`
 
 ### Cycle F1 — pure helpers (`lib/event.ts`, R3, R5)
 

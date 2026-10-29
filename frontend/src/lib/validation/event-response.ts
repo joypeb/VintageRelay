@@ -7,6 +7,8 @@ const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
 const count = z.number().int().nonnegative();
 
+const timestamp = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
+
 const eventMeSchema = z.object({
   participantId: z.string(),
   displayName: z.string(),
@@ -27,8 +29,8 @@ export const eventSchema = z
     entryCode: z.string(),
     entryUrl: z.string(),
     organizerParticipantId: z.string(),
-    createdAt: z.string(),
-    closedAt: z.string().nullable(),
+    createdAt: timestamp,
+    closedAt: timestamp.nullable(),
     me: eventMeSchema,
     stats: eventStatsSchema.nullable(),
   })
