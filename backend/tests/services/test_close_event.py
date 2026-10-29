@@ -78,3 +78,148 @@ def test_organizer_gate_is_scoped_and_read_only(
             assert error.value.status_code == (403 if expected_code == "FORBIDDEN" else 404)
     finally:
         assert snapshot(db) == before
+
+
+def test_close_persists_identity_summary_and_participants(db, settings, organizer_context):
+    service, event_id, other_id, organizer, _, _ = organizer_context
+    initial = service.get(organizer, event_id)
+    before = snapshot(db)
+    assert initial.status == "active" and initial.closed_at is None, (
+        "Normal creation produces active/null closure time"
+    )
+    fixed = datetime(2026, 10, 29, 9, tzinfo=UTC)
+    service.clock = lambda: fixed
+    result = service.close(organizer, event_id)
+    assert result.status == "closed" and result.closed_at == fixed, (
+        "Successful closure produces closed/non-null closure time"
+    )
+    for field in (
+        "id",
+        "name",
+        "entry_code",
+        "entry_url",
+        "organizer_participant_id",
+        "created_at",
+        "me",
+    ):
+        assert getattr(result, field) == getattr(initial, field)
+    assert result.stats.participant_count == 2
+    assert result.stats.available_clothing_count == result.stats.confirmed_exchange_count == 0
+    assert service.get(organizer, event_id) == result
+    after = snapshot(db)
+    assert before[1] == after[1], "Closure inserts, deletes, and modifies no participants."
+    assert next(row for row in before[0] if row.id == other_id) == next(
+        row for row in after[0] if row.id == other_id
+    )
+
+
+@pytest.mark.parametrize(
+    ("actor_name", "target", "code"),
+    [
+        ("participant", "own", "FORBIDDEN"),
+        ("other", "own", "NOT_FOUND"),
+        ("organizer", "missing", "NOT_FOUND"),
+        ("organizer", "malformed", "NOT_FOUND"),
+    ],
+)
+@pytest.mark.parametrize("closed", [False, True])
+def test_close_rechecks_authorization_in_service(
+    db, organizer_context, actor_name, target, code, closed
+):
+    service, event_id, _, organizer, participant, other = organizer_context
+    if closed:
+        close_event(db, event_id, datetime(2026, 10, 29, tzinfo=UTC))
+    actor = {"organizer": organizer, "participant": participant, "other": other}[actor_name]
+    target_id = {
+        "own": event_id,
+        "missing": "00000000-0000-4000-8000-000000000000",
+        "malformed": "not-a-uuid",
+    }[target]
+    before = snapshot(db)
+    with pytest.raises(AppError) as error:
+        service.close(actor, target_id)
+    assert error.value.code == code
+    assert snapshot(db) == before
+
+
+def test_replay_preserves_time_refreshes_stats_and_logs_once(db, organizer_context, caplog):
+    import logging
+
+    from app.core.logging import JsonFormatter
+
+    service, event_id, _, organizer, _, _ = organizer_context
+    fixed = datetime(2026, 10, 29, 9, tzinfo=UTC)
+    service.clock = lambda: fixed
+    caplog.set_level(logging.INFO, logger="app.services.event")
+    first = service.close(organizer, event_id)
+    add_participant(db, event_id, "Private free text")
+
+    def forbidden_clock():
+        raise AssertionError("clock called on replay")
+
+    service.clock = forbidden_clock
+    second = service.close(organizer, event_id)
+    assert second.closed_at == first.closed_at == fixed, (
+        "Replay never clears or overwrites the closure time."
+    )
+    assert second.stats.participant_count == 3
+    records = [record for record in caplog.records if record.getMessage() == "event_closed"]
+    assert len(records) == 1
+    assert records[0].event_id == event_id and records[0].participant_id == organizer.id
+    assert records[0].invalidated_proposal_count == 0
+    serialized = JsonFormatter().format(records[0])
+    for secret in (
+        organizer.session_token_hash,
+        first.entry_code,
+        "Private free text",
+        organizer.display_name,
+    ):
+        assert secret not in serialized
+
+
+@pytest.mark.parametrize("point", ["after_update", "result", "commit"])
+def test_close_failure_rolls_back_and_retry_succeeds(
+    db, organizer_context, monkeypatch, caplog, point
+):
+    import logging
+
+    from sqlalchemy import event as sqlalchemy_event
+
+    import app.services.event as event_module
+    from app.repositories import event as event_repo
+
+    service, event_id, _, organizer, _, _ = organizer_context
+    before = snapshot(db)
+    caplog.set_level(logging.INFO, logger="app.services.event")
+    fixed = datetime(2026, 10, 29, 9, tzinfo=UTC)
+    service.clock = lambda: fixed
+
+    def fail(*args, **kwargs):
+        raise RuntimeError("injected failure")
+
+    with monkeypatch.context() as patch:
+        if point == "after_update":
+
+            def update_then_fail(session, target, closed_at):
+                original = event_repo._test_original_mark_closed
+                original(session, target, closed_at)
+                raise RuntimeError("injected failure")
+
+            original = getattr(event_repo, "mark_closed", None)
+            patch.setattr(event_repo, "_test_original_mark_closed", original, raising=False)
+            patch.setattr(event_repo, "mark_closed", update_then_fail, raising=False)
+        elif point == "result":
+            patch.setattr(event_module, "build_event_read", fail)
+        else:
+            sqlalchemy_event.listen(db.write_engine, "commit", fail)
+        try:
+            with pytest.raises(RuntimeError, match="injected failure"):
+                service.close(organizer, event_id)
+        finally:
+            if point == "commit":
+                sqlalchemy_event.remove(db.write_engine, "commit", fail)
+    assert snapshot(db) == before
+    assert not [r for r in caplog.records if r.getMessage() == "event_closed"]
+    result = service.close(organizer, event_id)
+    assert result.status == "closed" and result.closed_at == fixed
+    assert len([r for r in caplog.records if r.getMessage() == "event_closed"]) == 1

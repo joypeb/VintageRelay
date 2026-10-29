@@ -86,3 +86,43 @@ def test_read_event_openapi_describes_success_and_errors(client):
     assert post["responses"]["422"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/ErrorResponse"
     }
+
+
+def test_close_event_openapi_describes_bodyless_secure_operation(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/close"]["post"]
+    assert operation["operationId"] == "closeEvent"
+    assert "requestBody" not in operation
+    parameter = next(p for p in operation["parameters"] if p["name"] == "event_id")
+    assert parameter["in"] == "path" and parameter["required"]
+    assert resolve(document, parameter["schema"])["type"] == "string"
+    assert operation["security"]
+    scheme = document["components"]["securitySchemes"][next(iter(operation["security"][0]))]
+    assert scheme["type"] == "http" and scheme["scheme"].lower() == "bearer"
+    responses = operation["responses"]
+    assert set(responses) == {"200", "401", "403", "404", "500"}
+    assert "HTTPValidationError" not in json.dumps(operation)
+    for response in responses.values():
+        assert "X-Request-ID" in response["headers"]
+    event = resolve(document, responses["200"]["content"]["application/json"]["schema"])
+    assert {
+        "id",
+        "name",
+        "status",
+        "entryCode",
+        "entryUrl",
+        "organizerParticipantId",
+        "createdAt",
+        "closedAt",
+        "me",
+        "stats",
+    } <= set(event["required"])
+    assert "participantToken" not in event["properties"]
+    for status in ("401", "403", "404", "500"):
+        schema = responses[status]["content"]["application/json"]["schema"]
+        error_response = resolve(document, schema)
+        assert "error" in error_response["required"]
+        error = resolve(document, error_response["properties"]["error"])
+        assert {"code", "message", "details", "requestId"} <= set(error["required"])
+    create = document["paths"]["/api/v1/events"]["post"]
+    assert {"400", "422"} <= create["responses"].keys()
