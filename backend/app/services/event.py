@@ -80,7 +80,16 @@ class EventService:
             event = event_repo.get(s, event_id)
             if event is None:
                 raise NotFoundError()
-            return build_event_read(event, actor, None, self.settings)
+            stats = None
+            if actor.id == event.organizer_participant_id:
+                stats = EventStats(
+                    participant_count=participant_repo.count_by_event(s, event.id),
+                    # TODO(feature 06/11): count from clothing/proposals
+                    available_clothing_count=0,
+                    # TODO(feature 06/11): count from clothing/proposals
+                    confirmed_exchange_count=0,
+                )
+            return build_event_read(event, actor, stats, self.settings)
 
     def create(self, body: EventCreate) -> EventSession:
         # Event creation also registers and links its organizer atomically (AGENTS.md).

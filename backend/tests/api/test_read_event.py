@@ -124,3 +124,28 @@ def test_closed_event_remains_readable(client, db, role):
         assert body["stats"] is None
     assert "participantToken" not in body
     assert token not in response.text and created["participantToken"] not in response.text
+
+
+@pytest.mark.parametrize("scenario", ["fresh", "participants", "other_event", "closed"])
+def test_organizer_reads_event_stats(client, db, scenario):
+    created = create_event(client)
+    event_id = created["event"]["id"]
+    expected_count = 1
+    if scenario != "fresh":
+        add_participant(db, event_id, "Joon")
+        add_participant(db, event_id, "Sora")
+        expected_count = 3
+    if scenario == "other_event":
+        other = create_event(client)
+        add_participant(db, other["event"]["id"], "Alex")
+    if scenario == "closed":
+        close_event(db, event_id, datetime(2026, 10, 27, 9, 0, tzinfo=UTC))
+
+    response = read(client, event_id, created["participantToken"])
+
+    assert response.status_code == 200
+    assert response.json()["stats"] == {
+        "participantCount": expected_count,
+        "availableClothingCount": 0,
+        "confirmedExchangeCount": 0,
+    }

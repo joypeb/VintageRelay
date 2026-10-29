@@ -85,3 +85,26 @@ def test_get_missing_event_raises_not_found(db, settings):
     actor, _ = add_participant(db, created.event.id, "Joon")
     with pytest.raises(NotFoundError):
         service.get(actor, "00000000-0000-4000-8000-000000000000")
+
+
+def test_get_organizer_stats_counts_only_event_participants(db, settings):
+    from app.models.participant import Participant
+    from app.schemas.event import EventCreate, EventStats
+    from app.services.event import EventService
+    from tests.conftest import add_participant
+
+    service = EventService(db, settings)
+    created = service.create(EventCreate(name="Swap", organizer_display_name="Mina"))
+    other = service.create(EventCreate(name="Other", organizer_display_name="Alex"))
+    add_participant(db, created.event.id, "Joon")
+    add_participant(db, created.event.id, "Sora")
+    add_participant(db, other.event.id, "Robin")
+    with db.read() as session:
+        organizer = session.get(Participant, created.event.organizer_participant_id)
+    assert organizer is not None
+
+    result = service.get(organizer, created.event.id)
+
+    assert result.stats == EventStats(
+        participant_count=3, available_clothing_count=0, confirmed_exchange_count=0
+    )
