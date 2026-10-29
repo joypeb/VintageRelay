@@ -174,8 +174,8 @@ description: "Task list for feature 006-close-event-frontend"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T019 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `CloseEventDialog.tsx` and `ManageEventScreen.tsx` — agent: `implementer-fe`
-- [ ] T020 Run the full suites and record the actual results: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`, and `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; confirms nothing regressed) — agent: orchestrator
+- [X] T019 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `CloseEventDialog.tsx` and `ManageEventScreen.tsx` — agent: `implementer-fe`
+- [X] T020 Run the full suites and record the actual results: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`, and `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; confirms nothing regressed) — agent: orchestrator
 - [ ] T021 Manual verification per quickstart.md rows 1–12 at 360 px and 430 px (no horizontal scroll, touch targets ≥ 44×44 px, English copy, focus targets per R9, native back gesture, one POST under throttling, tap count and seconds for SC-001, no token/entry code in console) and record results in the PR description — agent: orchestrator with the user
 - [ ] T022 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
 
