@@ -89,7 +89,7 @@ Auth failures return 401 before 404. Another event's ID, a non-existent ID, and 
 
 ### Tests (write first, confirm Red) ⚠️ — agent: `test-author`
 
-- [ ] T003 [P] [US1] Write `backend/tests/api/test_read_event.py`. Create the event via `client.post("/api/v1/events", json={"name": "Mangwon Flea Market Swap Corner", "organizerDisplayName": "Mina"})`; keep `event_id` and the organizer token. Add a regular participant with `add_participant(db, event_id, "Joon")` (T001).
+- [X] T003 [P] [US1] Write `backend/tests/api/test_read_event.py`. Create the event via `client.post("/api/v1/events", json={"name": "Mangwon Flea Market Swap Corner", "organizerDisplayName": "Mina"})`; keep `event_id` and the organizer token. Add a regular participant with `add_participant(db, event_id, "Joon")` (T001).
   - **Regular participant** (`GET /api/v1/events/{event_id}`, header `Authorization: Bearer <joon token>`):
     - 200, and the body has exactly the keys `id`, `name`, `status`, `entryCode`, `entryUrl`, `organizerParticipantId`, `createdAt`, `closedAt`, `me`, and `stats`.
     - `status == "active"`, `closedAt is None`, and `name == "Mangwon Flea Market Swap Corner"`.
@@ -105,10 +105,10 @@ Auth failures return 401 before 404. Another event's ID, a non-existent ID, and 
     - `count_rows(db, "events")` and `count_rows(db, "participants")` are unchanged.
     - The `events` row (`status`, `closed_at`, `organizer_participant_id`) is unchanged.
   - **`X-Request-ID`**: sending `X-Request-ID: rd-1` echoes it in the response header.
-- [ ] T004 [P] [US3] In `backend/tests/api/test_read_event.py`, add closed-event tests. Create the event, `add_participant(...)`, then `close_event(db, event_id, datetime(2026, 10, 27, 9, 0, tzinfo=UTC))` (T001).
+- [X] T004 [P] [US3] In `backend/tests/api/test_read_event.py`, add closed-event tests. Create the event, `add_participant(...)`, then `close_event(db, event_id, datetime(2026, 10, 27, 9, 0, tzinfo=UTC))` (T001).
   - The regular participant and the organizer each get 200 with `status == "closed"` and `closedAt == "2026-10-27T09:00:00.000Z"`.
   - All other fields are as in T003.
-- [ ] T005 [P] [US4] Write `backend/tests/api/test_read_event_auth.py`. Set up event A (with organizer token A) and event B (with organizer token B) via the create API.
+- [X] T005 [P] [US4] Write `backend/tests/api/test_read_event_auth.py`. Set up event A (with organizer token A) and event B (with organizer token B) via the create API.
   - **401 cases**: each returns 401 with body `{"error": {"code": "UNAUTHENTICATED", "message": <non-empty str>, "details": None, "requestId": <equals X-Request-ID header>}}`:
     - no `Authorization` header;
     - `Authorization: Basic <token A>`;
@@ -124,12 +124,12 @@ Auth failures return 401 before 404. Another event's ID, a non-existent ID, and 
   - **Indistinguishable**: after the same 200 precondition, the three main 404 bodies (another event, non-existent ID, malformed ID) are equal once `requestId` is removed (FR-004, SC-003).
   - **No 422**: no request in this file returns 422.
   - **No token in logs**: with `caplog.set_level(logging.DEBUG)`, a successful read with token A and a 401 with `Bearer not-a-real-token` leave neither token A nor `not-a-real-token` in any `caplog` record's `getMessage()` or in the formatted `JsonFormatter().format(record)` output (FR-002, R9).
-- [ ] T006 [P] [US1] Extend `backend/tests/services/test_event_service.py` with `EventService.get(actor, event_id)` tests. Use `EventService(db, settings)`; create the event through `service.create(EventCreate(name="Swap", organizer_display_name="Mina"))` and get the actor rows via `add_participant` / a `db.read()` lookup.
+- [X] T006 [P] [US1] Extend `backend/tests/services/test_event_service.py` with `EventService.get(actor, event_id)` tests. Use `EventService(db, settings)`; create the event through `service.create(EventCreate(name="Swap", organizer_display_name="Mina"))` and get the actor rows via `add_participant` / a `db.read()` lookup.
   - With the organizer as actor: returns `EventRead` with `me.is_organizer is True`.
   - With a regular participant as actor: `me.is_organizer is False` and `stats is None`.
   - With a valid actor but a non-existent `event_id` passed directly (`"00000000-0000-4000-8000-000000000000"`), it raises `app.domain.errors.NotFoundError`. This is the race guard from R4.
   - The method writes nothing: `count_rows` is unchanged before and after.
-- [ ] T007 [P] [US4] Extend `backend/tests/api/test_openapi_contract.py` with `test_read_event_openapi_describes_success_and_errors`, for operation `document["paths"]["/api/v1/events/{event_id}"]["get"]` (R8):
+- [X] T007 [P] [US4] Extend `backend/tests/api/test_openapi_contract.py` with `test_read_event_openapi_describes_success_and_errors`, for operation `document["paths"]["/api/v1/events/{event_id}"]["get"]` (R8):
   - `{"200", "401", "404", "500"} <= responses.keys()` and `"422" not in responses`.
   - `"HTTPValidationError" not in json.dumps(operation)` and `"HTTPValidationError" not in document["components"]["schemas"]`.
   - Each of those four responses has an `X-Request-ID` header.
@@ -141,13 +141,13 @@ Auth failures return 401 before 404. Another event's ID, a non-existent ID, and 
 
 ### Implementation (Green → Refactor) — agent: `implementer-be`
 
-- [ ] T008 [P] [US4] Add to `backend/app/domain/errors.py` (R3):
+- [X] T008 [P] [US4] Add to `backend/app/domain/errors.py` (R3):
   - `class UnauthenticatedError(AppError)` with `status_code = 401`, `code = "UNAUTHENTICATED"`, and `message = "Please join the event again."`.
   - `class NotFoundError(AppError)` with `status_code = 404`, `code = "NOT_FOUND"`, and `message = "Resource not found."`.
-- [ ] T009 [P] [US1] Add repository functions (R1, R4):
+- [X] T009 [P] [US1] Add repository functions (R1, R4):
   - In `backend/app/repositories/participant.py`: `get_by_token_hash(s: Session, token_hash: str) -> Participant | None`, using `select(Participant).where(Participant.session_token_hash == token_hash)`.
   - In `backend/app/repositories/event.py`: `get(s: Session, event_id: str) -> Event | None`, using `s.get(Event, event_id)`.
-- [ ] T010 [US4] Add to `backend/app/api/deps.py` (R1, R2):
+- [X] T010 [US4] Add to `backend/app/api/deps.py` (R1, R2):
   - `bearer_scheme = HTTPBearer(auto_error=False, scheme_name="participantToken", description="participantToken from event creation or join")`.
   - `get_current_participant(event_id: str, db: DbDep, credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)]) -> Participant`:
     - If `credentials is None` or `not credentials.credentials.strip()`, raise `UnauthenticatedError()`.
@@ -157,21 +157,21 @@ Auth failures return 401 before 404. Another event's ID, a non-existent ID, and 
   - Alias `CurrentParticipant = Annotated[Participant, Depends(get_current_participant)]`.
   - Never log the token or the header.
   - Depends on T008 and T009.
-- [ ] T011 [US1] Add `EventService.get(self, actor: Participant, event_id: str) -> EventRead` to `backend/app/services/event.py` (R4):
+- [X] T011 [US1] Add `EventService.get(self, actor: Participant, event_id: str) -> EventRead` to `backend/app/services/event.py` (R4):
   - Inside `with self.db.read() as s:`, `event = event_repo.get(s, event_id)`. If it is `None`, raise `NotFoundError()`.
   - Return `build_event_read(event, actor, None, self.settings)`. `stats` is always `None` in this cycle; US2 (T016) adds the organizer stats.
   - Write nothing and log no audit entry.
   - Depends on T002, T008, and T009.
-- [ ] T012 [US4] In `backend/app/api/errors.py`, add `error_responses(*statuses: int) -> dict[int | str, dict[str, Any]]` (R8):
+- [X] T012 [US4] In `backend/app/api/errors.py`, add `error_responses(*statuses: int) -> dict[int | str, dict[str, Any]]` (R8):
   - Build it from a module map `{400: "Malformed request.", 401: "Missing or invalid participant token.", 404: "Resource not found.", 422: "Field validation failed.", 500: "A temporary error occurred."}`. Each entry has `model: ErrorResponse`, a `description`, and an `X-Request-ID` header, as in the existing dict.
   - Redefine `ERROR_RESPONSES = error_responses(400, 422, 500)` so POST is unchanged.
-- [ ] T013 [US4] In `backend/app/main.py` `create_app`, install a custom `app.openapi` (R8):
+- [X] T013 [US4] In `backend/app/main.py` `create_app`, install a custom `app.openapi` (R8):
   - On first call, build the schema with `fastapi.openapi.utils.get_openapi(title=app.title, version=app.version, routes=app.routes)`.
   - Only for `paths["/api/v1/events/{event_id}"]["get"]`, delete `responses["422"]` when its schema `$ref` ends with `/HTTPValidationError`. Every other operation is untouched, so a future endpoint with validated parameters keeps its documented 422.
   - Then delete the `HTTPValidationError` and `ValidationError` entries from `components.schemas` if nothing references them any more.
   - Cache the result in `app.openapi_schema`.
   - Keep the function small and local to `main.py`.
-- [ ] T014 [US1] Add the route to `backend/app/api/routers/events.py` (R7):
+- [X] T014 [US1] Add the route to `backend/app/api/routers/events.py` (R7):
   ```python
   @router.get("/{event_id}", summary="Read an event", responses={200: {"headers": {"X-Request-ID": ...}}, **error_responses(401, 404, 500)})
   def read_event(event_id: str, me: CurrentParticipant, service: EventServiceDep) -> EventRead:
@@ -197,20 +197,20 @@ Non-organizers keep `stats: null`.
 
 ### Tests (write first, confirm Red) ⚠️ — agent: `test-author`
 
-- [ ] T015 [P] [US2] Add organizer stats tests to `backend/tests/api/test_read_event.py`:
+- [X] T015 [P] [US2] Add organizer stats tests to `backend/tests/api/test_read_event.py`:
   - The organizer reads a freshly created event: `stats == {"participantCount": 1, "availableClothingCount": 0, "confirmedExchangeCount": 0}`.
   - After `add_participant(db, event_id, "Joon")` and `add_participant(db, event_id, "Sora")`: the organizer gets `participantCount == 3`.
   - After creating a second event (via the API) and adding a participant to it: the first event's organizer still gets `participantCount == 3`.
   - (Regular participant `stats is None` is already covered by T003; it is not repeated here because it would be green on first run.)
   - Closed event (`close_event`): the organizer still gets `stats` with the same counts (US3 AS2).
-- [ ] T016 [P] [US2] Extend `backend/tests/services/test_event_service.py`:
+- [X] T016 [P] [US2] Extend `backend/tests/services/test_event_service.py`:
   - `EventService.get` with the organizer as actor returns `stats == EventStats(participant_count=<n>, available_clothing_count=0, confirmed_exchange_count=0)`, where `n` counts only participants with that `event_id`.
   - (Non-organizer `stats is None` is covered by T006; not repeated here.)
 
 ### Implementation (Green → Refactor) — agent: `implementer-be`
 
-- [ ] T017 [P] [US2] Add `count_by_event(s: Session, event_id: str) -> int` to `backend/app/repositories/participant.py`, using `select(func.count()).select_from(Participant).where(Participant.event_id == event_id)` and returning `s.execute(stmt).scalar_one()`, the same pattern as `count_rows` in `backend/tests/conftest.py` (R5). `Session` has no `scalar_one` method.
-- [ ] T018 [US2] Update `EventService.get` in `backend/app/services/event.py` (R5). Inside the same read transaction, when `actor.id == event.organizer_participant_id`:
+- [X] T017 [P] [US2] Add `count_by_event(s: Session, event_id: str) -> int` to `backend/app/repositories/participant.py`, using `select(func.count()).select_from(Participant).where(Participant.event_id == event_id)` and returning `s.execute(stmt).scalar_one()`, the same pattern as `count_rows` in `backend/tests/conftest.py` (R5). `Session` has no `scalar_one` method.
+- [X] T018 [US2] Update `EventService.get` in `backend/app/services/event.py` (R5). Inside the same read transaction, when `actor.id == event.organizer_participant_id`:
   - Build `stats = EventStats(participant_count=participant_repo.count_by_event(s, event.id), available_clothing_count=0, confirmed_exchange_count=0)`.
   - Put the comment `# TODO(feature 06/11): count from clothing/proposals` on the two zero values.
   - Otherwise `stats = None`.
@@ -224,19 +224,19 @@ Non-organizers keep `stats: null`.
 
 **Purpose**: API artifacts, documentation sync, and final and live validation.
 
-- [ ] T019 [P] Add `postman/collections/Vintage Relay API/08 Auth errors/Get non-existent event.request.yaml` (R11). Cross-event 404 is covered by T005. Model it on `08 Auth errors/Missing token.request.yaml`, with `order: 6000` and `GET {{baseUrl}}/api/v1/events/00000000-0000-4000-8000-000000000000`, sent with the default collection bearer auth (the organizer token of `{{eventId}}`). Its tests assert status 404 and `error.code == "NOT_FOUND"` — orchestrator (API artifact).
-- [ ] T020 [P] Update `docs/plans/api/02-read-event.md` — orchestrator (docs):
+- [X] T019 [P] Add `postman/collections/Vintage Relay API/08 Auth errors/Get non-existent event.request.yaml` (R11). Cross-event 404 is covered by T005. Model it on `08 Auth errors/Missing token.request.yaml`, with `order: 6000` and `GET {{baseUrl}}/api/v1/events/00000000-0000-4000-8000-000000000000`, sent with the default collection bearer auth (the organizer token of `{{eventId}}`). Its tests assert status 404 and `error.code == "NOT_FOUND"` — orchestrator (API artifact).
+- [X] T020 [P] Update `docs/plans/api/02-read-event.md` — orchestrator (docs):
   - Processing Rules: the token is checked first (401 even for a non-existent event); the `event_id` path value isn't format-validated, so a malformed, non-existent, or other event's ID all return the same `404 NOT_FOUND`.
   - Errors: the 401 row covers a missing header, a non-Bearer scheme, an empty token, or an unknown token.
   - `stats`: `availableClothingCount` and `confirmedExchangeCount` are `0` until the clothing and proposals features exist.
-- [ ] T021 Run the full suites and record the actual results:
+- [X] T021 Run the full suites and record the actual results:
   - Backend: `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`
   - Frontend (unchanged; regression check): `cd frontend && pnpm lint && pnpm typecheck && pnpm test`
-- [ ] T022 Run the manual validation from [quickstart.md](quickstart.md) §2 against Docker Compose:
+- [X] T022 Run the manual validation from [quickstart.md](quickstart.md) §2 against Docker Compose:
   - The happy-path read returns 200 with the same shape as creation and no `participantToken`.
   - Every error-path row gives the expected status and code, and `requestId` equals `X-Request-ID`.
   - Report this as local, live, manual evidence.
-- [ ] T023 Run the SC-006 timing check from [quickstart.md](quickstart.md) §4: 100 `GET /api/v1/events/{id}` requests with a bearer token from 5 concurrent clients. Report p50, p95, and the error count. The pass condition is p95 < 1 s with 0 errors; record the result in the PR.
+- [X] T023 Run the SC-006 timing check from [quickstart.md](quickstart.md) §4: 100 `GET /api/v1/events/{id}` requests with a bearer token from 5 concurrent clients. Report p50, p95, and the error count. The pass condition is p95 < 1 s with 0 errors; record the result in the PR.
 
 ---
 
