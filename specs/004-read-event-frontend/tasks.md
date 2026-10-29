@@ -188,7 +188,7 @@ description: "Task list for feature 004-read-event-frontend"
 ### Implementation for User Story 4
 
 - [X] T027 [US4] Create `frontend/src/components/event/EventScreenStatus.tsx` rendering the `no-access`, `not-found`, and `error` states per contracts/ui-screens.md "Shared states" (Astryx `Banner`/`Text` + `Button`s; error region `role="alert"`, [Try again] `isLoading` while fetching), and use it in `EventHomeScreen.tsx` and `ManageEventScreen.tsx`. Makes T026 pass — agent: `implementer-fe`
-- [ ] T028 [P] [US4] UI-only, no automated test: create `frontend/src/app/events/[eventId]/error.tsx` (client) modeled on `frontend/src/app/error.tsx`: "Unable to load this screen.", [Retry] via the `retry` prop, [Home] → `routes.eventHome(eventId)` using `useParams`, `logger.error` — agent: `scaffolder`
+- [X] T028 [P] [US4] UI-only, no automated test: create `frontend/src/app/events/[eventId]/error.tsx` (client) modeled on `frontend/src/app/error.tsx`: "Unable to load this screen.", [Retry] via the `retry` prop, [Home] → `routes.eventHome(eventId)` using `useParams`, `logger.error` — agent: `scaffolder`
 
 **Checkpoint**: Commit T026–T027 as one cycle and T028 as a boilerplate commit, each after `commit-reviewer`.
 
