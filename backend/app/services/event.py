@@ -8,7 +8,7 @@ from app.core.db import Db
 from app.core.security import generate_participant_token, hash_participant_token
 from app.domain.entry_code import generate_entry_code
 from app.domain.enums import EventStatus
-from app.domain.errors import InternalError, NotFoundError
+from app.domain.errors import ForbiddenError, InternalError, NotFoundError
 from app.models.event import Event
 from app.models.participant import Participant
 from app.repositories import event as event_repo
@@ -74,6 +74,18 @@ class EventService:
         self.entry_code_generator = entry_code_generator
         self.token_generator = token_generator
         self.clock = clock
+
+    def require_organizer(self, actor: Participant, event_id: str) -> Participant:
+        with self.db.read() as s:
+            if actor.event_id != event_id:
+                raise NotFoundError()
+            event = event_repo.get(s, event_id)
+            if event is None:
+                raise NotFoundError()
+            # Organizer authority comes from the event's participant reference (AGENTS.md).
+            if actor.id != event.organizer_participant_id:
+                raise ForbiddenError()
+            return actor
 
     def get(self, actor: Participant, event_id: str) -> EventRead:
         with self.db.read() as s:

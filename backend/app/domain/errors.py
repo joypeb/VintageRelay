@@ -17,6 +17,12 @@ class UnauthenticatedError(AppError):
     message = "Please join the event again."
 
 
+class ForbiddenError(AppError):
+    status_code = 403
+    code = "FORBIDDEN"
+    message = "You do not have permission to perform this action."
+
+
 class NotFoundError(AppError):
     status_code = 404
     code = "NOT_FOUND"
