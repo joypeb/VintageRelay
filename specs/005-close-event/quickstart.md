@@ -1,6 +1,6 @@
 # Quickstart: Validate Close Event
 
-This guide describes validation **after implementation**. Planning adds no endpoint or tests; the close route will remain unavailable until the implementation stage. See [plan.md](plan.md), [data-model.md](data-model.md), and [the operation contract](contracts/close-event.openapi.yaml).
+This guide validates the implemented close-event increment. The Implementation Evidence section records the actual Red/Green checks, reviews, and local HTTP results. See [plan.md](plan.md), [data-model.md](data-model.md), and [the operation contract](contracts/close-event.openapi.yaml).
 
 ## Prerequisites
 
@@ -69,7 +69,7 @@ Expected: 401 `UNAUTHENTICATED`; the error's `requestId` and response `X-Request
 
 ## Automated acceptance matrix
 
-The following filenames are planned outputs of implementation, not tests created during planning.
+The following test files implement the acceptance checks for the current increment.
 
 | Planned test target | Required assertions |
 |---|---|
@@ -80,7 +80,7 @@ The following filenames are planned outputs of implementation, not tests created
 | `tests/api/test_openapi_contract.py` | POST path, bearer scheme, Event result, 200/401/403/404/500 headers/errors, no automatic 422 on close; create retains its intentional 400/422 and read retains its contract |
 | Existing read-event tests | Closed event remains readable; regular participants still have `stats=null` |
 
-After these tests exist:
+Run the targeted and full checks:
 
 ```bash
 cd backend
@@ -147,3 +147,23 @@ The delegated explorer reported an unchanged-code baseline of 56 formatted files
 - The orchestrator reran the already-authored close service/API/concurrency regression files: 49 tests passed. Repeated the full backend checks: format (59 files), lint, mypy (29 files), and 160 tests passed.
 - No new gap was found, so T014 required no additional production changes or artificial Red tests. Full replay/clock/log/rollback/concurrency tests existed before the initial closure implementation, as required by the corrected task order.
 - Standard stdout logging provides one success log per normal committed initial closure, not a durable exactly-once guarantee across process crashes.
+
+### Documentation and integration checkpoints (T015–T017)
+
+- T015 OCR review covered all 9 feature documents with rules resolved for every path: 100% coverage. Two stale Low wording issues were fixed and re-reviewed; no findings remained. The documents/evidence were committed as `fd054ec`.
+- T016 added one real-route integration regression for organizer and regular participant reads, forbidden regular closure after close, replay identity/time, unchanged participants, credential confidentiality, and another event remaining active. It passed without a production fix.
+- The orchestrator independently reran checks: 60 files formatted, lint passed, mypy passed for 29 source files, and 161 tests passed; diff check passed. T017 recorded the verified integration scope and preserved all unbuilt-feature/policy dependencies. T018 OCR review covered both the new integration test and integration document with rules resolved for both paths: no findings, 100% intended commit coverage; quickstart/tasks changes were explicitly outside that commit.
+
+### Final validation scope
+
+- The current increment implements FR-001–FR-006 and the current-record portion of FR-012, with available close/replay/read evidence for FR-009.
+- Real final consent, exchange mutations/replays, recommendations, proposed pending invalidation and confirmed-record preservation remain unverified until their actual features and required policy decisions exist. See `contracts/closure-integration.md`. Completing this task list does not complete all of US4 or the full exchange product.
+- No dependencies, schema migrations, frontend source, checklist markers, or Postman collection files were changed. No PR, push, remote publication, or deployment was performed.
+
+### Final checks (T018–T021)
+
+- T018 exact-content OCR review returned no findings: 2 intended files reviewed, 2 tracking/evidence files explicitly skipped outside scope, 100% commit-scope coverage. The integration test and verified-scope document were committed as `1fc246b`.
+- T019 reconciled the implemented plan/test paths and this guide, verified all local Markdown links, parsed the OpenAPI YAML, resolved recursive references, and validated success/error examples against the current Pydantic models. This is structural/example validation, not a full OpenAPI-validator claim. The 16/16 checklist markers were not changed.
+- T020 local live HTTP and saved Postman evidence is recorded above: 4 saved requests, 11 assertions, zero failures, no report publication. Backend runtime code has not changed since that run.
+- T021 final orchestrator checks: backend format (60 files), lint, mypy (29 source files), and pytest 161 passed; frontend lint, typecheck, and 141 tests across 17 test files passed. No skipped or expected-failure test was introduced to make this implementation pass.
+- T022 final exact-content OCR document review found no Critical/High/Medium/Low findings: all 3 changed documents reviewed, zero skipped, 100% coverage; rules resolved for all selected paths. The final tracking update is included in the same reviewed commit. All feature-scope dependencies listed above remain explicit.

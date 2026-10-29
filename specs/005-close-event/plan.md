@@ -64,7 +64,7 @@ specs/005-close-event/
 
 ### Source Code (repository root)
 
-Planned changes only; no application files have been modified during planning.
+The implemented structure follows this plan; actual validation evidence is recorded in `quickstart.md`.
 
 ```text
 backend/
@@ -80,7 +80,8 @@ backend/
 └── tests/
     ├── api/
     │   ├── test_close_event.py       # New success/replay/error contract tests
-    │   └── test_openapi_contract.py  # Extend schema/security regression tests
+    │   ├── test_openapi_contract.py  # Extend schema/security regression tests
+    │   └── test_close_event_integration.py  # Real create/close/replay/read integration
     └── services/
         ├── test_close_event.py      # New direct-service, clock, rollback, logging tests
         └── test_close_event_concurrency.py  # New overlapping independent sessions
