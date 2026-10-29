@@ -79,7 +79,7 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle F5 — screen state and organizer helpers (`lib/event.ts`, R4, R5)
 
-- [ ] T012 Write `frontend/src/lib/event.test.ts` — agent: `test-author`:
+- [X] T012 Write `frontend/src/lib/event.test.ts` — agent: `test-author`:
   - `isOrganizer(event)` is `true` iff `event.me.participantId === event.organizerParticipantId`; `isClosed(event)` is `true` iff `status === 'closed'`.
   - `getEventScreenState({ hasSession, data, error, isPending })`, first match wins:
     - `hasSession: false` → `{ kind: 'no-access' }` (even with data or error).
@@ -88,7 +88,7 @@ description: "Task list for feature 004-read-event-frontend"
     - data present (with or without a later `NETWORK_ERROR`) → `{ kind: 'ready', event }`.
     - error `ApiError(500, 'INTERNAL_ERROR', 'Server message.')`, no data → `{ kind: 'error', message: 'Server message.' }`; a non-`ApiError` → message `'Something went wrong. Please try again.'`.
     - no data, no error → `{ kind: 'loading' }`.
-- [ ] T013 Implement `frontend/src/lib/event.ts` with `isOrganizer`, `isClosed`, and `getEventScreenState` returning the discriminated union in data-model.md §4. Messages come from `getFormErrorMessage`. Makes T012 pass — agent: `implementer-fe`
+- [X] T013 Implement `frontend/src/lib/event.ts` with `isOrganizer`, `isClosed`, and `getEventScreenState` returning the discriminated union in data-model.md §4. Messages come from `getFormErrorMessage`. Makes T012 pass — agent: `implementer-fe`
 
 **Checkpoint**: Foundation ready. Run the checks; commit F1–F5 separately after `commit-reviewer` (T001 with F1 is fine if reviewed together).
 
