@@ -10,6 +10,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { useEventQuery } from '@/lib/api/events';
 import { getEventScreenState, isClosed, isOrganizer } from '@/lib/event';
 import { routes } from '@/lib/routes';
@@ -25,7 +26,9 @@ export function EventHomeScreen({ eventId }: { eventId: string }) {
     () => false,
   );
   const hasSession = isMounted && hasEventSession(eventId);
-  const { data, error, isPending } = useEventQuery(eventId, { enabled: hasSession });
+  const { data, error, isPending, isFetching, refetch } = useEventQuery(eventId, {
+    enabled: hasSession,
+  });
 
   if (!isMounted) return null;
 
@@ -45,7 +48,20 @@ export function EventHomeScreen({ eventId }: { eventId: string }) {
     );
   }
 
-  if (state.kind !== 'ready') return null;
+  if (state.kind === 'no-access' || state.kind === 'not-found') {
+    return <EventScreenStatus kind={state.kind} />;
+  }
+
+  if (state.kind === 'error') {
+    return (
+      <EventScreenStatus
+        kind="error"
+        message={state.message}
+        isLoading={isFetching}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   const { event } = state;
   const organizer = isOrganizer(event);

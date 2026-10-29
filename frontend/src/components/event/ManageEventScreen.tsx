@@ -9,6 +9,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { EventShareCard } from '@/components/event/EventShareCard';
 import { useEventQuery } from '@/lib/api/events';
 import { getEventScreenState, isClosed, isOrganizer } from '@/lib/event';
@@ -48,7 +49,20 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     );
   }
 
-  if (state.kind !== 'ready') return null;
+  if (state.kind === 'no-access' || state.kind === 'not-found') {
+    return <EventScreenStatus kind={state.kind} />;
+  }
+
+  if (state.kind === 'error') {
+    return (
+      <EventScreenStatus
+        kind="error"
+        message={state.message}
+        isLoading={isFetching}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   const { event } = state;
 

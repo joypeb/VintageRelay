@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ManageEventScreen } from '@/components/event/ManageEventScreen';
+import { ApiError } from '@/lib/api/api-error';
 import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
 import type { Event } from '@/types/event';
@@ -148,5 +149,76 @@ describe('US3 closed', () => {
       expect(within(row as HTMLElement).getByText(value, { exact: true })).toBeVisible();
     }
     expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
+  });
+});
+
+describe('US4 states', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useEventQuery.mockReset();
+  });
+  afterEach(() => localStorage.clear());
+
+  function setState(error: ApiError | null, data?: Event) {
+    const refetch = vi.fn();
+    useEventQuery.mockReturnValue({ data, error, isPending: false, isFetching: false, refetch });
+    return refetch;
+  }
+
+  function expectNoAccessGuidance() {
+    expect(screen.getByText("You haven't joined this event on this device.")).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Join with entry code' })).toHaveAttribute(
+      'href',
+      '/join',
+    );
+    expect(screen.getByRole('link', { name: 'Go to start' })).toHaveAttribute('href', '/');
+  }
+
+  it('shows guidance and disables the query without a session', () => {
+    setState(null);
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(useEventQuery).toHaveBeenCalledWith('e1', { enabled: false });
+    expectNoAccessGuidance();
+  });
+
+  it('shows access guidance when the session is rejected', () => {
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    setState(new ApiError(401, 'UNAUTHENTICATED', 'x'));
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expectNoAccessGuidance();
+  });
+
+  it('shows guidance when the event is not found', () => {
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    setState(new ApiError(404, 'NOT_FOUND', 'x'));
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(screen.getByText('This event could not be found.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to start' })).toHaveAttribute('href', '/');
+  });
+
+  it('shows the server error and retries on request', async () => {
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    const refetch = setState(new ApiError(500, 'INTERNAL_ERROR', 'Server message.'));
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Server message.');
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a retryable error for a malformed result', () => {
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    setState(new ApiError(200, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.'));
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong. Please try again.');
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+  });
+
+  it('keeps previous event data visible when a background request fails', () => {
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    setState(new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'), event);
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(screen.getByRole('heading', { name: 'Manage event' })).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

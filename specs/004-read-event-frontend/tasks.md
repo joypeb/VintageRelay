@@ -177,7 +177,7 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Tests for User Story 4 (REQUIRED - write first) ⚠️
 
-- [ ] T026 [US4] Add "US4 states" blocks to `EventHomeScreen.test.tsx` and `ManageEventScreen.test.tsx` (same cases in each) — agent: `test-author`:
+- [X] T026 [US4] Add "US4 states" blocks to `EventHomeScreen.test.tsx` and `ManageEventScreen.test.tsx` (same cases in each) — agent: `test-author`:
   - No session record: shows "You haven't joined this event on this device." with links "Join with entry code" → `/join` and "Go to start" → `/`; `useEventQuery` called with `enabled: false`.
   - Error `ApiError(401, 'UNAUTHENTICATED', 'x')`: same guidance.
   - Error `ApiError(404, 'NOT_FOUND', 'x')`: "This event could not be found." and link "Go to start" → `/`.
@@ -187,7 +187,7 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Create `frontend/src/components/event/EventScreenStatus.tsx` rendering the `no-access`, `not-found`, and `error` states per contracts/ui-screens.md "Shared states" (Astryx `Banner`/`Text` + `Button`s; error region `role="alert"`, [Try again] `isLoading` while fetching), and use it in `EventHomeScreen.tsx` and `ManageEventScreen.tsx`. Makes T026 pass — agent: `implementer-fe`
+- [X] T027 [US4] Create `frontend/src/components/event/EventScreenStatus.tsx` rendering the `no-access`, `not-found`, and `error` states per contracts/ui-screens.md "Shared states" (Astryx `Banner`/`Text` + `Button`s; error region `role="alert"`, [Try again] `isLoading` while fetching), and use it in `EventHomeScreen.tsx` and `ManageEventScreen.tsx`. Makes T026 pass — agent: `implementer-fe`
 - [ ] T028 [P] [US4] UI-only, no automated test: create `frontend/src/app/events/[eventId]/error.tsx` (client) modeled on `frontend/src/app/error.tsx`: "Unable to load this screen.", [Retry] via the `retry` prop, [Home] → `routes.eventHome(eventId)` using `useParams`, `logger.error` — agent: `scaffolder`
 
 **Checkpoint**: Commit T026–T027 as one cycle and T028 as a boilerplate commit, each after `commit-reviewer`.
