@@ -4,6 +4,7 @@ import {
   getEventSession,
   getEventShare,
   getSessionHeaders,
+  hasEventSession,
   isStorageAvailable,
   saveEventSession,
 } from '@/lib/session';
@@ -54,6 +55,22 @@ describe('event session storage', () => {
     saveEventSession('e1', record);
     expect(getSessionHeaders('e1')).toEqual({ Authorization: 'Bearer t1' });
     expect(getSessionHeaders('unknown')).toEqual({});
+  });
+
+  describe('hasEventSession', () => {
+    it('returns true for a saved session and false for an unknown event', () => {
+      saveEventSession('e1', { participantToken: 't1', participantId: 'p1' });
+      expect(hasEventSession('e1')).toBe(true);
+      expect(hasEventSession('unknown')).toBe(false);
+    });
+
+    it.each([
+      ['invalid JSON', '{'],
+      ['empty participant token', JSON.stringify({ participantToken: '', participantId: 'p1' })],
+    ])('returns false for %s', (_case, stored) => {
+      localStorage.setItem('vr:event:e1', stored);
+      expect(hasEventSession('e1')).toBe(false);
+    });
   });
 
   it('detects available storage without leaving a probe key', () => {

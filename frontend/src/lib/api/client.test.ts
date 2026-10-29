@@ -99,8 +99,18 @@ describe('API client', () => {
     await expect(result).rejects.toMatchObject({
       status: 0,
       code: 'NETWORK_ERROR',
-      message:
-        "The connection timed out. Your event may have been created; if you don't see it, create it again.",
+      message: 'The connection timed out. Please try again.',
+    });
+  });
+
+  it('uses a custom message for a timeout failure', async () => {
+    fetchMock.mockRejectedValue(new DOMException('t', 'TimeoutError'));
+    const result = apiFetch(null, '/events', {}, { timeoutMs: 15000, timeoutMessage: 'Custom.' });
+    await expect(result).rejects.toBeInstanceOf(ApiError);
+    await expect(result).rejects.toMatchObject({
+      status: 0,
+      code: 'NETWORK_ERROR',
+      message: 'Custom.',
     });
   });
 });
