@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '@/lib/api/api-error';
-import { getEventScreenState, isClosed, isOrganizer } from '@/lib/event';
+import {
+  getCloseEventFailure,
+  getEventScreenState,
+  isClosed,
+  isOrganizer,
+  keepClosedEvent,
+} from '@/lib/event';
 import type { Event } from '@/types/event';
 
 const event: Event = {
@@ -94,5 +100,57 @@ describe('getEventScreenState', () => {
     expect(
       getEventScreenState({ hasSession: true, data: undefined, error: null, isPending: true }),
     ).toEqual({ kind: 'loading' });
+  });
+});
+
+describe('getCloseEventFailure', () => {
+  it.each([
+    [new ApiError(403, 'FORBIDDEN', 'Forbidden.'), { kind: 'forbidden' }],
+    [new ApiError(401, 'UNAUTHENTICATED', 'Unauthenticated.'), { kind: 'no-access' }],
+    [new ApiError(404, 'NOT_FOUND', 'Not found.'), { kind: 'not-found' }],
+    [new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'), { kind: 'dialog', message: 'Server says no.' }],
+    [
+      new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+      { kind: 'dialog', message: 'Please check your network connection.' },
+    ],
+    [new ApiError(200, 'UNKNOWN_ERROR', 'Invalid response.'), { kind: 'dialog', message: 'Invalid response.' }],
+    [new ApiError(409, 'EVENT_CLOSED', 'Event closed.'), { kind: 'dialog', message: 'Event closed.' }],
+    [new Error('x'), { kind: 'dialog', message: 'Something went wrong. Please try again.' }],
+  ])('maps %s to the appropriate failure', (error, expected) => {
+    expect(getCloseEventFailure(error)).toEqual(expected);
+  });
+});
+
+describe('keepClosedEvent', () => {
+  const closed: Event = { ...event, status: 'closed', closedAt: '2026-10-27T10:00:00Z' };
+
+  it('accepts the first active event', () => {
+    expect(keepClosedEvent(undefined, event)).toEqual(event);
+  });
+
+  it('accepts an updated active event', () => {
+    const updated = { ...event, name: 'Updated exchange' };
+    expect(keepClosedEvent(event, updated)).toEqual(updated);
+  });
+
+  it('accepts a transition from active to closed', () => {
+    expect(keepClosedEvent(event, closed)).toEqual(closed);
+  });
+
+  it('accepts updated counts for a closed event', () => {
+    const updated = {
+      ...closed,
+      stats: { participantCount: 2, availableClothingCount: 0, confirmedExchangeCount: 0 },
+    };
+    expect(keepClosedEvent(closed, updated)).toEqual(updated);
+  });
+
+  it('keeps the same closed event when a stale active event arrives', () => {
+    expect(keepClosedEvent(closed, event)).toBe(closed);
+  });
+
+  it('preserves the previous reference for deeply equal events', () => {
+    const copy = { ...event, me: { ...event.me }, stats: event.stats && { ...event.stats } };
+    expect(keepClosedEvent(event, copy)).toBe(event);
   });
 });

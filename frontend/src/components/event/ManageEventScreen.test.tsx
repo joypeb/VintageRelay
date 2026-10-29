@@ -8,12 +8,21 @@ import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
 import type { Event } from '@/types/event';
 
-const { useEventQuery, apiFetch, qr } = vi.hoisted(() => ({
+const { useEventQuery, useCloseEventMutation, useIsCloseEventPending, apiFetch, qr } = vi.hoisted(() => ({
   useEventQuery: vi.fn(),
+  useCloseEventMutation: vi.fn(() => ({
+    mutate: vi.fn(),
+    reset: vi.fn(),
+    isError: false,
+    error: null,
+    isPending: false,
+    isSuccess: false,
+  })),
+  useIsCloseEventPending: vi.fn(() => false),
   apiFetch: vi.fn(),
   qr: vi.fn<(props: { value: string }) => null>(() => null),
 }));
-vi.mock('@/lib/api/events', () => ({ useEventQuery }));
+vi.mock('@/lib/api/events', () => ({ useEventQuery, useCloseEventMutation, useIsCloseEventPending }));
 vi.mock('@/lib/api/client', () => ({ apiFetch }));
 vi.mock('qrcode.react', () => ({ QRCodeSVG: qr }));
 
@@ -88,20 +97,6 @@ describe('US2 manage', () => {
     );
     await user.click(refresh);
     expect(refetch).toHaveBeenCalledTimes(1);
-    expect(container).not.toHaveTextContent(token);
-  });
-
-  it('announces that closing is coming soon without making a request', async () => {
-    const user = userEvent.setup();
-    const refetch = setQuery(event);
-    const { container } = renderWithClient(<ManageEventScreen eventId="e1" />);
-    const closeButton = await screen.findByRole('button', { name: 'Close event' });
-    expect(closeButton).toBeVisible();
-    await user.click(closeButton);
-    const message = screen.getByText('Closing the event is coming soon.');
-    expect(message.closest('[role="status"]')).not.toBeNull();
-    expect(apiFetch).not.toHaveBeenCalled();
-    expect(refetch).not.toHaveBeenCalled();
     expect(container).not.toHaveTextContent(token);
   });
 
