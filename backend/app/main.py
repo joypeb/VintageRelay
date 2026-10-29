@@ -11,7 +11,7 @@ from app.api.errors import register_error_handlers
 from app.api.routers import events
 from app.core.config import Settings, get_settings
 from app.core.db import Db
-from app.core.logging import request_context, setup_logging
+from app.core.logging import disable_access_log, request_context, setup_logging
 
 
 def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAPI:
@@ -20,6 +20,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        disable_access_log()
         if db is not None:
             yield
             return

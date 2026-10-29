@@ -7,7 +7,7 @@ from pydantic.alias_generators import to_camel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
-from app.core.logging import request_id_var
+from app.core.logging import mask_path, request_id_var
 from app.domain.errors import AppError, InternalError
 from app.schemas.common import ValidationReason
 from app.schemas.error import ErrorResponse
@@ -19,6 +19,7 @@ _ERROR_DESCRIPTIONS = {
     401: "Missing or invalid participant token.",
     403: "Participant does not have permission to perform this action.",
     404: "Resource not found.",
+    409: "State conflict with the current resource.",
     422: "Field validation failed.",
     500: "A temporary error occurred.",
 }
@@ -102,7 +103,7 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled(request: Request, exc: Exception) -> JSONResponse:
-        logger.exception("unhandled_error", extra={"path": request.url.path})
+        logger.exception("unhandled_error", extra={"path": mask_path(request.url.path)})
         return JSONResponse(
             _body(InternalError.code, InternalError.message), status_code=InternalError.status_code
         )

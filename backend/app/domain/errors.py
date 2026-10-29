@@ -29,6 +29,24 @@ class NotFoundError(AppError):
     message = "Resource not found."
 
 
+class EntryCodeNotFoundError(NotFoundError):
+    message = "We couldn't find an event with this code. Check the code and try again."
+
+
+class ConflictError(AppError):
+    status_code = 409
+
+
+class EventClosedError(ConflictError):
+    code = "EVENT_CLOSED"
+    message = "This event has ended."
+
+
+class DisplayNameTakenError(ConflictError):
+    code = "DISPLAY_NAME_TAKEN"
+    message = "This display name is already taken in this event."
+
+
 class InternalError(AppError):
     status_code = 500
     code = "INTERNAL_ERROR"

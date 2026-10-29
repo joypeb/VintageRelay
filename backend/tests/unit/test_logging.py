@@ -114,3 +114,21 @@ def test_setup_logging_called_twice_installs_one_handler_and_propagates() -> Non
         root.setLevel(original_level)
         access.disabled = original_access_disabled
         service.propagate = original_propagate
+
+
+@pytest.mark.parametrize(
+    ("path", "expected"),
+    [
+        ("/api/v1/entry-codes/K7P3QX", "/api/v1/entry-codes/K7****"),
+        ("/api/v1/entry-codes/K7P3QX/fail", "/api/v1/entry-codes/K7****/fail"),
+        ("/api/v1/entry-codes/K7", "/api/v1/entry-codes/****"),
+        ("/api/v1/entry-codes/K", "/api/v1/entry-codes/****"),
+        ("/api/v1/entry-codes/", "/api/v1/entry-codes/"),
+        ("/api/v1/entry-codes//fail", "/api/v1/entry-codes//fail"),
+        ("/api/v1/events/abc", "/api/v1/events/abc"),
+    ],
+)
+def test_mask_path_masks_only_entry_code_segment(path: str, expected: str) -> None:
+    from app.core.logging import mask_path
+
+    assert mask_path(path) == expected
