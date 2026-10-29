@@ -125,3 +125,28 @@ describe('US2 manage', () => {
     expect(container).not.toHaveTextContent(token);
   });
 });
+
+describe('US3 closed', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useEventQuery.mockReset();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+  });
+  afterEach(() => localStorage.clear());
+
+  it('keeps organizer counts visible and hides the close action', async () => {
+    setQuery({ ...event, status: 'closed', closedAt: '2026-10-27T09:00:00Z' });
+    renderWithClient(<ManageEventScreen eventId="e1" />);
+    expect(await screen.findByRole('heading', { name: 'Manage event' })).toBeVisible();
+    for (const [label, value] of [
+      ['Participants', '3'],
+      ['Available garments', '0'],
+      ['Confirmed exchanges', '2'],
+    ] as const) {
+      const row = screen.getByText(label, { exact: true }).parentElement;
+      expect(row).not.toBeNull();
+      expect(within(row as HTMLElement).getByText(value, { exact: true })).toBeVisible();
+    }
+    expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
+  });
+});

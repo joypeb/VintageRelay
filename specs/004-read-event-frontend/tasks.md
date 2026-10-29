@@ -152,18 +152,18 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Tests for User Story 3 (REQUIRED - write first) ⚠️
 
-- [ ] T022 [P] [US3] Write `frontend/src/components/event/EventClosedBanner.test.tsx` (mock `useEventQuery`, mock `@/lib/utils/date` `formatDateTime` to return `'Oct 27, 2026, 6:00 PM'`, seed session) — agent: `test-author`:
+- [X] T022 [P] [US3] Write `frontend/src/components/event/EventClosedBanner.test.tsx` (mock `useEventQuery`, mock `@/lib/utils/date` `formatDateTime` to return `'Oct 27, 2026, 6:00 PM'`, seed session) — agent: `test-author`:
   - Closed event (`closedAt: '2026-10-27T09:00:00Z'`): shows "This event has ended." and "Closed Oct 27, 2026, 6:00 PM"; `formatDateTime` was called with `'2026-10-27T09:00:00Z'`.
   - Active event, pending, error, and no session: renders nothing (empty container); with no session `useEventQuery` gets `enabled: false`.
   - H2 itself is unchanged: `EventCreatedScreen.test.tsx` keeps rendering from the device snapshot without any query (no new assertion needed there).
-- [ ] T023 [P] [US3] Add "US3 closed" blocks — agent: `test-author`:
+- [X] T023 [P] [US3] Add "US3 closed" blocks — agent: `test-author`:
   - `EventHomeScreen.test.tsx`: closed event shows "Closed" (not "Active") and no "Register my clothes" link.
   - `ManageEventScreen.test.tsx`: closed organizer event still shows the three counts and no "Close event" button.
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Implement `frontend/src/components/event/EventClosedBanner.tsx` (`'use client'`, prop `eventId`; mount guard + `hasEventSession` + `useEventQuery`; Astryx `Banner` status `warning`, title "This event has ended.", description `Closed ${formatDateTime(closedAt)}`), and create `frontend/src/app/events/[eventId]/layout.tsx` (server; awaits `params`, renders `<EventClosedBanner eventId />` then `children`). Makes T022 pass — agent: `implementer-fe`
-- [ ] T025 [US3] Update `EventHomeScreen.tsx` (badge "Closed", hide [Register my clothes] when `isClosed`) and `ManageEventScreen.tsx` (render [Close event] only when active). Makes T023 pass — agent: `implementer-fe`
+- [X] T024 [US3] Implement `frontend/src/components/event/EventClosedBanner.tsx` (`'use client'`, prop `eventId`; mount guard + `hasEventSession` + `useEventQuery`; Astryx `Banner` status `warning`, title "This event has ended.", description `Closed ${formatDateTime(closedAt)}`), and create `frontend/src/app/events/[eventId]/layout.tsx` (server; awaits `params`, renders `<EventClosedBanner eventId />` then `children`). Makes T022 pass — agent: `implementer-fe`
+- [X] T025 [US3] Update `EventHomeScreen.tsx` (badge "Closed", hide [Register my clothes] when `isClosed`) and `ManageEventScreen.tsx` (render [Close event] only when active). Makes T023 pass — agent: `implementer-fe`
 
 **Checkpoint**: Commit T022–T025 as one cycle after `commit-reviewer`.
 

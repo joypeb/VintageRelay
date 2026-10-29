@@ -90,3 +90,20 @@ describe('US1 home', () => {
     expect(container).not.toHaveTextContent(token);
   });
 });
+
+describe('US3 closed', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useEventQuery.mockReset();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+  });
+  afterEach(() => localStorage.clear());
+
+  it('shows the closed state and hides clothing registration', async () => {
+    setQuery({ ...event, status: 'closed', closedAt: '2026-10-27T09:00:00Z' });
+    renderWithClient(<EventHomeScreen eventId="e1" />);
+    expect(await screen.findByText('Closed', { exact: true })).toBeVisible();
+    expect(screen.queryByText('Active', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Register my clothes' })).not.toBeInTheDocument();
+  });
+});

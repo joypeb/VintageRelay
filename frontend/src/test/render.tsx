@@ -29,7 +29,14 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-/** Renders `ui` with a fresh QueryClient and the Astryx theme for one test. */
+/**
+ * Renders `ui` with a fresh QueryClient and the Astryx theme for one test.
+ * `container` is the theme root element, so it is empty when `ui` renders nothing.
+ */
 export function renderWithClient(ui: ReactElement) {
-  return render(ui, { wrapper: createWrapper(createTestQueryClient()) });
+  const result = render(ui, { wrapper: createWrapper(createTestQueryClient()) });
+  return {
+    ...result,
+    container: (result.container.firstElementChild ?? result.container) as HTMLElement,
+  };
 }
