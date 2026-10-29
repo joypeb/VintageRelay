@@ -37,7 +37,7 @@ description: "Task list for feature 004-read-event-frontend"
 
 **Purpose**: Boilerplate with no behavior. No tests; `scaffolder` → `commit-reviewer` → commit.
 
-- [ ] T001 Create `frontend/src/lib/api/query-keys.ts` exporting `queryKeys = { event: (eventId: string) => ['events', eventId] as const }` exactly as in `docs/rules/dev/frontend/data-fetching.md` §3 (only the `event` key; R1) — agent: `scaffolder`
+- [X] T001 Create `frontend/src/lib/api/query-keys.ts` exporting `queryKeys = { event: (eventId: string) => ['events', eventId] as const }` exactly as in `docs/rules/dev/frontend/data-fetching.md` §3 (only the `event` key; R1) — agent: `scaffolder`
 
 ---
 
@@ -49,10 +49,10 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle F1 — per-call timeout message (`lib/api/client.ts`, R2)
 
-- [ ] T002 Update tests — agent: `test-author`:
+- [X] T002 Update tests — agent: `test-author`:
   - `frontend/src/lib/api/client.test.ts`: the existing timeout case changes to: with `{ timeoutMs: 15000 }` and no `timeoutMessage`, a `DOMException('t', 'TimeoutError')` rejects with `ApiError(0, 'NETWORK_ERROR', 'The connection timed out. Please try again.')`. Add: with `{ timeoutMs: 15000, timeoutMessage: 'Custom.' }` it rejects with message `'Custom.'`.
   - `frontend/src/lib/api/events.test.ts`: `createEvent` must call `apiFetch(null, '/events', { method: 'POST', body: JSON.stringify(body) }, { timeoutMs: 15000, timeoutMessage: "The connection timed out. Your event may have been created; if you don't see it, create it again." })`.
-- [ ] T003 Add optional `timeoutMessage?: string` to `apiFetch` options in `frontend/src/lib/api/client.ts` (default `'The connection timed out. Please try again.'`), and pass the create-specific message from `createEvent` in `frontend/src/lib/api/events.ts`. H1 behavior is unchanged. Makes T002 pass — agent: `implementer-fe`
+- [X] T003 Add optional `timeoutMessage?: string` to `apiFetch` options in `frontend/src/lib/api/client.ts` (default `'The connection timed out. Please try again.'`), and pass the create-specific message from `createEvent` in `frontend/src/lib/api/events.ts`. H1 behavior is unchanged. Makes T002 pass — agent: `implementer-fe`
 
 ### Cycle F2 — routes, session presence, date (`lib/routes.ts`, `lib/session.ts`, `lib/utils/date.ts`)
 

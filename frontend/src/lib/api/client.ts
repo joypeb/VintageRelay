@@ -3,14 +3,13 @@ import { getSessionHeaders } from '@/lib/session';
 
 import { ApiError, toApiError } from './api-error';
 
-const TIMEOUT_MESSAGE =
-  "The connection timed out. Your event may have been created; if you don't see it, create it again.";
+const DEFAULT_TIMEOUT_MESSAGE = 'The connection timed out. Please try again.';
 
 export async function apiFetch<T>(
   eventId: string | null,
   path: string,
   init: RequestInit = {},
-  options: { timeoutMs?: number } = {},
+  options: { timeoutMs?: number; timeoutMessage?: string } = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -30,7 +29,7 @@ export async function apiFetch<T>(
     res = await fetch(`${env.apiBaseUrl}/api/v1${path}`, { ...init, headers, signal });
   } catch (err) {
     if (err instanceof DOMException && err.name === 'TimeoutError') {
-      throw new ApiError(0, 'NETWORK_ERROR', TIMEOUT_MESSAGE);
+      throw new ApiError(0, 'NETWORK_ERROR', options.timeoutMessage ?? DEFAULT_TIMEOUT_MESSAGE);
     }
     if (err instanceof TypeError) {
       throw new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.');

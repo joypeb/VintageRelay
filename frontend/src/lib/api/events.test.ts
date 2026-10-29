@@ -34,7 +34,11 @@ describe('createEvent', () => {
       null,
       '/events',
       { method: 'POST', body: JSON.stringify(body) },
-      { timeoutMs: 15000 },
+      {
+        timeoutMs: 15000,
+        timeoutMessage:
+          "The connection timed out. Your event may have been created; if you don't see it, create it again.",
+      },
     );
   });
 });
