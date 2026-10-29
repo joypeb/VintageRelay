@@ -29,14 +29,23 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
+type RenderWithClientOptions = {
+  /** Client shared with other renders or seeded before rendering; a fresh test client by default. */
+  queryClient?: QueryClient;
+};
+
 /**
- * Renders `ui` with a fresh QueryClient and the Astryx theme for one test.
+ * Renders `ui` with a QueryClient and the Astryx theme for one test.
+ * Pass `options.queryClient` to share one client across renders; otherwise a
+ * fresh test client is created. The client in use is returned as `queryClient`.
  * `container` is the theme root element, so it is empty when `ui` renders nothing.
  */
-export function renderWithClient(ui: ReactElement) {
-  const result = render(ui, { wrapper: createWrapper(createTestQueryClient()) });
+export function renderWithClient(ui: ReactElement, options: RenderWithClientOptions = {}) {
+  const queryClient = options.queryClient ?? createTestQueryClient();
+  const result = render(ui, { wrapper: createWrapper(queryClient) });
   return {
     ...result,
+    queryClient,
     container: (result.container.firstElementChild ?? result.container) as HTMLElement,
   };
 }
