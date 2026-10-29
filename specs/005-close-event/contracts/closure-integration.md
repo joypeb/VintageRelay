@@ -40,3 +40,9 @@ A synthetic write-lock probe or overlapping close requests cannot substitute for
 ## Policy approval gate
 
 Before implementing FR-010/FR-011, record explicit approval and update the relevant source/spec. Then implement pending invalidation and confirmed-record handling in the same closure transaction and add rollback, terminal-history, other-event isolation, visibility, and consent-replay tests. Re-evaluate whether migrations, garment counts, proposal counts, or confirmation association constraints are needed in that feature. Do not leave those requirements marked complete in the current increment.
+
+## Verified current integration
+
+The real create → close → replay → read path is covered by `backend/tests/api/test_close_event_integration.py` using the actual routes/services and isolated SQLite fixtures. The organizer sees the current summary; a regular participant sees `stats=null` and cannot close even after closure. The original closure time and participant records are unchanged by replay, and another event stays active and unchanged. No new application fix was needed for this integration regression.
+
+This evidence covers only currently implemented event operations. FR-007 and SC-005 still need real final-consent ordering tests. FR-008, the remaining FR-009/SC-006 cases, and conditional FR-010/FR-011/SC-007 remain dependent on the real exchange/AI features and, where proposed, explicit policy approval. No consent replay, garment preservation, pending-proposal invalidation, handover, or retention policy is claimed as implemented by this test.
