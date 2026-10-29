@@ -196,8 +196,8 @@ description: "Task list for feature 004-read-event-frontend"
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T029 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in the touched components — agent: `implementer-fe`
-- [ ] T030 Run the full suites and record the actual results: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`, and `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; confirms nothing regressed) — agent: orchestrator
+- [X] T029 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in the touched components — agent: `implementer-fe`
+- [X] T030 Run the full suites and record the actual results: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`, and `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; confirms nothing regressed) — agent: orchestrator
 - [ ] T031 Manual verification per quickstart.md §3 rows 1–10 at 360 px and 430 px (no horizontal scroll, touch targets ≥ 44×44 px, English copy, no token/entry code in console) and record results in the PR description — agent: orchestrator with the user
 - [ ] T032 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
 
