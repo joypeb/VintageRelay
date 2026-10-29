@@ -45,3 +45,44 @@ def test_create_event_openapi_request_describes_validation_constraints(client):
     assert schema["properties"]["name"]["maxLength"] == 60
     assert schema["properties"]["organizerDisplayName"]["minLength"] == 1
     assert schema["properties"]["organizerDisplayName"]["maxLength"] == 30
+
+
+def test_read_event_openapi_describes_success_and_errors(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}"]["get"]
+    responses = operation["responses"]
+    assert {"200", "401", "404", "500"} <= responses.keys()
+    assert "422" not in responses
+    assert "HTTPValidationError" not in json.dumps(operation)
+    assert "HTTPValidationError" not in document["components"]["schemas"]
+    for status in ("200", "401", "404", "500"):
+        assert "X-Request-ID" in responses[status]["headers"]
+    success = resolve(document, responses["200"]["content"]["application/json"]["schema"])
+    assert success["type"] == "object"
+    assert {
+        "id",
+        "name",
+        "status",
+        "entryCode",
+        "entryUrl",
+        "organizerParticipantId",
+        "createdAt",
+        "closedAt",
+        "me",
+        "stats",
+    } <= set(success["required"])
+    assert "participantToken" not in success["properties"]
+    for status in ("401", "404", "500"):
+        assert responses[status]["content"]["application/json"]["schema"] == {
+            "$ref": "#/components/schemas/ErrorResponse"
+        }
+    assert operation["security"]
+    scheme_name = next(iter(operation["security"][0]))
+    scheme = document["components"]["securitySchemes"][scheme_name]
+    assert scheme["type"] == "http"
+    assert scheme["scheme"].lower() == "bearer"
+    post = document["paths"]["/api/v1/events"]["post"]
+    assert set(post["responses"]) == {"201", "400", "422", "500"}
+    assert post["responses"]["422"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErrorResponse"
+    }

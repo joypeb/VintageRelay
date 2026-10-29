@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.participant import Participant
@@ -6,3 +7,7 @@ from app.models.participant import Participant
 def add(s: Session, participant: Participant) -> None:
     s.add(participant)
     s.flush()
+
+
+def get_by_token_hash(s: Session, token_hash: str) -> Participant | None:
+    return s.scalar(select(Participant).where(Participant.session_token_hash == token_hash))

@@ -9,6 +9,10 @@ def add(s: Session, event: Event) -> None:
     s.flush()
 
 
+def get(s: Session, event_id: str) -> Event | None:
+    return s.get(Event, event_id)
+
+
 def entry_code_exists(s: Session, code: str) -> bool:
     return s.scalar(select(Event.entry_code).where(Event.entry_code == code)) is not None
 

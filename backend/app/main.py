@@ -1,7 +1,10 @@
+import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import APIRouter, FastAPI
+from fastapi.openapi.utils import get_openapi
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.errors import register_error_handlers
@@ -49,6 +52,31 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
 
     api_router.include_router(events.router)
     app.include_router(api_router)
+
+    def custom_openapi() -> dict[str, Any]:
+        if app.openapi_schema is not None:
+            return app.openapi_schema
+        schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
+        responses = schema["paths"]["/api/v1/events/{event_id}"]["get"]["responses"]
+        validation_ref = (
+            responses.get("422", {})
+            .get("content", {})
+            .get("application/json", {})
+            .get("schema", {})
+            .get("$ref", "")
+        )
+        # This read has no validated parameters; preserve 422 on all other operations.
+        if validation_ref.endswith("/HTTPValidationError"):
+            del responses["422"]
+        schemas = schema.get("components", {}).get("schemas", {})
+        for name in ("HTTPValidationError", "ValidationError"):
+            component = schemas.pop(name, None)
+            if component is not None and f'"#/components/schemas/{name}"' in json.dumps(schema):
+                schemas[name] = component
+        app.openapi_schema = schema
+        return schema
+
+    app.openapi = custom_openapi  # type: ignore[method-assign]  # FastAPI's schema override hook.
     return app
 
 
