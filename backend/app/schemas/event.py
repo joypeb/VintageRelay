@@ -14,6 +14,12 @@ class EventCreate(ApiModel):
         return reject_control_characters(value)
 
 
+class EntryCodePreview(ApiModel):
+    event_id: str
+    name: str
+    status: EventStatus
+
+
 class EventMe(ApiModel):
     participant_id: str
     display_name: str
