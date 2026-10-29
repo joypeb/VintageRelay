@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Join Event (feature 007)
+  version: 0.1.0
+  description: >
+    Design contract derived from docs/plans/api/04-join-event.md and the sole
+    shared contract docs/rules/dev/common/api-contract.md. The implemented
+    FastAPI /openapi.json must match these semantics. Neither operation requires
+    a participant credential; a supplied Authorization header is ignored.
+paths:
+  /api/v1/entry-codes/{entry_code}:
+    get:
+      operationId: lookupEntryCode
+      summary: Preview an event by entry code
+      description: >
+        Matches the code case-insensitively after trimming. Closed events are
+        returned with status closed. The raw code is never logged; request logs
+        mask it after the first two characters.
+      tags: [entry-codes]
+      security: []
+      parameters:
+        - name: entry_code
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Event preview
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EntryCodePreview' }
+              example:
+                eventId: 9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d
+                name: Mangwon Flea Market Swap Corner
+                status: active
+        '404':
+          description: >
+            NOT_FOUND. Message: "We couldn't find an event with this code. Check
+            the code and try again."
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/events/{event_id}/participants:
+    post:
+      operationId: joinEvent
+      summary: Join an event with its entry code
+      description: >
+        Check order after body validation, in one write transaction: event exists
+        and entryCode matches in constant time (else 404, identical for both
+        cases) -> event active (else 409 EVENT_CLOSED) -> displayName unused in
+        the event ignoring case, including the organizer (else 409
+        DISPLAY_NAME_TAKEN) -> create participant and token hash atomically.
+        Not idempotent; each success creates a new participant.
+      tags: [events]
+      security: []
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          description: Opaque string; malformed values produce the same 404.
+          schema: { type: string }
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ParticipantCreate' }
+            example: { entryCode: k7p3qx, displayName: Joon }
+      responses:
+        '201':
+          description: >
+            EventSession for the new participant: event.me.isOrganizer = false,
+            event.stats = null, plus participantToken (returned only here and on
+            event creation).
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EventSession' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404':
+          description: NOT_FOUND for a missing event or wrong entryCode, same body as lookup 404.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '409':
+          description: >
+            EVENT_CLOSED when the event is closed; DISPLAY_NAME_TAKEN with
+            details {"field": "displayName"} when the name is used.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '422':
+          description: VALIDATION_ERROR with details.fields (required, too_long, invalid_type, invalid_characters, unknown_field)
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Correlation ID echoed in the response header and error.requestId
+      schema: { type: string }
+  headers:
+    RequestId:
+      description: Request ID
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: BAD_REQUEST for unparseable JSON or a non-object body
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    InternalError:
+      description: INTERNAL_ERROR
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  schemas:
+    EntryCodePreview:
+      type: object
+      additionalProperties: false
+      required: [eventId, name, status]
+      properties:
+        eventId: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, closed] }
+    ParticipantCreate:
+      type: object
+      additionalProperties: false
+      required: [entryCode, displayName]
+      properties:
+        entryCode: { type: string, minLength: 1, description: Trimmed; matched case-insensitively }
+        displayName: { type: string, minLength: 1, maxLength: 30, description: Trimmed; no control characters }
+    EventSession:
+      description: Must match EventSession in backend/app/schemas/event.py.
+      type: object
+      additionalProperties: false
+      required: [event, participantToken]
+      properties:
+        event: { $ref: '#/components/schemas/EventRead' }
+        participantToken: { type: string, minLength: 1, description: Returned only on event creation and join }
+    EventRead:
+      description: Must match EventRead in backend/app/schemas/event.py. On join, me.isOrganizer is false and stats is null.
+      type: object
+      additionalProperties: false
+      required: [id, name, status, entryCode, entryUrl, organizerParticipantId, createdAt, closedAt, me, stats]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [active, closed] }
+        entryCode: { type: string }
+        entryUrl: { type: string }
+        organizerParticipantId: { type: string }
+        createdAt: { type: string, format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        me:
+          type: object
+          additionalProperties: false
+          required: [participantId, displayName, isOrganizer]
+          properties:
+            participantId: { type: string }
+            displayName: { type: string }
+            isOrganizer: { type: boolean }
+        stats:
+          description: Organizer summary; null for regular participants (always null on join).
+          oneOf:
+            - $ref: '#/components/schemas/EventStats'
+            - type: 'null'
+    EventStats:
+      description: Must match EventStats in backend/app/schemas/event.py.
+      type: object
+      additionalProperties: false
+      required: [participantCount, availableClothingCount, confirmedExchangeCount]
+      properties:
+        participantCount: { type: integer }
+        availableClothingCount: { type: integer }
+        confirmedExchangeCount: { type: integer }
+    ErrorResponse:
+      description: Must match ErrorResponse in backend/app/schemas/error.py.
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: [object, 'null'] }
+            requestId: { type: string, description: Equals the X-Request-ID response header }
