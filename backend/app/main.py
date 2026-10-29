@@ -57,17 +57,21 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
         if app.openapi_schema is not None:
             return app.openapi_schema
         schema = get_openapi(title=app.title, version=app.version, routes=app.routes)
-        responses = schema["paths"]["/api/v1/events/{event_id}"]["get"]["responses"]
-        validation_ref = (
-            responses.get("422", {})
-            .get("content", {})
-            .get("application/json", {})
-            .get("schema", {})
-            .get("$ref", "")
-        )
-        # This read has no validated parameters; preserve 422 on all other operations.
-        if validation_ref.endswith("/HTTPValidationError"):
-            del responses["422"]
+        # These bodyless operations have no validated parameters; preserve real 422s.
+        for path, method in (
+            ("/api/v1/events/{event_id}", "get"),
+            ("/api/v1/events/{event_id}/close", "post"),
+        ):
+            responses = schema["paths"][path][method]["responses"]
+            validation_ref = (
+                responses.get("422", {})
+                .get("content", {})
+                .get("application/json", {})
+                .get("schema", {})
+                .get("$ref", "")
+            )
+            if validation_ref.endswith("/HTTPValidationError"):
+                del responses["422"]
         schemas = schema.get("components", {}).get("schemas", {})
         for name in ("HTTPValidationError", "ValidationError"):
             component = schemas.pop(name, None)

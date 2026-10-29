@@ -3,12 +3,14 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
 from app.core.config import Settings
 from app.core.db import Db
 from app.core.security import generate_participant_token, hash_participant_token
 from app.domain.entry_code import generate_entry_code
 from app.domain.enums import EventStatus
-from app.domain.errors import InternalError, NotFoundError
+from app.domain.errors import ForbiddenError, InternalError, NotFoundError
 from app.models.event import Event
 from app.models.participant import Participant
 from app.repositories import event as event_repo
@@ -75,21 +77,59 @@ class EventService:
         self.token_generator = token_generator
         self.clock = clock
 
+    def require_organizer(self, actor: Participant, event_id: str) -> Participant:
+        with self.db.read() as s:
+            self._organizer_event(s, actor, event_id)
+            return actor
+
+    def _organizer_event(self, s: Session, actor: Participant, event_id: str) -> Event:
+        if actor.event_id != event_id:
+            raise NotFoundError()
+        event = event_repo.get(s, event_id)
+        if event is None:
+            raise NotFoundError()
+        # Organizer authority comes from the event's participant reference (AGENTS.md).
+        if actor.id != event.organizer_participant_id:
+            raise ForbiddenError()
+        return event
+
+    def _read(self, s: Session, event: Event, actor: Participant) -> EventRead:
+        stats = None
+        if actor.id == event.organizer_participant_id:
+            stats = EventStats(
+                participant_count=participant_repo.count_by_event(s, event.id),
+                # TODO(feature 06/11): count from clothing/proposals
+                available_clothing_count=0,
+                # TODO(feature 06/11): count from clothing/proposals
+                confirmed_exchange_count=0,
+            )
+        return build_event_read(event, actor, stats, self.settings)
+
     def get(self, actor: Participant, event_id: str) -> EventRead:
         with self.db.read() as s:
             event = event_repo.get(s, event_id)
             if event is None:
                 raise NotFoundError()
-            stats = None
-            if actor.id == event.organizer_participant_id:
-                stats = EventStats(
-                    participant_count=participant_repo.count_by_event(s, event.id),
-                    # TODO(feature 06/11): count from clothing/proposals
-                    available_clothing_count=0,
-                    # TODO(feature 06/11): count from clothing/proposals
-                    confirmed_exchange_count=0,
-                )
-            return build_event_read(event, actor, stats, self.settings)
+            return self._read(s, event, actor)
+
+    def close(self, actor: Participant, event_id: str) -> EventRead:
+        with self.db.write() as s:
+            event = self._organizer_event(s, actor, event_id)
+            if event.status == EventStatus.CLOSED:
+                return self._read(s, event, actor)
+            if event_repo.mark_closed(s, event_id, self.clock()) != 1:
+                raise InternalError()
+            s.refresh(event)
+            result = self._read(s, event, actor)
+        logger.info(
+            "event_closed",
+            extra={
+                "event_id": event_id,
+                "participant_id": actor.id,
+                "invalidated_proposal_count": 0,
+            },
+        )
+        return result
 
     def create(self, body: EventCreate) -> EventSession:
         # Event creation also registers and links its organizer atomically (AGENTS.md).

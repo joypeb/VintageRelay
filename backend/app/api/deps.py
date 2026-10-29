@@ -56,3 +56,12 @@ def get_event_service(db: DbDep, settings: SettingsDep) -> EventService:
 
 
 EventServiceDep = Annotated[EventService, Depends(get_event_service)]
+
+
+def require_organizer(
+    event_id: str, actor: CurrentParticipant, service: EventServiceDep
+) -> Participant:
+    return service.require_organizer(actor, event_id)
+
+
+Organizer = Annotated[Participant, Depends(require_organizer)]

@@ -17,6 +17,7 @@ _HTTP_CODES = {400: "BAD_REQUEST", 401: "UNAUTHENTICATED", 403: "FORBIDDEN", 404
 _ERROR_DESCRIPTIONS = {
     400: "Malformed request.",
     401: "Missing or invalid participant token.",
+    403: "Participant does not have permission to perform this action.",
     404: "Resource not found.",
     422: "Field validation failed.",
     500: "A temporary error occurred.",
