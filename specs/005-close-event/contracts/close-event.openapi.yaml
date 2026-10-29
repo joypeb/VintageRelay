@@ -1,0 +1,138 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Close Event (feature 005)
+  version: 0.1.0
+  description: >
+    Design contract derived from docs/plans/api/03-close-event.md and the sole
+    shared contract docs/rules/dev/common/api-contract.md. The implemented
+    FastAPI /openapi.json must match these semantics. The current increment
+    closes events using existing event and participant storage. Proposal
+    invalidation and broader record preservation remain approval-gated policies;
+    this contract does not approve or implement them.
+paths:
+  /api/v1/events/{event_id}/close:
+    post:
+      operationId: closeEvent
+      summary: Close an event as its organizer
+      description: >
+        No request body or Content-Type header is required. Authenticate, verify
+        event existence and scope, and authorize the organizer before checking
+        replay. Initial closure records the closed state and closure time
+        atomically. Repeated closure returns 200 with the current event, preserves
+        closedAt, and causes no further state changes or event_closed logs.
+        A regular participant receives 403 even when the event is already closed.
+        This operation itself does not return EVENT_CLOSED for a closed event.
+      tags: [events]
+      security:
+        - participantToken: []
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          description: >
+            Opaque event ID, accepted as a string without UUID parsing. Malformed,
+            missing, and other-event identifiers all produce NOT_FOUND after
+            authentication, without exposing existence.
+          schema: { type: string }
+        - name: X-Request-ID
+          in: header
+          required: false
+          description: Correlation ID echoed in the response header and error.requestId
+          schema: { type: string }
+      responses:
+        '200':
+          description: >
+            Current closed event for the organizer, for both initial closure and
+            replay. closedAt is non-null, me.isOrganizer is true, and stats is
+            populated. No participantToken is returned. Counts for clothing and
+            confirmed exchanges remain zero until their source tables exist.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+              examples:
+                closedEvent:
+                  value:
+                    id: 9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d
+                    name: Mangwon Flea Market Swap Corner
+                    status: closed
+                    entryCode: K7P3QX
+                    entryUrl: https://vintage-relay.example/join?code=K7P3QX
+                    organizerParticipantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                    createdAt: '2026-10-29T05:30:00Z'
+                    closedAt: '2026-10-29T09:00:00Z'
+                    me:
+                      participantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                      displayName: Mina
+                      isOrganizer: true
+                    stats:
+                      participantCount: 1
+                      availableClothingCount: 0
+                      confirmedExchangeCount: 0
+        '401':
+          description: Missing, malformed, empty, non-Bearer, or unknown credential; checked before event lookup
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: UNAUTHENTICATED, message: Please join the event again., details: null, requestId: close-401 }
+        '403':
+          description: Caller is a participant of this event but is not its organizer, including on replay
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: FORBIDDEN, message: You do not have permission to perform this action., details: null, requestId: close-403 }
+        '404':
+          description: Event missing, identifier malformed, or credential belongs to another event; indistinguishable errors
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: NOT_FOUND, message: Resource not found., details: null, requestId: close-404 }
+        '500':
+          description: >
+            Unexpected failure. If the initial closure transaction fails, all
+            changes roll back and the event remains active. A response lost
+            after a successful commit is handled by an idempotent replay.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: INTERNAL_ERROR, message: A temporary error occurred., details: null, requestId: close-500 }
+components:
+  securitySchemes:
+    participantToken:
+      type: http
+      scheme: bearer
+      description: Existing participant token; organizer authority comes from organizerParticipantId
+  headers:
+    XRequestId:
+      description: Request correlation ID; equals error.requestId on errors
+      schema: { type: string }
+  schemas:
+    Event:
+      $ref: '../../001-create-event/contracts/create-event.openapi.yaml#/components/schemas/Event'
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details, requestId]
+          properties:
+            code:
+              type: string
+              enum: [UNAUTHENTICATED, FORBIDDEN, NOT_FOUND, INTERNAL_ERROR]
+            message: { type: string }
+            details: { type: 'null' }
+            requestId: { type: string }
