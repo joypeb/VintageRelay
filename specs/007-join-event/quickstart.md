@@ -70,3 +70,29 @@ LOWER=$(echo "$CODE" | tr 'A-Z' 'a-z')
 
 - Branch `feature/backend-join-event` (renamed from `docs/backend-join-event-spec`); `.specify/feature.json` → `specs/007-join-event`.
 - `ruff format --check`: 60 files already formatted. `ruff check --no-cache`: all checks passed. `mypy app`: no issues in 29 source files. `pytest`: 161 passed.
+
+### Implementation cycles
+
+| Cycle | Red (confirmed before implementation) | Green | Review | Commit |
+|---|---|---|---|---|
+| T002–T006 primitives and log masking | 18 failing (missing names, unmasked paths, access logger re-enabled) | 179 passed | No Critical/High/Medium | `9747f8e` |
+| T007–T009 name index | 4 failing (index missing, no `IntegrityError`); 3 expected passes | 185 passed | No findings | `b35a08c` |
+| T010–T013 lookup | 9 failing (route missing, generic 404, operation missing) | 194 passed | No findings | `a78ef63` |
+| T014–T019 join | 23 failing (route, schema, service, operation missing) | 217 passed; concurrency file repeated green | 1 Medium, 3 Low; addressed in a follow-up test commit | `2eb0d4a` |
+| Review follow-up (tests only) | Regression tests for existing behavior; passed as expected | 219 passed | No Critical/High/Medium; 1 Low (harness timeouts vs 5 s busy timeout) left as-is | `d76a309` |
+
+### T020 final validation (2026-10-30)
+
+- Backend: `ruff format --check` 69 files formatted; `ruff check --no-cache` passed; `mypy app` no issues in 30 files; `pytest` 219 passed, 1 expected SAWarning (Inspector skips expression-index reflection).
+- Frontend (unchanged): `pnpm lint` passed; `pnpm typecheck` passed; `pnpm test` 20 files, 217 tests passed.
+- Manual scenarios against a fresh SQLite file migrated to `8e658c89f7b9`, served with `fastapi run` (the production launcher):
+  1. Padded lowercase lookup → 200 with only `eventId`, `name`, `status: "active"`.
+  2. Unknown code → 404 `NOT_FOUND` with the lookup message.
+  3. Join with `" Joon "` and a lowercase code → 201, `isOrganizer=false`, `displayName="Joon"`, `stats=null`, token present.
+  4. Read with the new token → 200 as non-organizer, no `participantToken`.
+  5. `JOON` and `mina` (organizer) → 409 `DISPLAY_NAME_TAKEN`, `details.field="displayName"`.
+  6. Wrong code and unknown event → identical `code`, `message`, `details`.
+  7. Whitespace-only and 31-character names → 422 `VALIDATION_ERROR`.
+  8. After close → lookup 200 `status: "closed"`; join 409 `EVENT_CLOSED` "This event has ended, so you can't join it."
+  9. Server output: one `participant_joined`; lookup paths logged as `/api/v1/entry-codes/C6****`, `ZZ****`; zero occurrences of the raw code (either case) or the token; no Uvicorn access lines.
+- Observation: a space-padded lookup is masked before trimming, so its two visible characters include the leading space (logged as ` c****`). This stays within the logging rule (at most the first two characters visible).

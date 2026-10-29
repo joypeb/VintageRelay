@@ -1,6 +1,6 @@
 # Feature Specification: Join Event (Backend)
 
-**Feature Branch**: `docs/backend-join-event-spec`
+**Feature Branch**: `feature/backend-join-event`
 
 **Created**: 2026-10-29
 

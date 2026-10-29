@@ -1,6 +1,6 @@
 # Implementation Plan: Join Event (Backend)
 
-**Branch**: `docs/backend-join-event-spec` | **Date**: 2026-10-29 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/backend-join-event` | **Date**: 2026-10-29 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/007-join-event/spec.md`
 
