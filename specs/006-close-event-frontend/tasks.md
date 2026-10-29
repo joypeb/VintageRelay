@@ -63,10 +63,10 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Cycle F1 — pure helpers (`lib/event.ts`, R3, R5)
 
-- [ ] T005 Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
+- [X] T005 Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
   - "getCloseEventFailure" block: `ApiError(403, 'FORBIDDEN', …)` → `{ kind: 'forbidden' }`; `ApiError(401, 'UNAUTHENTICATED', …)` → `{ kind: 'no-access' }`; `ApiError(404, 'NOT_FOUND', …)` → `{ kind: 'not-found' }`; `ApiError(500, 'INTERNAL_ERROR', 'Server says no.')` → `{ kind: 'dialog', message: 'Server says no.' }`; `ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.')` → `dialog` with that message; `ApiError(200, 'UNKNOWN_ERROR', …)` → `dialog`; `ApiError(409, 'EVENT_CLOSED', …)` → `dialog`; `new Error('x')` → `{ kind: 'dialog', message: 'Something went wrong. Please try again.' }`.
   - "keepClosedEvent" block: `(undefined, active)` → equals active; `(active, active')` → equals `active'`; `(active, closed)` → equals closed; `(closed, closed')` → equals `closed'` (counts may change); `(closed, active)` → returns the **same object** as the previous closed event (data-model.md: "`closed` → `active` | stale read only | **no**"); `(x, deep-equal copy of x)` → returns `x` itself (default referential sharing kept).
-- [ ] T006 Implement in `frontend/src/lib/event.ts`: `getCloseEventFailure(error: unknown): CloseEventFailure` (type exactly as in data-model.md, message via `getFormErrorMessage`) and `keepClosedEvent(prev: unknown, next: unknown): unknown` (TanStack `structuralSharing` signature; returns `prev` when `prev` is a closed `Event` and `next` is an active `Event`, otherwise `replaceEqualDeep(prev, next)` from `@tanstack/react-query`). Makes T005 pass — agent: `implementer-fe`
+- [X] T006 Implement in `frontend/src/lib/event.ts`: `getCloseEventFailure(error: unknown): CloseEventFailure` (type exactly as in data-model.md, message via `getFormErrorMessage`) and `keepClosedEvent(prev: unknown, next: unknown): unknown` (TanStack `structuralSharing` signature; returns `prev` when `prev` is a closed `Event` and `next` is an active `Event`, otherwise `replaceEqualDeep(prev, next)` from `@tanstack/react-query`). Makes T005 pass — agent: `implementer-fe`
 
 ### Cycle F2 — keys, close request, mutation, pending, stale-read guard (`lib/api/*`, R1–R3)
 
