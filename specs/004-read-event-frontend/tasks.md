@@ -132,13 +132,13 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle US2b — M1 screen
 
-- [ ] T020 [US2] Write `frontend/src/components/event/ManageEventScreen.test.tsx`, block "US2 manage" (same mocking approach as T014; mock `qrcode.react`) — agent: `test-author`:
+- [X] T020 [US2] Write `frontend/src/components/event/ManageEventScreen.test.tsx`, block "US2 manage" (same mocking approach as T014; mock `qrcode.react`) — agent: `test-author`:
   - Organizer, active, stats `{ participantCount: 3, availableClothingCount: 0, confirmedExchangeCount: 2 }`: heading "Manage event"; the event name; the share card (QR img + entry code); "Participants" 3, "Available garments" 0, "Confirmed exchanges" 2 shown exactly; link "Back to home" → `/events/e1`.
   - "Refresh" calls `refetch` once; while `isFetching` it is busy (`aria-busy="true"`) and not clickable again.
   - "Close event" is visible; clicking it shows "Closing the event is coming soon." and makes no `apiFetch`/mutation call.
   - Regular participant: "Only the organizer can manage this event."; link "Back to home" → `/events/e1`; no count labels, no QR, no entry code.
   - The rendered output never contains the token `t1`.
-- [ ] T021 [US2] Implement `frontend/src/components/event/ManageEventScreen.tsx` (`'use client'`, prop `eventId`) per contracts/ui-screens.md "M1 Manage event": same mount guard/session/query/state pattern as P2; non-organizer view gated by `isOrganizer`; `EventShareCard`; counts as label/value pairs; `Button` "Refresh" (`isLoading` while `isFetching`); danger `Button` "Close event" toggling an inline `role="status"` notice; link "Back to home". Create `frontend/src/app/events/[eventId]/(tabs)/manage/page.tsx` (server, awaits `params`). Makes T020 pass — agent: `implementer-fe`
+- [X] T021 [US2] Implement `frontend/src/components/event/ManageEventScreen.tsx` (`'use client'`, prop `eventId`) per contracts/ui-screens.md "M1 Manage event": same mount guard/session/query/state pattern as P2; non-organizer view gated by `isOrganizer`; `EventShareCard`; counts as label/value pairs; `Button` "Refresh" (`isLoading` while `isFetching`); danger `Button` "Close event" toggling an inline `role="status"` notice; link "Back to home". Create `frontend/src/app/events/[eventId]/(tabs)/manage/page.tsx` (server, awaits `params`). Makes T020 pass — agent: `implementer-fe`
 
 **Checkpoint**: US1 + US2 = demoable MVP (create → home → manage/share). Commit US2a and US2b separately after `commit-reviewer`.
 
