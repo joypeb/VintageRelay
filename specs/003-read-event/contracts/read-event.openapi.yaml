@@ -1,0 +1,129 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Read Event (feature 003)
+  version: 0.1.0
+  description: >
+    Design contract for GET /api/v1/events/{event_id}. The implemented FastAPI schema at
+    /openapi.json is authoritative once built; it must match this document.
+    Shared rules: docs/rules/dev/common/api-contract.md. Draft: docs/plans/api/02-read-event.md.
+    Event schemas are identical to feature 001 (specs/001-create-event/contracts/create-event.openapi.yaml).
+paths:
+  /api/v1/events/{event_id}:
+    get:
+      operationId: readEvent
+      summary: Read an event, its state, and the caller's role
+      tags: [events]
+      security:
+        - participantToken: []
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          schema: { type: string }
+          description: >
+            Event ID. Not format-validated: a malformed, non-existent, or other event's ID
+            all return 404 NOT_FOUND (indistinguishable).
+        - name: X-Request-ID
+          in: header
+          required: false
+          schema: { type: string }
+          description: Correlation ID, echoed in the X-Request-ID response header and error.requestId
+      responses:
+        '200':
+          description: >
+            The event. Readable while active and after closure. No side effects.
+            stats is present only for the organizer; null for other participants.
+            participantToken is never returned.
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Event' }
+              examples:
+                participant:
+                  value:
+                    id: 9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d
+                    name: Mangwon Flea Market Swap Corner
+                    status: active
+                    entryCode: K7P3QX
+                    entryUrl: https://vintage-relay.example/join?code=K7P3QX
+                    organizerParticipantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                    createdAt: '2026-10-27T05:30:00.000Z'
+                    closedAt: null
+                    me:
+                      participantId: 5b8f0a2d-1c3e-4d5f-8a9b-0c1d2e3f4a5b
+                      displayName: Joon
+                      isOrganizer: false
+                    stats: null
+                organizerClosed:
+                  value:
+                    id: 9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d
+                    name: Mangwon Flea Market Swap Corner
+                    status: closed
+                    entryCode: K7P3QX
+                    entryUrl: https://vintage-relay.example/join?code=K7P3QX
+                    organizerParticipantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                    createdAt: '2026-10-27T05:30:00.000Z'
+                    closedAt: '2026-10-27T09:00:00.000Z'
+                    me:
+                      participantId: c21e4b7a-8d9f-4e1a-b2c3-d4e5f6a7b8c9
+                      displayName: Mina
+                      isOrganizer: true
+                    stats:
+                      participantCount: 3
+                      availableClothingCount: 0
+                      confirmedExchangeCount: 0
+        '401':
+          description: >
+            Authorization header missing, not a Bearer scheme, empty, or an unknown token.
+            Checked before the event lookup (a missing token on a non-existent event is still 401).
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: UNAUTHENTICATED, message: Please join the event again., details: null, requestId: b7e2... }
+        '404':
+          description: Event does not exist, the ID is malformed, or the token belongs to another event
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: NOT_FOUND, message: Resource not found., details: null, requestId: b7e2... }
+        '500':
+          description: Unexpected server error
+          headers:
+            X-Request-ID: { $ref: '#/components/headers/XRequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+              example:
+                error: { code: INTERNAL_ERROR, message: A temporary error occurred., details: null, requestId: b7e2... }
+components:
+  securitySchemes:
+    participantToken:
+      type: http
+      scheme: bearer
+      description: participantToken from event creation or join; identifies one participant in one event
+  headers:
+    XRequestId:
+      description: Request ID; equals error.requestId on error responses
+      schema: { type: string }
+  schemas:
+    Event:
+      $ref: '../../001-create-event/contracts/create-event.openapi.yaml#/components/schemas/Event'
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details, requestId]
+          properties:
+            code: { type: string, enum: [UNAUTHENTICATED, NOT_FOUND, INTERNAL_ERROR] }
+            message: { type: string }
+            details: { type: 'null' }
+            requestId: { type: string }
