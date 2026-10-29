@@ -126,3 +126,26 @@ def test_close_event_openapi_describes_bodyless_secure_operation(client):
         assert {"code", "message", "details", "requestId"} <= set(error["required"])
     create = document["paths"]["/api/v1/events"]["post"]
     assert {"400", "422"} <= create["responses"].keys()
+
+
+def test_lookup_entry_code_openapi_describes_public_operation(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/entry-codes/{entry_code}"]["get"]
+
+    assert operation["operationId"] == "lookupEntryCode"
+    assert not operation.get("security")
+    assert {"200", "404", "500"} <= operation["responses"].keys()
+    assert "422" not in operation["responses"]
+    assert "HTTPValidationError" not in json.dumps(operation)
+
+
+def test_join_event_openapi_describes_public_operation(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/participants"]["post"]
+    assert operation["operationId"] == "joinEvent"
+    assert not operation.get("security")
+    responses = operation["responses"]
+    assert {"201", "400", "404", "409", "422", "500"} <= responses.keys()
+    assert responses["201"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/EventSession"
+    }

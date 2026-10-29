@@ -19,6 +19,8 @@ request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 SENSITIVE_KEYS = {"authorization", "cookie", "token", "session", "api_key", "entry_code", "image"}
 _RESERVED = set(vars(logging.makeLogRecord({}))) | {"message", "asctime"}
 _HANDLER_NAME = "vintage_relay_stdout"
+_ENTRY_CODE_PATH_PREFIX = "/api/v1/entry-codes/"
+_ENTRY_CODE_VISIBLE_LENGTH = 2
 logger = logging.getLogger(__name__)
 
 
@@ -33,14 +35,14 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
             "request",
             extra={
                 "method": request.method,
-                "path": request.url.path,
+                "path": mask_path(request.url.path),
                 "status": response.status_code,
                 "ms": round((time.perf_counter() - start) * 1000),
             },
         )
         return response
     except Exception:
-        logger.exception("unhandled_error", extra={"path": request.url.path})
+        logger.exception("unhandled_error", extra={"path": mask_path(request.url.path)})
         return JSONResponse(
             {
                 "error": {
@@ -55,6 +57,16 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
         )
     finally:
         request_id_var.reset(token)
+
+
+def mask_path(path: str) -> str:
+    if not path.startswith(_ENTRY_CODE_PATH_PREFIX):
+        return path
+    code, separator, suffix = path[len(_ENTRY_CODE_PATH_PREFIX) :].partition("/")
+    if not code:
+        return path
+    visible = code[:_ENTRY_CODE_VISIBLE_LENGTH] if len(code) > _ENTRY_CODE_VISIBLE_LENGTH else ""
+    return f"{_ENTRY_CODE_PATH_PREFIX}{visible}****{separator}{suffix}"
 
 
 def mask(data: dict[str, object]) -> dict[str, object]:
@@ -109,6 +121,10 @@ class TextFormatter(JsonFormatter):
         return " ".join([prefix, *(f"{key}={value}" for key, value in data.items())])
 
 
+def disable_access_log() -> None:
+    logging.getLogger("uvicorn.access").disabled = True
+
+
 def setup_logging(settings: Settings) -> None:
     root = logging.getLogger()
     for handler in root.handlers[:]:
@@ -120,4 +136,4 @@ def setup_logging(settings: Settings) -> None:
     handler.setFormatter(JsonFormatter() if settings.log_format == "json" else TextFormatter())
     root.addHandler(handler)
     root.setLevel(settings.log_level)
-    logging.getLogger("uvicorn.access").disabled = True
+    disable_access_log()

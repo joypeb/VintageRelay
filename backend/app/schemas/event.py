@@ -14,6 +14,22 @@ class EventCreate(ApiModel):
         return reject_control_characters(value)
 
 
+class EntryCodePreview(ApiModel):
+    event_id: str
+    name: str
+    status: EventStatus
+
+
+class ParticipantCreate(ApiModel):
+    entry_code: str = Field(min_length=1)
+    display_name: str = Field(min_length=1, max_length=30)
+
+    @field_validator("display_name", mode="after")
+    @classmethod
+    def validate_control_characters(cls, value: str) -> str:
+        return reject_control_characters(value)
+
+
 class EventMe(ApiModel):
     participant_id: str
     display_name: str

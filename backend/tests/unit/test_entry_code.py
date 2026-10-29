@@ -1,3 +1,5 @@
+import pytest
+
 from app.domain.entry_code import (
     ENTRY_CODE_ALPHABET,
     ENTRY_CODE_LENGTH,
@@ -29,3 +31,13 @@ def test_generated_entry_codes_exclude_ambiguous_characters() -> None:
     codes = [generate_entry_code() for _ in range(1_000)]
 
     assert all(set(code).isdisjoint("0O1I") for code in codes)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(" k7p3qx ", "K7P3QX"), ("K7P3QX", "K7P3QX"), ("\tk7p3qx\n", "K7P3QX")],
+)
+def test_normalize_entry_code_strips_whitespace_and_uppercases(value: str, expected: str) -> None:
+    from app.domain.entry_code import normalize_entry_code
+
+    assert normalize_entry_code(value) == expected
