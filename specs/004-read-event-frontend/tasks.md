@@ -70,12 +70,12 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle F4 — event query (`lib/api/events.ts`, R1)
 
-- [ ] T010 Add to `frontend/src/lib/api/events.test.ts` (mock `./client`) — agent: `test-author`:
+- [X] T010 Add to `frontend/src/lib/api/events.test.ts` (mock `./client`) — agent: `test-author`:
   - "getEvent": calls `apiFetch('e1', '/events/e1', {}, { timeoutMs: 15000 })` and returns the parsed `Event`; `getEvent('a/b')` uses path `/events/a%2Fb`; a malformed body rejects with `ApiError` code `UNKNOWN_ERROR`.
   - "shouldRetryEventQuery(failureCount, error)": returns `false` for `ApiError` codes `UNAUTHENTICATED`, `NOT_FOUND`, and `UNKNOWN_ERROR` with status 200; for `NETWORK_ERROR` and `INTERNAL_ERROR` returns `true` when `failureCount < 1` and `false` at `1`.
   - "useEventQuery" (via `renderHook` with a `wrapper` that provides a fresh `QueryClient({ defaultOptions: { queries: { retry: false } } })`): with `{ enabled: false }` it never calls `apiFetch`; with `{ enabled: true }` it resolves to the event; the query uses `queryKeys.event('e1')`.
   - "eventRefetchInterval(query)": returns `30000` when `query.state.data` is undefined or `status: 'active'`, and `false` when `status: 'closed'` (`data-fetching.md` §4 "stop polling once state can no longer change").
-- [ ] T011 Implement in `frontend/src/lib/api/events.ts`: `getEvent(eventId)` (`apiFetch<unknown>(eventId, `/events/${encodeURIComponent(eventId)}`, {}, { timeoutMs: 15_000 })` → `parseEvent`), exported `shouldRetryEventQuery` and `eventRefetchInterval`, and `useEventQuery(eventId, { enabled })` with `queryKey: queryKeys.event(eventId)`, `refetchInterval: eventRefetchInterval`, `retry: shouldRetryEventQuery`. Makes T010 pass — agent: `implementer-fe`
+- [X] T011 Implement in `frontend/src/lib/api/events.ts`: `getEvent(eventId)` (`apiFetch<unknown>(eventId, `/events/${encodeURIComponent(eventId)}`, {}, { timeoutMs: 15_000 })` → `parseEvent`), exported `shouldRetryEventQuery` and `eventRefetchInterval`, and `useEventQuery(eventId, { enabled })` with `queryKey: queryKeys.event(eventId)`, `refetchInterval: eventRefetchInterval`, `retry: shouldRetryEventQuery`. Makes T010 pass — agent: `implementer-fe`
 
 ### Cycle F5 — screen state and organizer helpers (`lib/event.ts`, R4, R5)
 
