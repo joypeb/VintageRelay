@@ -20,27 +20,40 @@ logger = logging.getLogger(__name__)
 ENTRY_CODE_MAX_ATTEMPTS = 10
 
 
+def build_event_read(
+    event: Event, me: Participant, stats: EventStats | None, settings: Settings
+) -> EventRead:
+    if event.organizer_participant_id is None:
+        raise InternalError()
+    return EventRead(
+        id=event.id,
+        name=event.name,
+        status=EventStatus(event.status),
+        entry_code=event.entry_code,
+        entry_url=f"{settings.app_base_url}/join?code={event.entry_code}",
+        organizer_participant_id=event.organizer_participant_id,
+        created_at=event.created_at,
+        closed_at=event.closed_at,
+        me=EventMe(
+            participant_id=me.id,
+            display_name=me.display_name,
+            is_organizer=me.id == event.organizer_participant_id,
+        ),
+        stats=stats,
+    )
+
+
 def build_event_session(
     event: Event, organizer: Participant, token: str, settings: Settings
 ) -> EventSession:
     return EventSession(
-        event=EventRead(
-            id=event.id,
-            name=event.name,
-            status=EventStatus(event.status),
-            entry_code=event.entry_code,
-            entry_url=f"{settings.app_base_url}/join?code={event.entry_code}",
-            organizer_participant_id=organizer.id,
-            created_at=event.created_at,
-            closed_at=event.closed_at,
-            me=EventMe(
-                participant_id=organizer.id,
-                display_name=organizer.display_name,
-                is_organizer=True,
-            ),
+        event=build_event_read(
+            event=event,
+            me=organizer,
             stats=EventStats(
                 participant_count=1, available_clothing_count=0, confirmed_exchange_count=0
             ),
+            settings=settings,
         ),
         participant_token=token,
     )
