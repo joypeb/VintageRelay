@@ -63,10 +63,10 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Cycle F3 — response validation (`lib/validation/event-response.ts`, R3)
 
-- [ ] T008 Write `frontend/src/lib/validation/event-response.test.ts` for `parseEvent(data: unknown): Event`. Use a valid organizer fixture (`me.participantId === organizerParticipantId`, `stats: { participantCount: 1, availableClothingCount: 0, confirmedExchangeCount: 0 }`) and a valid regular fixture (`stats: null`, `me.isOrganizer: false`). It covers — agent: `test-author`:
+- [X] T008 Write `frontend/src/lib/validation/event-response.test.ts` for `parseEvent(data: unknown): Event`. Use a valid organizer fixture (`me.participantId === organizerParticipantId`, `stats: { participantCount: 1, availableClothingCount: 0, confirmedExchangeCount: 0 }`) and a valid regular fixture (`stats: null`, `me.isOrganizer: false`). It covers — agent: `test-author`:
   - Both fixtures return an equal `Event`; a closed fixture (`status: 'closed'`, `closedAt: '2026-10-27T09:00:00Z'`) is accepted.
   - Each of these throws `ApiError` with `status 200`, `code 'UNKNOWN_ERROR'`, message `'Something went wrong. Please try again.'`: `null`; missing `name`; `status: 'archived'`; `status: 'closed'` with `closedAt: null`; organizer with `stats: null`; a negative or non-integer count; `me` missing `displayName`.
-- [ ] T009 Implement `frontend/src/lib/validation/event-response.ts`: Zod `eventSchema` mirroring `src/types/event.ts` (counts `z.number().int().nonnegative()`), refinements "`status === 'closed'` ⇒ `closedAt` is a string" and "`me.participantId === organizerParticipantId` ⇒ `stats !== null`", and `parseEvent` that throws the `ApiError` above on failure. No `as` casts. Makes T008 pass — agent: `implementer-fe`
+- [X] T009 Implement `frontend/src/lib/validation/event-response.ts`: Zod `eventSchema` mirroring `src/types/event.ts` (counts `z.number().int().nonnegative()`), refinements "`status === 'closed'` ⇒ `closedAt` is a string" and "`me.participantId === organizerParticipantId` ⇒ `stats !== null`", and `parseEvent` that throws the `ApiError` above on failure. No `as` casts. Makes T008 pass — agent: `implementer-fe`
 
 ### Cycle F4 — event query (`lib/api/events.ts`, R1)
 
