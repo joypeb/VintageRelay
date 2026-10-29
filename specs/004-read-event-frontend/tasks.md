@@ -102,7 +102,7 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Tests for User Story 1 (REQUIRED - write first) ⚠️
 
-- [ ] T014 [US1] Write `frontend/src/components/event/EventHomeScreen.test.tsx`, block "US1 home". Seed `localStorage` with `saveEventSession('e1', …)`; mock `@/lib/api/events` `useEventQuery` to return controlled `{ data, error, isPending, isFetching, refetch }`; render with `renderWithClient`. It covers — agent: `test-author`:
+- [X] T014 [US1] Write `frontend/src/components/event/EventHomeScreen.test.tsx`, block "US1 home". Seed `localStorage` with `saveEventSession('e1', …)`; mock `@/lib/api/events` `useEventQuery` to return controlled `{ data, error, isPending, isFetching, refetch }`; render with `renderWithClient`. It covers — agent: `test-author`:
   - Organizer, active: heading with the exact event name; text "Active"; text "You: Mina (Organizer)"; a link "Manage event" to `/events/e1/manage` with text "View QR, entry code, and event counts"; a link "Register my clothes" to `/events/e1/my-items/new`.
   - Regular participant ("Joon", `stats: null`): "You: Joon" without "(Organizer)"; no "Manage event" link; no count text.
   - Pending: an element with `aria-busy="true"` and no event name text.
@@ -111,8 +111,8 @@ description: "Task list for feature 004-read-event-frontend"
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Implement `frontend/src/components/event/EventHomeScreen.tsx` (`'use client'`, prop `eventId`): mount guard with `useSyncExternalStore` (as `EventCreatedScreen`), `hasEventSession` after mount, `useEventQuery(eventId, { enabled: hasSession })`, `getEventScreenState`. `loading` → Astryx `Skeleton` inside an `aria-busy="true"` region; `ready` → contracts/ui-screens.md "P2 Home" using Astryx `Heading`, `Badge`, `Text`, `ClickableCard` (or `Card` + link) for "Manage event" gated by `isOrganizer`, and `Button` "Register my clothes" → `routes.newItem`. Other states may render `null` until US4. Makes T014 pass — agent: `implementer-fe`
-- [ ] T016 [US1] Replace the placeholder in `frontend/src/app/events/[eventId]/(tabs)/page.tsx` with a server component that awaits `params: Promise<{ eventId: string }>` and renders `<EventHomeScreen eventId={eventId} />` — agent: `implementer-fe`
+- [X] T015 [US1] Implement `frontend/src/components/event/EventHomeScreen.tsx` (`'use client'`, prop `eventId`): mount guard with `useSyncExternalStore` (as `EventCreatedScreen`), `hasEventSession` after mount, `useEventQuery(eventId, { enabled: hasSession })`, `getEventScreenState`. `loading` → Astryx `Skeleton` inside an `aria-busy="true"` region; `ready` → contracts/ui-screens.md "P2 Home" using Astryx `Heading`, `Badge`, `Text`, `ClickableCard` (or `Card` + link) for "Manage event" gated by `isOrganizer`, and `Button` "Register my clothes" → `routes.newItem`. Other states may render `null` until US4. Makes T014 pass — agent: `implementer-fe`
+- [X] T016 [US1] Replace the placeholder in `frontend/src/app/events/[eventId]/(tabs)/page.tsx` with a server component that awaits `params: Promise<{ eventId: string }>` and renders `<EventHomeScreen eventId={eventId} />` — agent: `implementer-fe`
 
 **Checkpoint**: H2 [Go home] → real P2 (spec US1 scenario 5). Commit T014–T016 as one cycle after `commit-reviewer`.
 

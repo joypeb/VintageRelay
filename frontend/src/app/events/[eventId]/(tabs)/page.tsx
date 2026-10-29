@@ -1,5 +1,6 @@
-import { ComingSoonScreen } from '@/components/ui/ComingSoonScreen';
+import { EventHomeScreen } from '@/components/event/EventHomeScreen';
 
-export default function EventHomePage() {
-  return <ComingSoonScreen title="Event home" />;
+export default async function EventHomePage({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  return <EventHomeScreen eventId={eventId} />;
 }
