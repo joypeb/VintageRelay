@@ -349,3 +349,101 @@ describe('US2 close failures', () => {
     expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
   });
 });
+
+describe('R9 focus after H3 closes', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    apiFetch.mockReset();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+  });
+  afterEach(() => localStorage.clear());
+
+  it('announces success when the event closes while the close request is pending', async () => {
+    const post = deferred<Event>();
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) =>
+      init?.method === 'POST' ? post.promise : Promise.resolve(activeEvent),
+    );
+    const queryClient = createClient();
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    await waitFor(() => expect(posts()).toHaveLength(1));
+    act(() => queryClient.setQueryData(queryKeys.event('e1'), closedEvent));
+    await screen.findByText('Closed', { exact: true });
+    await act(async () => post.resolve(closedEvent));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect((await screen.findByText('Event closed')).closest('[role="status"]')).not.toBeNull();
+  });
+
+  it('focuses the heading when a reload after failure reports closure', async () => {
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST')
+        return Promise.reject(new ApiError(0, 'NETWORK_ERROR', 'Network error.'));
+      return Promise.resolve(++reads === 1 ? activeEvent : closedEvent);
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    await screen.findByText('Closed', { exact: true });
+    const heading = screen.getByRole('heading', { name: 'Manage event' });
+    await waitFor(() => expect(document.activeElement).toBe(heading.closest('[tabindex="-1"]')));
+  });
+
+  it('focuses the heading when the event closes while the dialog is open', async () => {
+    apiFetch.mockResolvedValue(activeEvent);
+    const queryClient = createClient();
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient });
+    await openDialog(user);
+    act(() => queryClient.setQueryData(queryKeys.event('e1'), closedEvent));
+    await screen.findByText('Closed', { exact: true });
+    const heading = screen.getByRole('heading', { name: 'Manage event' });
+    await waitFor(() => expect(document.activeElement).toBe(heading.closest('[tabindex="-1"]')));
+  });
+
+  it('does not move focus on an initial closed event', async () => {
+    apiFetch.mockResolvedValue(closedEvent);
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    await screen.findByText('Closed', { exact: true });
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it.each([
+    { code: 'FORBIDDEN', status: 403, message: 'Only the organizer can manage this event.' },
+    {
+      code: 'UNAUTHENTICATED',
+      status: 401,
+      message: "You haven't joined this event on this device.",
+    },
+    { code: 'NOT_FOUND', status: 404, message: 'This event could not be found.' },
+  ] as const)('focuses the replacement view for $code', async ({ code, status, message }) => {
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? Promise.reject(new ApiError(status, code, 'Denied.'))
+        : Promise.resolve(activeEvent),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    const messageElement = await screen.findByText(message);
+    await waitFor(() => {
+      expect(document.activeElement).not.toBe(document.body);
+      const region = messageElement.closest('[tabindex="-1"]');
+      expect(region).not.toBeNull();
+      expect(region?.contains(document.activeElement)).toBe(true);
+    });
+  });
+
+  it('returns focus to the close action after cancellation', async () => {
+    apiFetch.mockResolvedValue(activeEvent);
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Close event' })).toHaveFocus());
+  });
+});

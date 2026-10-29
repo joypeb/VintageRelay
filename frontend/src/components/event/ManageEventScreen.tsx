@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
@@ -38,6 +38,41 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     enabled: hasSession,
   });
 
+  // A server-confirmed closed event wins over any close failure (R5).
+  const isEventClosed = data !== undefined && isClosed(data);
+  const closeFailure =
+    closeMutation.isError && !isEventClosed ? getCloseEventFailure(closeMutation.error) : null;
+  const closeFailureKind = closeFailure?.kind ?? null;
+  const isScreenLevelFailure =
+    closeFailureKind === 'forbidden' ||
+    closeFailureKind === 'no-access' ||
+    closeFailureKind === 'not-found';
+  const hasCloseActivity = isDialogOpen || closeMutation.isError || isClosePending;
+
+  // Null until the event has loaded, so an event that is already closed never moves focus.
+  const wasClosedRef = useRef<boolean | null>(null);
+  // Raw wrapper for the same reason as the heading: Astryx components don't forward ref/tabIndex.
+  const failureViewRef = useRef<HTMLDivElement>(null);
+  const { reset: resetCloseMutation } = closeMutation;
+
+  // H3 disappears without the success callback when the event closes elsewhere; keep focus on the page.
+  useEffect(() => {
+    if (data === undefined) return;
+    // While our own close is in flight, reset() would detach the per-call onSuccess; defer until it settles.
+    if (isClosePending) return;
+    const wasClosed = wasClosedRef.current;
+    wasClosedRef.current = isEventClosed;
+    if (wasClosed !== false || !isEventClosed || !hasCloseActivity) return;
+    setIsDialogOpen(false);
+    resetCloseMutation();
+    headingRef.current?.focus();
+  }, [data, isEventClosed, hasCloseActivity, isClosePending, resetCloseMutation]);
+
+  // The replacement view mounts because of a close failure, so focus would otherwise fall to <body>.
+  useEffect(() => {
+    if (isScreenLevelFailure) failureViewRef.current?.focus();
+  }, [isScreenLevelFailure, closeFailureKind]);
+
   if (!isMounted) return null;
 
   const state = getEventScreenState({ hasSession, data, error, isPending });
@@ -74,21 +109,28 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
   const { event } = state;
 
   const closed = isClosed(event);
-  // A server-confirmed closed event wins over any close failure (R5).
-  const closeFailure =
-    closeMutation.isError && !closed ? getCloseEventFailure(closeMutation.error) : null;
 
   if (!isOrganizer(event) || closeFailure?.kind === 'forbidden') {
-    return (
+    const view = (
       <VStack gap={4} padding={6}>
         <Text type="body">Only the organizer can manage this event.</Text>
         <Button label="Back to home" variant="ghost" size="lg" href={routes.eventHome(eventId)} />
       </VStack>
     );
+    if (closeFailure?.kind !== 'forbidden') return view;
+    return (
+      <div ref={failureViewRef} tabIndex={-1}>
+        {view}
+      </div>
+    );
   }
 
   if (closeFailure?.kind === 'no-access' || closeFailure?.kind === 'not-found') {
-    return <EventScreenStatus kind={closeFailure.kind} />;
+    return (
+      <div ref={failureViewRef} tabIndex={-1}>
+        <EventScreenStatus kind={closeFailure.kind} />
+      </div>
+    );
   }
 
   const openDialog = () => {
