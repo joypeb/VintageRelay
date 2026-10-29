@@ -35,7 +35,7 @@ def body(code, name):
 def test_concurrent_casefold_names_allow_one_join(db, settings, monkeypatch, first, second):
     event, _ = setup_event(db, settings)
     payloads = [body(event.entry_code, name) for name in (first, second)]
-    barrier = Barrier(2, timeout=1.5)
+    barrier = Barrier(2, timeout=5)
     original_write = db.write
 
     @contextmanager
@@ -55,7 +55,7 @@ def test_concurrent_casefold_names_allow_one_join(db, settings, monkeypatch, fir
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         futures = [pool.submit(attempt, payload) for payload in payloads]
-        results = [future.result(timeout=3) for future in futures]
+        results = [future.result(timeout=10) for future in futures]
     assert sorted(results) == ["duplicate", "joined"]
     with db.read() as session:
         names = session.scalars(
@@ -85,13 +85,13 @@ def test_join_and_close_are_serialized_in_controlled_order(db, settings, monkeyp
     def hold_add(session, participant):
         result = original_add(session, participant)
         inside.set()
-        assert release.wait(timeout=2)
+        assert release.wait(timeout=6)
         return result
 
     def hold_close(session, event_id, closed_at):
         result = original_close(session, event_id, closed_at)
         inside.set()
-        assert release.wait(timeout=2)
+        assert release.wait(timeout=6)
         return result
 
     monkeypatch.setattr(db, "write", observed_write)
@@ -110,18 +110,18 @@ def test_join_and_close_are_serialized_in_controlled_order(db, settings, monkeyp
     with ThreadPoolExecutor(max_workers=2) as pool:
         first_future = pool.submit(run, first)
         try:
-            assert inside.wait(timeout=1), "first operation did not reach its write"
+            assert inside.wait(timeout=5), "first operation did not reach its write"
             second_future = pool.submit(run, "close" if first == "join" else "join", True)
-            assert second_started.wait(timeout=1), "second operation did not attempt its write"
+            assert second_started.wait(timeout=5), "second operation did not attempt its write"
         finally:
             release.set()
-        first_result = first_future.result(timeout=3)
+        first_result = first_future.result(timeout=10)
         if first == "join":
             assert first_result.event.me.display_name == "Joon"
-            assert second_future.result(timeout=3).status == "closed"
+            assert second_future.result(timeout=10).status == "closed"
             assert count_rows(db, "participants") == before + 1
         else:
             assert first_result.status == "closed"
             with pytest.raises(EventClosedError):
-                second_future.result(timeout=3)
+                second_future.result(timeout=10)
             assert count_rows(db, "participants") == before

@@ -41,6 +41,15 @@ def test_join_returns_session_and_scoped_token(client, event, name):
     assert client.get(f"/api/v1/events/{other['id']}", headers=headers).status_code == 404
 
 
+def test_join_ignores_invalid_bearer_token(client, event):
+    response = client.post(
+        f"/api/v1/events/{event['id']}/participants",
+        json={"entryCode": event["entryCode"], "displayName": "Joon"},
+        headers={"Authorization": "Bearer garbage"},
+    )
+    assert response.status_code == 201
+
+
 @pytest.mark.parametrize(
     ("payload", "field"),
     [

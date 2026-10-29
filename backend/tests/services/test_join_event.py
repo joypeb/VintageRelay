@@ -79,3 +79,25 @@ def test_join_rejects_unicode_casefold_duplicate(db, settings):
     with pytest.raises(DisplayNameTakenError):
         service.join(event.id, body(event.entry_code, "STRASSE"))
     assert count_rows(db, "participants") == before
+
+
+def test_join_maps_unique_constraint_violation_to_display_name_taken(
+    db, settings, monkeypatch, caplog
+):
+    from app.services.event import participant_repo
+
+    service, event = setup_join(db, settings)
+    caplog.set_level(logging.INFO, logger="app.services.event")
+    service.join(event.id, body(event.entry_code, "Ana"))
+    monkeypatch.setattr(participant_repo, "list_display_names", lambda session, event_id: [])
+
+    with pytest.raises(DisplayNameTakenError) as exc:
+        service.join(event.id, body(event.entry_code, "ANA"))
+
+    assert exc.value.details == {"field": "displayName"}
+    with db.read() as session:
+        names = session.scalars(
+            select(Participant.display_name).where(Participant.event_id == event.id)
+        ).all()
+    assert [name for name in names if name.casefold() == "ana"] == ["Ana"]
+    assert len([r for r in caplog.records if r.getMessage() == "participant_joined"]) == 1
