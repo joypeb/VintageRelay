@@ -160,13 +160,13 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Tests for User Story 3 (REQUIRED - write first) ⚠️
 
-- [ ] T017 [US3] Add a "US3 already closed" `describe` to the cache-connected M1 test file — agent: `test-author`:
+- [X] T017 [US3] Add a "US3 already closed" `describe` to the cache-connected M1 test file — agent: `test-author`:
   - M1 showing an active event; the POST resolves with a closed event whose `closedAt` is `'2026-10-27T09:00:00Z'` (earlier than "now"): no error, "Event closed" status, and the cache holds that event's `closedAt` unchanged.
   - (regression guard) The query result switches from active to closed via a poll with no dialog open: [Close event] disappears without any user action.
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Adjust `frontend/src/components/event/ManageEventScreen.tsx` only if a non-guard T017 case fails. If every case passes on first run, record in the commit message that US3 is covered by US1/US2 behavior (no code change) — agent: `implementer-fe`
+- [X] T018 [US3] Adjust `frontend/src/components/event/ManageEventScreen.tsx` only if a non-guard T017 case fails. If every case passes on first run, record in the commit message that US3 is covered by US1/US2 behavior (no code change) — agent: `implementer-fe`
 
 **Checkpoint**: All stories complete.
 

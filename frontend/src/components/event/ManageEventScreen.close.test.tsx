@@ -350,6 +350,52 @@ describe('US2 close failures', () => {
   });
 });
 
+describe('US3 already closed', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    apiFetch.mockReset();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+  });
+  afterEach(() => localStorage.clear());
+
+  it('treats an already-closed response as success and preserves its closure time', async () => {
+    const originalClosure = { ...closedEvent, closedAt: '2026-10-27T09:00:00Z' };
+    const followUp = deferred<Event>();
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return Promise.resolve(originalClosure);
+      return ++reads === 1 ? Promise.resolve(activeEvent) : followUp.promise;
+    });
+    const queryClient = createClient();
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+
+    expect((await screen.findByText('Event closed')).closest('[role="status"]')).not.toBeNull();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('Closed', { exact: true })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
+    expect(queryClient.getQueryData<Event>(queryKeys.event('e1'))?.closedAt).toBe(
+      '2026-10-27T09:00:00Z',
+    );
+  });
+
+  it('regression guard: hides the close action when the event query becomes closed', async () => {
+    apiFetch.mockResolvedValue(activeEvent);
+    const queryClient = createClient();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient });
+    expect(await screen.findByRole('button', { name: 'Close event' })).toBeVisible();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    act(() => queryClient.setQueryData(queryKeys.event('e1'), closedEvent));
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByText('Closed', { exact: true })).toBeVisible();
+  });
+});
+
 describe('R9 focus after H3 closes', () => {
   beforeEach(() => {
     localStorage.clear();
