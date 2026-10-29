@@ -99,14 +99,14 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Cycle US1a — H3 dialog component (R4)
 
-- [ ] T009 [US1] Create `frontend/src/components/event/CloseEventDialog.test.tsx` rendering the **real** Astryx `Dialog` (shim from T002; do not mock `@astryxdesign/core/Dialog`) — agent: `test-author`. Props `{ isOpen, onOpenChange, onConfirm, isPending, errorMessage? }` (contracts/ui-close-event.md H3):
+- [X] T009 [US1] Create `frontend/src/components/event/CloseEventDialog.test.tsx` rendering the **real** Astryx `Dialog` (shim from T002; do not mock `@astryxdesign/core/Dialog`) — agent: `test-author`. Props `{ isOpen, onOpenChange, onConfirm, isPending, errorMessage? }` (contracts/ui-close-event.md H3):
   - closed: no dialog in the accessibility tree.
   - open: `getByRole('dialog', { name: 'Close this event?' })` contains exactly the description "Closing ends the exchange corner for everyone. Participants can no longer register clothes or make exchanges. This can't be undone.", does **not** contain the word "proposal", and has a [Close event] button and a [Cancel] button with [Close event] before [Cancel] in DOM order.
   - [Cancel] calls `onOpenChange(false)` and not `onConfirm`; Escape calls `onOpenChange(false)`.
   - [Close event] calls `onConfirm` once.
   - `isPending`: [Close event] and [Cancel] are disabled or `aria-busy`; clicking them and pressing Escape call neither `onConfirm` nor `onOpenChange(false)`.
   - `errorMessage="Server says no."`: shown inside the dialog within a `role="alert"` element; absent when `errorMessage` is undefined.
-- [ ] T010 [US1] Implement `frontend/src/components/event/CloseEventDialog.tsx` (`'use client'`) with Astryx `Dialog` (`purpose="info"`, so Escape and backdrop dismiss when idle) and `DialogHeader` from `@astryxdesign/core/Dialog` (title only, no close button), description `Text`, `role="alert"` wrapper around an error `Banner` when `errorMessage` is set, destructive full-width [Close event] (`isLoading={isPending}`) above ghost full-width [Cancel]; ignore `onOpenChange(false)` while `isPending`. Makes T009 pass — agent: `implementer-fe`
+- [X] T010 [US1] Implement `frontend/src/components/event/CloseEventDialog.tsx` (`'use client'`) with Astryx `Dialog` (`purpose="info"`, so Escape and backdrop dismiss when idle) and `DialogHeader` from `@astryxdesign/core/Dialog` (title only, no close button), description `Text`, `role="alert"` wrapper around an error `Banner` when `errorMessage` is set, destructive full-width [Close event] (`isLoading={isPending}`) above ghost full-width [Cancel]; ignore `onOpenChange(false)` while `isPending`. Makes T009 pass — agent: `implementer-fe`
 
 ### Cycle US1b — M1 close flow (cache-connected)
 
