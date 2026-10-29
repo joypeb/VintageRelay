@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
@@ -38,8 +38,9 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     enabled: hasSession,
   });
 
-  // A server-confirmed closed event wins over any close failure (R5).
-  const isEventClosed = data !== undefined && isClosed(data);
+  // A server-confirmed closed event wins over a close failure only for the organizer (R5);
+  // a non-organizer keeps the failure view so focus stays on the node that already holds it.
+  const isEventClosed = data !== undefined && isOrganizer(data) && isClosed(data);
   const closeFailure =
     closeMutation.isError && !isEventClosed ? getCloseEventFailure(closeMutation.error) : null;
   const closeFailureKind = closeFailure?.kind ?? null;
@@ -47,6 +48,9 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     closeFailureKind === 'forbidden' ||
     closeFailureKind === 'no-access' ||
     closeFailureKind === 'not-found';
+  const state = getEventScreenState({ hasSession, data, error, isPending });
+  // Changes whenever the failure-driven view is replaced, so focus can follow it.
+  const failureViewKey = state.kind === 'ready' ? `ready-${isOrganizer(state.event)}` : state.kind;
   const hasCloseActivity = isDialogOpen || closeMutation.isError || isClosePending;
 
   // Null until the event has loaded, so an event that is already closed never moves focus.
@@ -71,11 +75,9 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
   // The replacement view mounts because of a close failure, so focus would otherwise fall to <body>.
   useEffect(() => {
     if (isScreenLevelFailure) failureViewRef.current?.focus();
-  }, [isScreenLevelFailure, closeFailureKind]);
+  }, [isScreenLevelFailure, closeFailureKind, failureViewKey]);
 
   if (!isMounted) return null;
-
-  const state = getEventScreenState({ hasSession, data, error, isPending });
 
   if (state.kind === 'loading') {
     return (
@@ -91,8 +93,18 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     );
   }
 
+  // Every failure-driven view gets the focusable wrapper; the effect above refocuses when the view is replaced.
+  const withFailureFocus = (node: ReactNode) =>
+    isScreenLevelFailure ? (
+      <div key={failureViewKey} ref={failureViewRef} tabIndex={-1}>
+        {node}
+      </div>
+    ) : (
+      node
+    );
+
   if (state.kind === 'no-access' || state.kind === 'not-found') {
-    return <EventScreenStatus kind={state.kind} />;
+    return withFailureFocus(<EventScreenStatus kind={state.kind} />);
   }
 
   if (state.kind === 'error') {
@@ -111,26 +123,16 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
   const closed = isClosed(event);
 
   if (!isOrganizer(event) || closeFailure?.kind === 'forbidden') {
-    const view = (
+    return withFailureFocus(
       <VStack gap={4} padding={6}>
         <Text type="body">Only the organizer can manage this event.</Text>
         <Button label="Back to home" variant="ghost" size="lg" href={routes.eventHome(eventId)} />
-      </VStack>
-    );
-    if (closeFailure?.kind !== 'forbidden') return view;
-    return (
-      <div ref={failureViewRef} tabIndex={-1}>
-        {view}
-      </div>
+      </VStack>,
     );
   }
 
   if (closeFailure?.kind === 'no-access' || closeFailure?.kind === 'not-found') {
-    return (
-      <div ref={failureViewRef} tabIndex={-1}>
-        <EventScreenStatus kind={closeFailure.kind} />
-      </div>
-    );
+    return withFailureFocus(<EventScreenStatus kind={closeFailure.kind} />);
   }
 
   const openDialog = () => {

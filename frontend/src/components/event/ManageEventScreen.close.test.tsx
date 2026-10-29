@@ -484,6 +484,63 @@ describe('R9 focus after H3 closes', () => {
     });
   });
 
+  it.each([
+    {
+      code: 'UNAUTHENTICATED',
+      status: 401,
+      message: "You haven't joined this event on this device.",
+    },
+    { code: 'NOT_FOUND', status: 404, message: 'This event could not be found.' },
+  ] as const)(
+    'keeps focus in the replacement view when the follow-up read returns $code',
+    async ({ code, status, message }) => {
+      const followUp = deferred<Event>();
+      let reads = 0;
+      apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+        if (init?.method === 'POST') return Promise.reject(new ApiError(status, code, 'Denied.'));
+        return ++reads === 1 ? Promise.resolve(activeEvent) : followUp.promise;
+      });
+      const user = userEvent.setup();
+      renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+      const dialog = await openDialog(user);
+      await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+      const initialMessage = await screen.findByText(message);
+      await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+      await act(async () => followUp.reject(new ApiError(status, code, 'Denied.')));
+      await waitFor(() => expect(initialMessage).not.toBeInTheDocument());
+      const finalMessage = await screen.findByText(message);
+      expect(document.activeElement).not.toBe(document.body);
+      expect(finalMessage.closest('[tabindex="-1"]')?.contains(document.activeElement)).toBe(true);
+    },
+  );
+
+  it('keeps focus in the non-organizer view when the follow-up read reports closure', async () => {
+    const followUp = deferred<Event>();
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return Promise.reject(new ApiError(403, 'FORBIDDEN', 'Denied.'));
+      return ++reads === 1 ? Promise.resolve(activeEvent) : followUp.promise;
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    const message = 'Only the organizer can manage this event.';
+    const initialMessage = await screen.findByText(message);
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    await act(async () =>
+      followUp.resolve({
+        ...closedEvent,
+        me: { participantId: 'p-joon', displayName: 'Joon', isOrganizer: false },
+        stats: null,
+      }),
+    );
+    await waitFor(() => expect(initialMessage).not.toBeInTheDocument());
+    const finalMessage = await screen.findByText(message);
+    expect(document.activeElement).not.toBe(document.body);
+    expect(finalMessage.closest('[tabindex="-1"]')?.contains(document.activeElement)).toBe(true);
+  });
+
   it('returns focus to the close action after cancellation', async () => {
     apiFetch.mockResolvedValue(activeEvent);
     const user = userEvent.setup();
