@@ -73,7 +73,12 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
 
   const { event } = state;
 
-  if (!isOrganizer(event)) {
+  const closed = isClosed(event);
+  // A server-confirmed closed event wins over any close failure (R5).
+  const closeFailure =
+    closeMutation.isError && !closed ? getCloseEventFailure(closeMutation.error) : null;
+
+  if (!isOrganizer(event) || closeFailure?.kind === 'forbidden') {
     return (
       <VStack gap={4} padding={6}>
         <Text type="body">Only the organizer can manage this event.</Text>
@@ -82,8 +87,9 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
     );
   }
 
-  const closed = isClosed(event);
-  const closeFailure = closeMutation.isError ? getCloseEventFailure(closeMutation.error) : null;
+  if (closeFailure?.kind === 'no-access' || closeFailure?.kind === 'not-found') {
+    return <EventScreenStatus kind={closeFailure.kind} />;
+  }
 
   const openDialog = () => {
     closeMutation.reset();
@@ -153,7 +159,7 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
         <Button label="Back to home" variant="ghost" size="lg" href={routes.eventHome(eventId)} />
       </VStack>
       <CloseEventDialog
-        isOpen={isDialogOpen}
+        isOpen={isDialogOpen && !closed}
         onOpenChange={setIsDialogOpen}
         onConfirm={confirmClose}
         isPending={isClosePending}

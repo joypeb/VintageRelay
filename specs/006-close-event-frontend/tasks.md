@@ -136,7 +136,7 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Tests for User Story 2 (REQUIRED - write first) ⚠️
 
-- [ ] T015 [US2] Add a "US2 close failures" `describe` to the cache-connected M1 test file from T011 — agent: `test-author`:
+- [X] T015 [US2] Add a "US2 close failures" `describe` to the cache-connected M1 test file from T011 — agent: `test-author`:
   - `NETWORK_ERROR`, `INTERNAL_ERROR` (server message "Server says no."), and `UNKNOWN_ERROR` (POST returns an active event): with the follow-up GET returning the **active** event, the dialog stays open with the message in `role="alert"`, M1 still shows [Close event] behind it and no "Event closed"; confirming again sends a second POST (retry).
   - `FORBIDDEN`: dialog closes; M1 shows "Only the organizer can manage this event." with [Back to home] linking to `/events/e1`; no counts.
   - `UNAUTHENTICATED`: "You haven't joined this event on this device." with [Join with entry code] and [Go to start].
@@ -146,7 +146,7 @@ description: "Task list for feature 006-close-event-frontend"
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] In `frontend/src/components/event/ManageEventScreen.tsx`: derive `getCloseEventFailure(mutation.error)` when `mutation.isError`; `dialog` → pass `errorMessage` to `CloseEventDialog`; `forbidden` → render the existing non-organizer view; `no-access`/`not-found` → render `EventScreenStatus` with that kind; close the dialog for screen-level kinds. Render H3 only when `isDialogOpen && !isClosed(event)`, and when the event becomes closed while the dialog is open or the mutation is in error, close the dialog and call `mutation.reset()` (R5). Move focus per R9. Makes T015 pass — agent: `implementer-fe`
+- [X] T016 [US2] In `frontend/src/components/event/ManageEventScreen.tsx`: derive `getCloseEventFailure(mutation.error)` when `mutation.isError`; `dialog` → pass `errorMessage` to `CloseEventDialog`; `forbidden` → render the existing non-organizer view; `no-access`/`not-found` → render `EventScreenStatus` with that kind; close the dialog for screen-level kinds. Render H3 only when `isDialogOpen && !isClosed(event)`, and when the event becomes closed while the dialog is open or the mutation is in error, close the dialog and call `mutation.reset()` (R5). Move focus per R9. Makes T015 pass — agent: `implementer-fe`
 
 **Checkpoint**: All FR-007 mappings and closed-state precedence verified.
 

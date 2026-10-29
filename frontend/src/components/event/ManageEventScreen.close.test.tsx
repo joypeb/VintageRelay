@@ -229,3 +229,123 @@ describe('US1 close event', () => {
     expect(container).not.toHaveTextContent(token);
   });
 });
+
+describe('US2 close failures', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    apiFetch.mockReset();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+  });
+  afterEach(() => localStorage.clear());
+
+  it.each([
+    {
+      name: 'network error',
+      response: () =>
+        Promise.reject(new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.')),
+      message: 'Please check your network connection.',
+    },
+    {
+      name: 'internal error',
+      response: () => Promise.reject(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.')),
+      message: 'Server says no.',
+    },
+    {
+      name: 'active response',
+      response: () => Promise.resolve(activeEvent),
+      message: 'Something went wrong. Please try again.',
+    },
+  ])('keeps the dialog open and allows retry after a $name', async ({ response, message }) => {
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return response();
+      reads += 1;
+      return Promise.resolve(activeEvent);
+    });
+    const user = userEvent.setup();
+    const { container } = renderWithClient(<ManageEventScreen eventId="e1" />, {
+      queryClient: createClient(),
+    });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(message);
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    expect(screen.getByRole('dialog', { name: 'Close this event?' })).toBeVisible();
+    expect(
+      within(container)
+        .getAllByRole('button', { name: 'Close event', hidden: true })
+        .some((button) => !dialog.contains(button)),
+    ).toBe(true);
+    expect(screen.queryByText('Event closed')).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    await waitFor(() => expect(posts()).toHaveLength(2));
+  });
+
+  it.each([
+    { code: 'FORBIDDEN', status: 403, message: 'Only the organizer can manage this event.' },
+    {
+      code: 'UNAUTHENTICATED',
+      status: 401,
+      message: "You haven't joined this event on this device.",
+    },
+    { code: 'NOT_FOUND', status: 404, message: 'This event could not be found.' },
+  ] as const)('shows the screen-level view for $code', async ({ code, status, message }) => {
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return Promise.reject(new ApiError(status, code, 'Denied.'));
+      reads += 1;
+      return Promise.resolve(activeEvent);
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    expect(await screen.findByText(message)).toBeVisible();
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    expect(screen.queryByRole('dialog', { name: 'Close this event?' })).not.toBeInTheDocument();
+    if (code === 'FORBIDDEN') {
+      expect(screen.getByRole('link', { name: 'Back to home' })).toHaveAttribute(
+        'href',
+        '/events/e1',
+      );
+      expect(screen.queryByText('Participants', { exact: true })).not.toBeInTheDocument();
+      expect(screen.queryByText('Available garments', { exact: true })).not.toBeInTheDocument();
+      expect(screen.queryByText('Confirmed exchanges', { exact: true })).not.toBeInTheDocument();
+    } else {
+      expect(screen.getByRole('link', { name: 'Go to start' })).toBeVisible();
+      if (code === 'UNAUTHENTICATED')
+        expect(screen.getByRole('link', { name: 'Join with entry code' })).toBeVisible();
+    }
+  });
+
+  it('shows the closed state when a reload after a network failure reports closure', async () => {
+    let reads = 0;
+    apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (init?.method === 'POST')
+        return Promise.reject(
+          new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+        );
+      return Promise.resolve(++reads === 1 ? activeEvent : closedEvent);
+    });
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient: createClient() });
+    const dialog = await openDialog(user);
+    await user.click(within(dialog).getByRole('button', { name: 'Close event' }));
+    await waitFor(() => expect(screen.getByText('Closed', { exact: true })).toBeVisible());
+    expect(screen.queryByRole('dialog', { name: 'Close this event?' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
+  });
+
+  it('closes an idle dialog when the event query receives a closed event', async () => {
+    apiFetch.mockResolvedValue(activeEvent);
+    const queryClient = createClient();
+    const user = userEvent.setup();
+    renderWithClient(<ManageEventScreen eventId="e1" />, { queryClient });
+    await openDialog(user);
+    act(() => queryClient.setQueryData(queryKeys.event('e1'), closedEvent));
+    await waitFor(() => expect(screen.getByText('Closed', { exact: true })).toBeVisible());
+    expect(screen.queryByRole('dialog', { name: 'Close this event?' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Close event' })).not.toBeInTheDocument();
+  });
+});
