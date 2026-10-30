@@ -191,25 +191,26 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ## Phase 5: User Story 3 — Photo stays ready while the participant prepares registration (Priority: P2)
 
-**Goal**: The ready photo persists without extra uploads; repeated taps never queue duplicates; stale results are ignored; a newly closed event disables the step.
+**Goal**: The ready photo persists without extra uploads; repeated taps never queue duplicates; attempted change/remove mid-upload stays locked; a newly closed event disables the step.
 
-**Independent Test**: Keep C2 open on a ready photo, double-tap controls under throttling, change files mid-upload, and close the event elsewhere (quickstart rows 4, 7, 9).
+**Independent Test**: Keep C2 open on a ready photo, double-tap controls under throttling (no second upload is sent), attempt change/remove mid-upload (controls stay locked), and close the event elsewhere (quickstart rows 4, 7, 9).
 
 ### Tests for User Story 3 (REQUIRED - write first) ⚠️
 
-- [ ] T015 [US3] Add a "US3 stability" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`:
+- [X] T015 [US3] Add a "US3 stability" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`:
   - With a ready photo, rerendering C2 (same `QueryClient`) sends no further upload and the ready image and [Change photo]/[Remove] persist.
   - Under a pending upload, double-clicking [Try again] (after a first failure) or resubmitting the same file sends exactly one upload; the controls are busy while pending.
-  - Stale result: start an upload for file A that stays pending, then choose file B (second upload sent). Resolve A first → the A image/identity is never shown; resolve B → the B server image is shown as ready.
-  - Remove-during-upload: start an upload, tap [Remove], then resolve → the empty step is shown, not the ready state.
+  - Locked during upload: with an upload pending, the file input and [Try again] are disabled/busy and [Remove] is absent; attempting to choose another file, resubmit, or remove sends no additional upload (still exactly one upload call); resolving then shows the uploaded file as ready.
+  - Local rejection after a failure clears retry context: fail an upload with file A (failed view with [Try again]), then choose an oversized file B → the size message is shown, the stale file-A context is cleared so [Try again] is no longer offered (only [Choose another photo]), and no upload is sent.
   - The shared event turning closed (reroute `/events/e1` to a closed event and refetch) disables the photo step and shows the closed banner while keeping no upload in flight; a ready held photo is left as-is with the step disabled.
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] In `frontend/src/components/clothing/PhotoUploadScreen.tsx` — agent: `implementer-fe`:
-  - Keep a `requestSeq` ref incremented per attempt and ignore any mutation settlement whose sequence is not the latest (covers change-during-upload and remove-during-upload).
-  - Gate [Choose photo]/[Change photo]/[Try again] on `mutation.isPending` so at most one upload request is in flight; a second submit while pending returns early.
-  - Derive the `closed` view from the shared event query first, so a server-confirmed closed state takes precedence over an upload failure (data-model.md precedence).
+- [X] T016 [US3] In `frontend/src/components/clothing/PhotoUploadScreen.tsx` — agent: `implementer-fe`:
+  - Keep the `mutation.isPending` gating of [Choose photo]/[Change photo]/[Try again]/[Remove] (already in place from T012; verify) so at most one upload request is in flight; a second submit while pending returns early.
+
+  - On local validation rejection, clear `chosenFile` and revoke the local preview so a stale failed-file context never lingers behind the new message; [Try again] is only offered when a valid file context exists.
+  - Derive the `closed` view from the shared event query first, so a server-confirmed closed state takes precedence over an upload failure (data-model.md precedence; verify the T012/T014 wiring).
   - This makes T015 pass.
 
 **Checkpoint**: All stories are complete.
@@ -262,5 +263,5 @@ then (merged): T010–T012 → T013–T014 → T015–T016 → T017–T020
 
 1. **MVP**: Setup + Foundational + US1. A participant can pick a photo in C2 and reach a ready uploaded image, and this is demoable on its own.
 2. **+ US2**: recoverable failures for every local and server error class, closed/no-access/not-found switching, focus handling, and log secrecy. This completes the P1 scope.
-3. **+ US3**: ready-state persistence, single in-flight guarantees, stale-result protection, and closed-event precedence. This completes the C2 photo step.
+3. **+ US3**: ready-state persistence, single in-flight via locked controls, and closed-event precedence. This completes the C2 photo step.
 4. Polish, full checks and build, manual verification with screenshots, and PR review.

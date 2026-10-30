@@ -326,3 +326,137 @@ describe('US2 failures', () => {
     }
   });
 });
+
+describe('US3 stability', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos') return Promise.resolve(photo);
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+
+  it('keeps the ready photo on rerender without uploading again', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+    );
+    expect(await screen.findByText('Photo ready')).toBeVisible();
+    rerender(<PhotoUploadScreen eventId="e1" />);
+    expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeVisible();
+    expect(uploadCalls()).toHaveLength(1);
+  });
+
+  it('sends only one retry on a double click while the upload is pending', async () => {
+    const user = userEvent.setup();
+    const pending = new Promise<typeof photo>(() => {});
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos')
+        return uploadCalls().length === 1
+          ? Promise.reject(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'))
+          : pending;
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+    );
+    await user.dblClick(await screen.findByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Uploading photo…')).toBeVisible();
+    expect(screen.getByLabelText('Clothing photo')).toBeDisabled();
+    expect(uploadCalls()).toHaveLength(2);
+  });
+
+  it('locks photo controls until the pending upload finishes', async () => {
+    const user = userEvent.setup();
+    let resolveUpload!: (value: typeof photo) => void;
+    const pending = new Promise<typeof photo>((resolve) => {
+      resolveUpload = resolve;
+    });
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos') return pending;
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    const input = await screen.findByLabelText('Clothing photo');
+    const first = new File(['a'], 'a.jpg', { type: 'image/jpeg' });
+    await user.upload(input, first);
+    expect(input).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /^(Try again|Change photo|Choose another photo)$/ }),
+    ).not.toBeInTheDocument();
+    await user.upload(input, new File(['b'], 'b.jpg', { type: 'image/jpeg' }));
+    expect(uploadCalls()).toHaveLength(1);
+    expect(uploadCalls()[0]?.[2].body.get('file')).toBe(first);
+    await act(async () => resolveUpload(photo));
+    expect(await screen.findByText('Photo ready')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
+    expect(uploadCalls()).toHaveLength(1);
+  });
+
+  it('clears the failed file context when a replacement is rejected locally', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos')
+        return Promise.reject(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'));
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    const input = await screen.findByLabelText('Clothing photo');
+    await user.upload(input, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeVisible();
+    await user.upload(
+      input,
+      new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.jpg', { type: 'image/jpeg' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Choose a photo of 10 MB or less.');
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose another photo' })).toBeVisible();
+    expect(screen.queryByRole('img', { name: /preview/i })).not.toBeInTheDocument();
+    expect(uploadCalls()).toHaveLength(1);
+  });
+
+  it('disables the ready photo step when the shared event closes', async () => {
+    const user = userEvent.setup();
+    let sharedEvent: Omit<typeof event, 'closedAt'> & { closedAt: string | null } = event;
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(sharedEvent);
+      if (path === '/events/e1/photos') return Promise.resolve(photo);
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+    );
+    expect(await screen.findByText('Photo ready')).toBeVisible();
+    sharedEvent = { ...event, status: 'closed', closedAt: '2026-10-28T01:00:00Z' };
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ['events', 'e1'] });
+    });
+    expect(await screen.findByText('This event has ended.')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
+    expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(uploadCalls()).toHaveLength(1);
+  });
+});

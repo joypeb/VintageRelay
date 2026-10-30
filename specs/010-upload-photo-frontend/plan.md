@@ -11,7 +11,7 @@ Replace the C2 (`my-items/new`) "coming soon" placeholder with the photo upload 
 - **Route**: `app/events/[eventId]/(tabs)/my-items/new/page.tsx` (server component) passes `eventId` to a client `PhotoUploadScreen` (R1).
 - **Data**:
   - `uploadPhoto(eventId, file)` builds `FormData` with the single `file` part and calls `apiFetch(eventId, …)` (event-scoped token), 15 s timeout, no manual `Content-Type`. The 201 body is validated by `parsePhoto` (wrong shape → `ApiError(200, 'UNKNOWN_ERROR', …)`); unreadable 2xx bodies become `ApiError` via the existing `apiFetch` normalization (R2).
-  - `useUploadPhotoMutation(eventId)` uses `retry: 0` (upload is not idempotent). A `requestSeq` ref ignores stale results after change/remove (R4).
+  - `useUploadPhotoMutation(eventId)` uses `retry: 0` (upload is not idempotent). Locked controls while pending make stale results unreachable by construction (R4).
   - Local preview uses a `URL.createObjectURL` revoked on success/change/remove/unmount; the ready image always uses the returned server `url` (R5).
 - **Logic**:
   - `validation/photo.ts` holds `MAX_PHOTO_BYTES`, `ALLOWED_PHOTO_TYPES`, and `validatePhotoFile` (R3).
@@ -63,8 +63,8 @@ See [research.md](research.md) R1–R9, [data-model.md](data-model.md), and [con
 | V. Simplicity | No new dependencies; reuses `apiFetch`, session, event query, and error patterns; description/clothing POST stays out of scope. | PASS |
 
 **Post-design re-check (after Phase 1)**: PASS.
-- I: `parsePhoto` gating plus code-based failure mapping keep server results authoritative; stale results are ignored by sequence, never rendered.
-- II: every behavior (including FormData wiring, local checks, single in-flight, stale protection, object-URL lifecycle, and logging) is tested Red before its implementation task; no behavior is first tested after its commit.
+- I: `parsePhoto` gating plus code-based failure mapping keep server results authoritative; overlapping requests are prevented by locked controls, never rendered.
+- II: every behavior (including FormData wiring, local checks, single in-flight via locked controls, object-URL lifecycle, and logging) is tested Red before its implementation task; no behavior is first tested after its commit.
 - III: validation/mapper/parser unit tests plus screen-transition tests match `testing.md`; no numeric coverage goal.
 - IV: mock boundary at `apiFetch` only; no real network; deterministic object-URL handling via stubbed `URL.createObjectURL/revokeObjectURL` in tests.
 - V: one screen, one API module, one validation module, one mapper; no store, no dropzone library, no clothing-form scope.
@@ -118,7 +118,7 @@ frontend/src/
   4. `uploadPhoto` + `useUploadPhotoMutation` (+ mutation key)
   5. `PhotoUploadScreen` empty → preview → uploading → ready handoff + page wiring (+ change/remove)
   6. upload failures (including the state resets they exercise)
-  7. single in-flight / stale-result protection + closed/no-access gating + log-scope test
+  7. single in-flight (locked controls) + local-rejection context clearing + closed/no-access gating + log-scope test
 - Give each delegate:
   - this plan, [research.md](research.md), [data-model.md](data-model.md), and [contracts/ui-upload-photo.md](contracts/ui-upload-photo.md)
   - `docs/plans/api/05-upload-photo.md` and `specs/009-upload-photo/contracts/upload-photo.openapi.yaml`

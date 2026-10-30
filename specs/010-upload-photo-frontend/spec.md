@@ -57,13 +57,13 @@ Once a photo is ready, it stays visible and attached to C2 state while the parti
 
 **Why this priority**: The upload runs while the participant types the description (per the API plan), so the ready state must be stable; it is less critical than getting the first upload and its errors right.
 
-**Independent Test**: Upload a photo, keep C2 open, verify the ready state persists; double-tap upload controls and change files mid-upload and verify at most one upload is in flight and stale results are ignored.
+**Independent Test**: Upload a photo, keep C2 open, verify the ready state persists; double-tap upload controls and attempt change/remove mid-upload (controls stay locked) and verify at most one upload is in flight.
 
 **Acceptance Scenarios**:
 
 1. **Given** a ready uploaded photo, **When** C2 stays open, **Then** the ready image and photo identity remain until the participant changes or removes the photo; no second upload is sent on its own.
 2. **Given** an upload in flight, **When** the participant taps [Try again] or [Choose photo] repeatedly, **Then** at most one upload request is in flight at a time, the control shows a busy state, and double taps do not queue extra uploads.
-3. **Given** an upload in flight for one file, **When** the participant chooses a different file before it settles, **Then** the earlier result is ignored once it arrives and only the latest file's result is shown.
+3. **Given** an upload in flight, **When** the participant attempts to choose another file or remove the photo, **Then** the controls stay disabled until it settles, so at most one upload request is ever in flight and a response can never arrive after a change (a change is only possible when nothing is pending).
 4. **Given** a ready uploaded photo, **When** the event becomes closed (reload or refresh confirms it), **Then** the photo step becomes disabled with the closed event state; the already-uploaded server copy is left as-is.
 
 ### Edge Cases
@@ -72,7 +72,7 @@ Once a photo is ready, it stays visible and attached to C2 state while the parti
 - A file with an allowed extension but non-image contents passes the local check and is rejected by the server as an unsupported type; the server message is shown.
 - An HEIC file is rejected locally when the device exposes its type, otherwise rejected by the server as an unsupported type; either way the participant sees the JPEG/PNG/WebP message.
 - A successful response whose body cannot be read is treated as an unexpected response; the photo is not shown as ready and retry is offered.
-- An upload response that arrives after the participant changed or removed the photo is ignored.
+- Choosing or removing during an upload is impossible (controls are locked while pending), so a response can never arrive after a change. Overlapping requests are prevented by construction: the shared client replaces caller abort signals with its timeout signal, so a superseded upload could not be cancelled and would leave an orphan server photo.
 - Device picker cancellation (no file chosen) sends nothing and leaves C2 unchanged.
 - C2 opened for an event the device has no access to shows the "not joined on this device" guidance instead of the photo step; no upload is attempted.
 - The participant leaves C2 while an upload is in flight: the result does not update an unmounted step and no error is shown on an unrelated screen; a ready photo is kept only while C2 state lives (reopening C2 starts empty — server-side unattached retention is unchanged and out of scope).
@@ -89,7 +89,7 @@ Once a photo is ready, it stays visible and attached to C2 state while the parti
 - **FR-005**: On success, App MUST validate the returned photo result and hold its identity for the later registration step, show the uploaded image from its display location as "Photo ready" with [Change photo] and [Remove], and MUST NOT assume success on failure or on an unexpected response.
 - **FR-006**: Choosing a new file MUST discard the previously held photo identity from C2 state and upload the new file as a new photo; [Remove] MUST clear the preview and held identity without sending a delete request.
 - **FR-007**: App MUST map upload failures by error code (never by message text), preferring the server-provided message: too-large → size message; unsupported type → allowed-types message; validation/malformed → photo-step message; closed → closed event state with the step disabled; unauthenticated → "not joined on this device" guidance; not found → "event could not be found" with [Go to start]; connection failure, timeout, internal error, or unexpected response → retryable photo-step error with [Try again].
-- **FR-008**: A stale upload result for a previous file MUST NOT overwrite the current photo state after the participant changed or removed the photo.
+- **FR-008**: Overlapping upload requests MUST be impossible by construction: while an upload is pending, choosing another file, retrying, and removing MUST be disabled, so a stale result for a previous file can never arrive after a change.
 - **FR-009**: App MUST show the closed event state from the shared event data (same "Active"/"Closed" label and "This event has ended." banner as P2/M1) and disable the photo step when the event is closed; a server-confirmed closed state takes precedence over an upload failure.
 - **FR-010**: C2 photo step MUST be usable on phones (360–430px widths, no horizontal scrolling, touch targets at least 44×44px), label every control, announce uploading/ready/error transitions to assistive technology, and move focus to the error when an upload fails.
 - **FR-011**: All user-facing text MUST be in English.
@@ -121,4 +121,4 @@ Once a photo is ready, it stays visible and attached to C2 state while the parti
 - Unattached photos are kept indefinitely with no cleanup in this version, HEIC is rejected as an unsupported type, and display locations are public unguessable URLs (decided in `specs/009-upload-photo`); the app does not enforce retention, conversion, or signing.
 - In-app camera capture is out of scope; the app relies on the device file picker (`camera`/`album` choice left to the device), and file-name availability depends on the device.
 - Visual design follows the project's existing design system and the C2 mockup in `docs/flows/mockup-flow-v1.html`; exact visuals are decided during planning.
-- Screens are verified manually at 360–430px widths; automated tests target non-trivial logic (local file checks, single in-flight upload, stale-result protection, error-code-to-screen-state mapping, ready-state handling), per the project constitution.
+- Screens are verified manually at 360–430px widths; automated tests target non-trivial logic (local file checks, locked-controls single in-flight, error-code-to-screen-state mapping, ready-state handling), per the project constitution.

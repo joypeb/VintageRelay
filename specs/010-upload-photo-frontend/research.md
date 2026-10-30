@@ -30,13 +30,13 @@ All Technical Context items are resolved; no NEEDS CLARIFICATION remains. Source
 - **Rationale**: FR-003, edge cases (exactly-10 MB accepted locally; HEIC rejected locally when detectable, otherwise by the server). Keeps the same message-wording pattern as `validation/join.ts`.
 - **Alternatives**: Server-only validation (rejected: wastes uploads on slow networks, contradicts SC-003).
 
-## R4. Upload mutation: single in-flight, stale-result protection
+## R4. Upload mutation: single in-flight by locked controls (no stale guard)
 
-- **Decision**: `useUploadPhotoMutation(eventId)` is a `useMutation` with `retry: 0`. The screen additionally keeps a `requestSeq` ref incremented per attempt plus the `File` identity it was sent with:
-  - Success/error handlers ignore results whose sequence does not match the latest attempt (covers change-during-upload and remove-during-upload).
-  - [Choose photo], [Change photo], [Try again] are disabled/busy while the mutation is pending, so at most one request is in flight (FR-004, US3-2).
+- **Decision**: `useUploadPhotoMutation(eventId)` is a `useMutation` with `retry: 0`. The screen disables the file control, [Choose photo], [Change photo], [Try again], and [Remove] while the mutation is pending, so at most one request is ever in flight (FR-004, FR-008, US3-2):
+  - No request-sequence guard: with locked controls a second upload cannot start before the first settles, so a stale result after a change is unreachable by construction (a sequence ref would be dead code).
+  - [Choose photo], [Change photo], [Try again], and [Remove] are disabled/busy while the mutation is pending, so at most one request is in flight and no stale overlap is possible (FR-004, FR-008, US3-2).
   - The mutation never auto-retries: photo upload is not idempotent (each success creates a distinct photo), so a lost response retried blindly would create a duplicate server copy.
-- **Rationale**: `data-fetching.md` §3 (`retry: 0`, disable while pending). Mirrors the join lookup serialization (R3 in 008) but with a sequence ref because the "key" here is a `File` object, not a string.
+- **Rationale**: `data-fetching.md` §3 (`retry: 0`, disable while pending). Locked controls are strictly stronger than ignoring stale results: they also prevent the orphan server copies overlapping requests would create.
 - **Alternatives**: Keying a query by file name (rejected: names are not unique and may be unavailable on device).
 
 ## R5. Previews: local object URL vs. server URL
@@ -79,6 +79,6 @@ All Technical Context items are resolved; no NEEDS CLARIFICATION remains. Source
 - **Decision**: Vitest + Testing Library with `renderWithClient`.
   - **Mock boundary**: screen tests mock only `@/lib/api/client` (`apiFetch`, routed by path) and keep the real `uploadPhoto` and hooks — same boundary as 008 R10 (mocking the exported API function while keeping the real hook would not replace the hook's internal binding).
   - Unit tests: `validation/photo.ts` (boundary sizes, empty, types, HEIC, extension fallback), `getPhotoUploadFailure` mapping, `parsePhoto` (valid/invalid/unreadable), `uploadPhoto` (URL, FormData part, event-scoped token via `eventId`, no manual `Content-Type`, response validation).
-  - Screen tests: empty → preview → uploading → ready handoff; change/remove; each failure mapping; single in-flight and double-tap; stale-result ignore after change/remove; closed/no-access gating; no secrets in logs.
+  - Screen tests: empty → preview → uploading → ready handoff; change/remove; each failure mapping; locked controls and double-tap single in-flight; local-rejection context clearing; closed/no-access gating; no secrets in logs.
   - Layout at 360/430 px checked manually ([quickstart.md](quickstart.md)).
 - **Rationale**: Constitution II–IV and `docs/rules/dev/frontend/testing.md` (user-perspective queries, `userEvent`, fresh `QueryClient` per test, no network).

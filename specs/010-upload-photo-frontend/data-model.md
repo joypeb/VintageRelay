@@ -59,7 +59,7 @@ Derived on each render, not stored. Check order is the precedence:
 | `previewing` | file chosen, upload about to start (transient; normally collapses into `uploading`) | local preview |
 | `empty` | otherwise | [Choose photo] + help text (formats, 10 MB) |
 
-Local state: `chosenFile: File | null`, `localPreviewUrl: string | null`, `heldPhoto: Photo | null`, `requestSeq` ref + `latestAttemptSeq`, `photoFieldError: string | null`, `formError: string | null`.
+Local state: `chosenFile: File | null`, `localPreviewUrl: string | null`, `heldPhoto: Photo | null`, `uploadClosed`/`uploadNoAccess`/`uploadNotFound` override flags, `photoFieldError: string | null`, `formError: string | null`.
 
 ### Transitions
 
@@ -70,8 +70,7 @@ empty ──choose file (valid locally)──▶ uploading ──201 valid──
   │                                        │  ├─UNAUTHENTICATED──▶ no-access
   │                                        │  ├─NOT_FOUND──▶ not-found
   │                                        │  └─network/timeout/5xx/invalid──▶ failed (form error + [Try again])
-  │                                        ▼
-  │                              stale result (seq mismatch) ──▶ ignored
+  │                                        (locked controls: no change/remove/retry while pending — stale results unreachable, FR-008)
   └─choose file (invalid locally)──▶ empty (photo-step message, no request)
 ready ──[Change photo]──▶ uploading (new file; old identity discarded)
 ready ──[Remove]──▶ empty (preview + identity cleared; no request)

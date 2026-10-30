@@ -51,7 +51,7 @@ The "coming soon" placeholder is removed. `routes.newItem(eventId)` is unchanged
 | Closed state | shared "This event has ended." banner; step disabled | closed view |
 | Future step note | "You will attach this photo when you describe your clothing in the next step." (or equivalent fixed copy) | ready view; description/register UI itself is out of scope |
 
-Field errors use the existing error pattern for the file control; form errors use `role="alert"`, as on H1/P1. Submitting a new file while an upload is pending is disabled; stale results for previous files are ignored.
+Field errors use the existing error pattern for the file control; form errors use `role="alert"`, as on H1/P1. Submitting a new file while an upload is pending is disabled; with at most one request in flight, a stale result after a change is unreachable by construction.
 
 ## Logging
 

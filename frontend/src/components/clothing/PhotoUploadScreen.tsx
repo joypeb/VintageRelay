@@ -156,6 +156,8 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     if (uploadMutation.isPending) return;
     const result = validatePhotoFile(file);
     if (!result.ok) {
+      revokePreview();
+      setChosenFile(null);
       setPhotoError(result.message);
       event.target.value = '';
       return;
@@ -230,14 +232,6 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     );
   }
 
-  if (uploadNoAccess) {
-    return <EventScreenStatus kind="no-access" />;
-  }
-
-  if (uploadNotFound) {
-    return <EventScreenStatus kind="not-found" />;
-  }
-
   if (closed) {
     return (
       <VStack gap={4} padding={6}>
@@ -266,6 +260,14 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         )}
       </VStack>
     );
+  }
+
+  if (uploadNoAccess) {
+    return <EventScreenStatus kind="no-access" />;
+  }
+
+  if (uploadNotFound) {
+    return <EventScreenStatus kind="not-found" />;
   }
 
   if (heldPhoto !== null && !isUploading) {
@@ -305,20 +307,22 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     );
   }
 
-  if (photoError !== null && chosenFile !== null && !isUploading) {
+  if (photoError !== null && !isUploading) {
     return (
       <VStack gap={4} padding={6}>
         <Heading level={1}>Register clothing</Heading>
         {renderFileControl(false)}
         {localPreviewUrl !== null && <img src={localPreviewUrl} alt="Clothing photo preview" />}
-        <Button
-          label="Try again"
-          variant="primary"
-          size="lg"
-          width="100%"
-          onClick={handleRetry}
-          isDisabled={isUploading}
-        />
+        {chosenFile !== null && (
+          <Button
+            label="Try again"
+            variant="primary"
+            size="lg"
+            width="100%"
+            onClick={handleRetry}
+            isDisabled={isUploading}
+          />
+        )}
         <Button
           label="Choose another photo"
           variant="secondary"
