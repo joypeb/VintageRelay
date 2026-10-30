@@ -5,7 +5,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic.alias_generators import to_camel
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.formparsers import MultiPartException
 from starlette.responses import JSONResponse
 
 from app.core.logging import mask_path, request_id_var
@@ -97,17 +96,13 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        # Starlette converts MultiPartException to HTTPException(400) in Request._get_form,
+        # so malformed multipart bodies already arrive here; no dedicated handler needed.
         return JSONResponse(
             _body(
                 _HTTP_CODES.get(exc.status_code, "BAD_REQUEST"), "Unable to process this request."
             ),
             status_code=exc.status_code,
-        )
-
-    @app.exception_handler(MultiPartException)
-    async def multipart_error(request: Request, exc: MultiPartException) -> JSONResponse:
-        return JSONResponse(
-            _body("BAD_REQUEST", "Unable to process this request."), status_code=400
         )
 
     @app.exception_handler(Exception)

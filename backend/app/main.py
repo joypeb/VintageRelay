@@ -79,6 +79,20 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             )
             if validation_ref.endswith("/HTTPValidationError"):
                 del responses["422"]
+        # The upload route keeps its file part optional so malformed multipart bodies
+        # surface as 400 via the validation path; document the contract shape instead.
+        upload_operation = schema["paths"]["/api/v1/events/{event_id}/photos"]["post"]
+        upload_operation["requestBody"]["required"] = True
+        upload_body = schema["components"]["schemas"].get("Body_uploadPhoto")
+        if upload_body is not None:
+            upload_body["required"] = ["file"]
+            upload_body["properties"] = {
+                "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One image; verified JPEG, PNG, or WebP; max 10485760 bytes.",
+                }
+            }
         schemas = schema.get("components", {}).get("schemas", {})
         for name in ("HTTPValidationError", "ValidationError"):
             component = schemas.pop(name, None)

@@ -1,8 +1,13 @@
-from fastapi import APIRouter
+from typing import Annotated
 
-from app.api.deps import CurrentParticipant, EventServiceDep, Organizer
+from fastapi import APIRouter, File, Request, UploadFile
+from fastapi.exceptions import RequestValidationError
+
+from app.api.deps import CurrentParticipant, DbDep, EventServiceDep, Organizer, SettingsDep
 from app.api.errors import ERROR_RESPONSES, error_responses
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
+from app.schemas.photo import Photo
+from app.services.photo import PhotoService
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -65,3 +70,34 @@ def read_event(event_id: str, me: CurrentParticipant, service: EventServiceDep) 
 )
 def close_event(event_id: str, me: Organizer, service: EventServiceDep) -> EventRead:
     return service.close(me, event_id)
+
+
+@router.post(
+    "/{event_id}/photos",
+    status_code=201,
+    operation_id="uploadPhoto",
+    summary="Upload a clothing photo",
+    responses={
+        201: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(400, 401, 404, 409, 413, 415, 422, 500),
+    },
+)
+def upload_photo(
+    event_id: str,
+    request: Request,
+    me: CurrentParticipant,
+    db: DbDep,
+    settings: SettingsDep,
+    file: Annotated[UploadFile | None, File()] = None,
+) -> Photo:
+    if not request.headers.get("content-type", "").lower().startswith("multipart/form-data"):
+        raise RequestValidationError(
+            [{"loc": ("body",), "msg": "Invalid multipart body.", "type": "value_error"}]
+        )
+    if file is None or file.size == 0:
+        raise RequestValidationError(
+            [{"loc": ("body", "file"), "msg": "Field required.", "type": "missing"}]
+        )
+    return PhotoService(db, settings).upload(event_id, me, file)

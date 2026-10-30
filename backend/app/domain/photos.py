@@ -16,7 +16,7 @@ def verify_image(raw: bytes) -> str:
         with Image.open(BytesIO(raw)) as image:
             image.load()
             image_format = image.format
-    except (OSError, SyntaxError, ValueError) as exc:
+    except (OSError, SyntaxError, ValueError, Image.DecompressionBombError) as exc:
         raise UnsupportedPhotoTypeError() from exc
     content_type = _FORMAT_TO_CONTENT_TYPE.get(image_format or "")
     if content_type is None:
@@ -25,6 +25,7 @@ def verify_image(raw: bytes) -> str:
 
 
 def normalize_image(raw: bytes) -> bytes:
+    """Call after successful verify_image on the same bytes."""
     with Image.open(BytesIO(raw)) as image:
         image_format = image.format or "JPEG"
         transposed = ImageOps.exif_transpose(image)
@@ -34,4 +35,5 @@ def normalize_image(raw: bytes) -> bytes:
 
 
 def extension_for_format(content_type: str) -> str:
+    """Call with a content type returned by verify_image (closed input set)."""
     return _CONTENT_TYPE_TO_EXTENSION[content_type]

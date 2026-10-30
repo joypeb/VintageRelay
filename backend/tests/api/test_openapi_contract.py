@@ -139,6 +139,21 @@ def test_lookup_entry_code_openapi_describes_public_operation(client):
     assert "HTTPValidationError" not in json.dumps(operation)
 
 
+def test_upload_photo_openapi_describes_multipart_and_responses(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/photos"]["post"]
+
+    assert operation["operationId"] == "uploadPhoto"
+    assert operation["requestBody"]["required"]
+    schema = resolve(document, operation["requestBody"]["content"]["multipart/form-data"]["schema"])
+    assert "file" in schema["required"]
+    assert schema["properties"]["file"]["type"] == "string"
+    assert schema["properties"]["file"]["format"] == "binary"
+    assert {"201", "400", "401", "404", "409", "413", "415", "422", "500"} <= operation[
+        "responses"
+    ].keys()
+
+
 def test_view_photo_openapi_describes_public_operation(client):
     document = client.get("/openapi.json").json()
     operation = document["paths"]["/api/v1/photos/{photo_id}"]["get"]
