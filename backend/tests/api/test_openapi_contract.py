@@ -213,3 +213,10 @@ def test_list_clothing_openapi_describes_filters_and_responses(client):
         "confirmed",
         "withdrawn",
     }
+
+
+def test_get_clothing_openapi_describes_responses(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/clothing/{clothing_id}"]["get"]
+    assert operation["operationId"] == "getClothing"
+    assert {"200", "401", "404", "500"} <= operation["responses"].keys()

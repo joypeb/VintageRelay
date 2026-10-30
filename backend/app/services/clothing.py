@@ -104,6 +104,19 @@ class ClothingService:
             ]
         return ClothingList(items=items)
 
+    def get(self, participant: Participant, clothing_id: str) -> ClothingSchema:
+        with self.db.read() as s:
+            row = clothing_repo.get_visible(s, clothing_id, participant.event_id)
+            if row is None:
+                raise NotFoundError()
+            clothing, display_name, organizer_id = row
+            return self._build_response(
+                clothing,
+                owner_display_name=display_name,
+                organizer_participant_id=organizer_id,
+                viewer_id=participant.id,
+            )
+
     def _build_response(
         self,
         clothing: ClothingModel,

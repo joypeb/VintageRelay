@@ -18,6 +18,18 @@ def get_in_event(s: Session, clothing_id: str, event_id: str) -> Clothing | None
     )
 
 
+def get_visible(
+    s: Session, clothing_id: str, event_id: str
+) -> tuple[Clothing, str, str | None] | None:
+    row = s.execute(
+        select(Clothing, Participant.display_name, Event.organizer_participant_id)
+        .join(Participant, Participant.id == Clothing.owner_id)
+        .join(Event, Event.id == Clothing.event_id)
+        .where(Clothing.id == clothing_id, Clothing.event_id == event_id)
+    ).first()
+    return (row[0], row[1], row[2]) if row is not None else None
+
+
 def photo_is_attached(s: Session, photo_id: str) -> bool:
     return s.scalar(select(Clothing.id).where(Clothing.photo_id == photo_id)) is not None
 
