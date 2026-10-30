@@ -58,3 +58,10 @@
 - `CreateEventScreen.test.tsx` failed once under full-suite load and passed 3/3 alone (pre-existing flake, unrelated).
 - T016 review fixes (Red → Green): the queue stops on event-level failure or a shared-event close, URLs for skipped files are revoked, the input error is linked by `aria-describedby`, and a per-key in-flight guard is in place. Frontend 31 files / 434 tests passed.
 - Manual scenarios 5–8 at 360/430 px: **not run** in this session.
+
+### Phase 7 backend + T024 (2026-10-30, HEAD `94dfe8a`, fresh `alembic upgrade head` DB at /tmp/vr012-t024)
+- Backend: `ruff format --check` 97 files formatted, `ruff check` pass, `mypy app` no issues (41 files), `pytest` 356 passed, 22 warnings.
+- Frontend: `pnpm lint` 0 errors (13 warnings), `pnpm typecheck` pass, `pnpm test` 31 files / 434 passed.
+- Scenario 9 (fresh migrated DB, organizer token): register with 3 `photoIds` → 201, `photos` in request order, `photos[0].url` equals upload response `url`. Repeat → 409 `PHOTO_ALREADY_ATTACHED`. 12 IDs → 422 `photoIds/too_long`. Duplicate → 422 `photoIds/invalid`. Legacy `photoId` → 422 `photoIds/required` + `photoId/unknown_field`. All asserted in-script (SCENARIO9-OK).
+- Backend logs during scenario 9: `photo_uploaded` (ids, size_bytes, content_type), `clothing_registered` (clothing_id, event_id, description_length only). No tokens, no image bytes, no description text — 010 SC-006/FR-012 holds (T025 backend side).
+- Manual scenarios 1–8 on a real phone / browser render through the rewrite at 360–430 px: **not run** in this session (no device). US1 app-origin rendering was verified at HTTP level earlier (`200 image/png` through frontend origin).
