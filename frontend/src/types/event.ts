@@ -5,6 +5,19 @@ export type CreateEventRequest = {
   organizerDisplayName: string;
 };
 
+/** `GET /api/v1/entry-codes/{entryCode}` result. */
+export type EventPreview = {
+  eventId: string;
+  name: string;
+  status: EventStatus;
+};
+
+/** `POST /api/v1/events/{eventId}/participants` request body. */
+export type JoinEventRequest = {
+  entryCode: string;
+  displayName: string;
+};
+
 export type EventMe = {
   participantId: string;
   displayName: string;
@@ -33,7 +46,7 @@ export type Event = {
   stats: EventStats | null;
 };
 
-/** `POST /api/v1/events` response body (201). */
+/** `POST /api/v1/events` and join-event response body (201). */
 export type EventSession = {
   event: Event;
   participantToken: string;

@@ -104,7 +104,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Cycle F2 — response parsing (`lib/validation/event-response.ts`, R2)
 
-- [ ] T006 [P] Add to `frontend/src/lib/validation/event-response.test.ts` — agent: `test-author`:
+- [X] T006 [P] Add to `frontend/src/lib/validation/event-response.test.ts` — agent: `test-author`:
   - "parseEventPreview" block:
     - `{ eventId: 'e1', name: 'Mangwon Swap', status: 'active' }` parses, and so does `status: 'closed'`.
     - Each of these throws `ApiError` with code `UNKNOWN_ERROR` and status 200: missing `eventId`, `eventId: ''`, `status: 'open'`, a non-string `name`, and `null`.
@@ -118,7 +118,7 @@ description: "Task list for feature 008-join-event-frontend"
       - `me.participantId === organizerParticipantId` (`'p1'`) with stats present and `isOrganizer: false`
       - a non-null `stats`
       - a malformed `event`
-- [ ] T007 Implement `parseEventPreview` and `parseJoinSession` in `frontend/src/lib/validation/event-response.ts`, and add `EventPreview` and `JoinEventRequest` types to `frontend/src/types/event.ts`. Follow data-model.md "EventSession (existing) — join result": reuse `eventSchema`, then check token non-empty, `event.id === eventId`, `isOrganizer === false`, a non-empty `participantId` that differs from `organizerParticipantId`, and `stats === null`. Never log the payload. This makes T006 pass — agent: `implementer-fe`
+- [X] T007 Implement `parseEventPreview` and `parseJoinSession` in `frontend/src/lib/validation/event-response.ts`, and add `EventPreview` and `JoinEventRequest` types to `frontend/src/types/event.ts`. Follow data-model.md "EventSession (existing) — join result": reuse `eventSchema`, then check token non-empty, `event.id === eventId`, `isOrganizer === false`, a non-empty `participantId` that differs from `organizerParticipantId`, and `stats === null`. Never log the payload. This makes T006 pass — agent: `implementer-fe`
 
 ### Cycle F3 — failure mapping (`lib/event.ts`, R6)
 
