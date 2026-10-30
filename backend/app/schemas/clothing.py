@@ -71,11 +71,10 @@ class ClothingCreate(ApiModel):
             return data
         if not isinstance(measurements, dict):
             return data
-        if all(value is None for value in measurements.values()):
+        if not measurements:
             return {**data, "measurements": None}
         category = data.get("category")
-        if category not in _VALID_CATEGORIES:
-            return data
+        category_valid = category in _VALID_CATEGORIES
         details: list[InitErrorDetails] = []
         if category == ClothingCategory.OTHER.value:
             details.append(
@@ -93,29 +92,37 @@ class ClothingCreate(ApiModel):
             )
             for key, value in measurements.items():
                 field_name = key if key in _MEASUREMENT_FIELDS else _MEASUREMENT_ALIASES.get(key)
+                safe_input = value if value is not None else measurements
                 if field_name is None:
-                    details.append(_unknown_field((f"measurements.{key}",), value))
+                    details.append(_unknown_field((f"measurements.{key}",), safe_input))
                     continue
-                if field_name not in allowed:
+                if category_valid and field_name not in allowed:
                     details.append(
                         _invalid(
                             "Measurement does not belong to this category.",
                             (f"measurements.{key}",),
-                            value,
+                            safe_input,
                         )
                     )
                     continue
-                if value is None or _is_valid_measurement(value):
+                if value is not None and _is_valid_measurement(value):
                     continue
                 details.append(
                     _invalid(
                         "Measurement must be a number greater than 0 and at most 120.",
                         (f"measurements.{key}",),
-                        value,
+                        safe_input,
                     )
                 )
+        if details and not category_valid:
+            if "category" not in data:
+                details.append(InitErrorDetails(type="missing", loc=("category",), input=data))
+            else:
+                details.append(_invalid("Invalid category.", ("category",), category))
         if details:
             raise ValidationError.from_exception_data("ClothingCreate", details)
+        if all(value is None for value in measurements.values()):
+            return {**data, "measurements": None}
         return data
 
 

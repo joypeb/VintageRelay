@@ -118,6 +118,62 @@ def test_registration_rejects_invalid_category_title_and_measurements(
     assert {"field": field, "reason": reason} in error["details"]["fields"]
 
 
+@pytest.mark.parametrize(
+    ("category", "measurements", "fields"),
+    [
+        ("other", {"chest": None}, [{"field": "measurements", "reason": "invalid"}]),
+        (
+            "bottom",
+            {"sleeve": None},
+            [{"field": "measurements.sleeve", "reason": "invalid"}],
+        ),
+        (
+            "top",
+            {"unknown": None},
+            [{"field": "measurements.unknown", "reason": "unknown_field"}],
+        ),
+        (
+            "shoes",
+            {"chest": -1},
+            [
+                {"field": "category", "reason": "invalid"},
+                {"field": "measurements.chest", "reason": "invalid"},
+            ],
+        ),
+        (
+            None,
+            {"chest": -1},
+            [
+                {"field": "category", "reason": "required"},
+                {"field": "measurements.chest", "reason": "invalid"},
+            ],
+        ),
+    ],
+)
+def test_registration_rejects_invalid_measurements_with_fresh_photo(
+    client, db, registration_context, category, measurements, fields
+):
+    event, _, token, _, upload = registration_context
+    event_id = event["event"]["id"]
+    photo = upload(event_id, token)
+    before = state(db)
+    response = client.post(
+        f"/api/v1/events/{event_id}/clothing",
+        headers=auth(token),
+        json={
+            "photoIds": [photo["id"]],
+            **({"category": category} if category is not None else {}),
+            "title": "T",
+            "description": "D",
+            "measurements": measurements,
+        },
+    )
+    assert response.status_code == 422
+    error = assert_rejected(response, db, before, 422, "VALIDATION_ERROR")
+    for field in fields:
+        assert field in error["details"]["fields"]
+
+
 def test_registration_rejects_malformed_json(client, db, registration_context):
     event, _, token, _, _ = registration_context
     before = state(db)

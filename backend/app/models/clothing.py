@@ -10,7 +10,7 @@ class Clothing(Base):
     __tablename__ = "clothes"
     __table_args__ = (
         CheckConstraint("status IN ('available','confirmed','withdrawn')", name="status"),
-        CheckConstraint("category IN ('top','outer','bottom','other')", name="ck_clothes_category"),
+        CheckConstraint("category IN ('top','outer','bottom','other')", name="category"),
         Index("ix_clothes_event_id_created_at", "event_id", "created_at"),
     )
 
