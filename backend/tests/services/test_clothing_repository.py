@@ -4,6 +4,7 @@ from uuid import uuid4
 import pytest
 
 from app.models.photo import Photo
+from app.repositories import photo as photo_repo
 from app.schemas.event import EventCreate
 from app.services.event import EventService
 
@@ -45,7 +46,6 @@ def add_clothing(session, clothing_model, clothing_repo, event, status):
         id=str(uuid4()),
         event_id=event.id,
         owner_id=event.organizer_participant_id,
-        photo_id=photo_id,
         description="Jacket",
         status=status,
         content_version=1,
@@ -53,6 +53,7 @@ def add_clothing(session, clothing_model, clothing_repo, event, status):
         updated_at=now,
     )
     clothing_repo.add(session, clothing)
+    assert photo_repo.attach(session, photo_id, clothing.id, 0) is True
     return clothing
 
 
@@ -63,11 +64,10 @@ def test_clothing_repository_add_and_get_in_event(clothing_context):
     with db.read() as session:
         stored = clothing_repo.get_in_event(session, clothing.id, event.id)
         assert stored is not None
-        assert (stored.id, stored.event_id, stored.owner_id, stored.photo_id) == (
+        assert (stored.id, stored.event_id, stored.owner_id) == (
             clothing.id,
             event.id,
             event.organizer_participant_id,
-            clothing.photo_id,
         )
         assert (stored.description, stored.status, stored.content_version) == (
             "Jacket",
@@ -79,13 +79,26 @@ def test_clothing_repository_add_and_get_in_event(clothing_context):
         assert clothing_repo.get_in_event(session, str(uuid4()), event.id) is None
 
 
-def test_clothing_repository_photo_is_attached(clothing_context):
+def test_photo_repository_attaches_once_and_returns_photos_in_position_order(clothing_context):
     (clothing_model, clothing_repo), db, (event, _) = clothing_context
     with db.write() as session:
         clothing = add_clothing(session, clothing_model, clothing_repo, event, "available")
-    with db.read() as session:
-        assert clothing_repo.photo_is_attached(session, clothing.photo_id) is True
-        assert clothing_repo.photo_is_attached(session, str(uuid4())) is False
+        first = photo_repo.photos_for(session, [clothing.id])[clothing.id][0]
+        second = Photo(
+            id=str(uuid4()),
+            event_id=event.id,
+            uploader_id=event.organizer_participant_id,
+            storage_location=f"{uuid4()}.jpg",
+            content_type="image/jpeg",
+            size_bytes=123,
+            created_at=first.created_at,
+        )
+        session.add(second)
+        session.flush()
+        assert photo_repo.attach(session, second.id, clothing.id, 1) is True
+        assert photo_repo.attach(session, second.id, clothing.id, 2) is False
+        photos = photo_repo.photos_for(session, [clothing.id])
+        assert [photo.id for photo in photos[clothing.id]] == [first.id, second.id]
 
 
 def test_clothing_repository_count_available_is_event_scoped(clothing_context):

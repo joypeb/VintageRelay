@@ -9,7 +9,7 @@ from app.domain.errors import EventClosedError, NotFoundError, PhotoAlreadyAttac
 from app.models.clothing import Clothing
 from app.models.participant import Participant
 from app.models.photo import Photo
-from app.repositories import clothing as clothing_repo
+from app.repositories import photo as photo_repo
 from tests.conftest import close_event, count_rows
 
 
@@ -26,7 +26,7 @@ def service_context(db, settings, registration_context):
     service = ClothingService(
         db, settings, clock=lambda: now, clothing_id_generator=lambda: clothing_id
     )
-    body = ClothingCreate(photo_id=photo["id"], description="  Secret denim jacket  ")
+    body = ClothingCreate(photo_ids=[photo["id"]], description="  Secret denim jacket  ")
     return service, body, event_id, participant, now, clothing_id
 
 
@@ -39,32 +39,42 @@ def test_register_clothing_uses_injected_clock_and_id(db, service_context):
         row = session.get(Clothing, clothing_id)
         assert row is not None
         assert row.event_id == event_id and row.owner_id == participant.id
-        assert row.photo_id == body.photo_id
+        photo = session.get(Photo, body.photo_ids[0])
+        assert (photo.clothing_id, photo.position) == (clothing_id, 0)
         assert row.description == "Secret denim jacket"
         assert row.created_at == row.updated_at == now
         assert row.status == "available" and row.content_version == 1
 
 
 def test_register_clothing_maps_photo_uniqueness_race(db, service_context, monkeypatch):
-    service, body, event_id, participant, now, _ = service_context
-    with db.write() as session:
-        session.add(
-            Clothing(
-                id=str(uuid4()),
-                event_id=event_id,
-                owner_id=participant.id,
-                photo_id=body.photo_id,
-                description="Existing",
-                status="available",
-                content_version=1,
-                created_at=now,
-                updated_at=now,
-            )
+    service, body, event_id, participant, _, _ = service_context
+    original_attach = photo_repo.attach
+
+    def race(session, photo_id, clothing_id, position):
+        if position == 1:
+            return False
+        return original_attach(session, photo_id, clothing_id, position)
+
+    with db.read() as session:
+        source = session.get(Photo, body.photo_ids[0])
+        second = Photo(
+            id=str(uuid4()),
+            event_id=event_id,
+            uploader_id=participant.id,
+            storage_location=f"{uuid4()}.jpg",
+            content_type="image/jpeg",
+            size_bytes=123,
+            created_at=source.created_at,
         )
-    monkeypatch.setattr(clothing_repo, "photo_is_attached", lambda session, photo_id: False)
+    with db.write() as session:
+        session.add(second)
+    body.photo_ids.append(second.id)
+    monkeypatch.setattr(photo_repo, "attach", race)
     with pytest.raises(PhotoAlreadyAttachedError):
         service.register(event_id, participant, body)
-    assert count_rows(db, "clothes") == 1
+    assert count_rows(db, "clothes") == 0
+    with db.read() as session:
+        assert all(session.get(Photo, photo_id).clothing_id is None for photo_id in body.photo_ids)
 
 
 def test_register_clothing_logs_once_after_commit_without_description(db, service_context, caplog):
@@ -110,10 +120,10 @@ def test_register_clothing_rejections_do_not_log_success(db, service_context, ca
     elif case == "closed":
         close_event(db, event_id, now)
     elif case == "missing_photo":
-        body.photo_id = str(uuid4())
+        body.photo_ids = [str(uuid4())]
     elif case == "foreign_photo":
         with db.write() as session:
-            photo = session.get(Photo, body.photo_id)
+            photo = session.get(Photo, body.photo_ids[0])
             assert photo is not None
             other = Participant(
                 id=str(uuid4()),
@@ -126,22 +136,10 @@ def test_register_clothing_rejections_do_not_log_success(db, service_context, ca
             session.flush()
             photo.uploader_id = other.id
     else:
-        with db.write() as session:
-            session.add(
-                Clothing(
-                    id=str(uuid4()),
-                    event_id=event_id,
-                    owner_id=participant.id,
-                    photo_id=body.photo_id,
-                    description="Existing",
-                    status="available",
-                    content_version=1,
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
+        service.register(event_id, participant, body)
     before = count_rows(db, "clothes")
     caplog.set_level(logging.INFO)
+    caplog.clear()
     expected = (
         EventClosedError
         if case == "closed"

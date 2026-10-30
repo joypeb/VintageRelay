@@ -7,4 +7,4 @@ scripts:
     language: text/javascript
     code: |-
       pm.test('Status is 200', () => pm.response.to.have.status(200));
-      pm.test('Clothing schema', () => pm.expect(pm.response.json()).to.include.keys(['id','eventId','owner','isMine','photo','description','status','contentVersion','analysis','createdAt','updatedAt']));
+      pm.test('Clothing schema', () => pm.expect(pm.response.json()).to.include.keys(['id','eventId','owner','isMine','photos','description','status','contentVersion','analysis','createdAt','updatedAt']));

@@ -77,9 +77,12 @@ def register_error_handlers(app: FastAPI) -> None:
                 reason = ValidationReason.UNKNOWN_FIELD
             else:
                 field = to_camel(field)
-                if error_type in {"missing", "string_too_short"} or error.get("input") is None:
+                if (
+                    error_type in {"missing", "string_too_short", "too_short"}
+                    or error.get("input") is None
+                ):
                     reason = ValidationReason.REQUIRED
-                elif error_type == "string_too_long":
+                elif error_type in {"string_too_long", "too_long"}:
                     reason = ValidationReason.TOO_LONG
                 elif error_type == "string_type":
                     reason = ValidationReason.INVALID_TYPE

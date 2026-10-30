@@ -15,9 +15,9 @@ describe('validatePhotoFile', () => {
     });
   });
 
-  it('rejects a file larger than 10 MiB', () => {
+  it('accepts a file larger than 10 MiB for compression', () => {
     const file = { size: 10485761, type: 'image/jpeg', name: 'a.jpg' } as File;
-    expect(validatePhotoFile(file)).toEqual({ ok: false, message: 'Choose a photo of 10 MB or less.' });
+    expect(validatePhotoFile(file)).toEqual({ ok: true, file });
   });
 
   it('accepts the same file at exactly 10 MiB', () => {
@@ -29,7 +29,10 @@ describe('validatePhotoFile', () => {
 
   it('rejects HEIC files', () => {
     const file = { size: 100, type: 'image/heic', name: 'a.heic' } as File;
-    expect(validatePhotoFile(file)).toEqual({ ok: false, message: 'Use a JPEG, PNG, or WebP photo.' });
+    expect(validatePhotoFile(file)).toEqual({
+      ok: false,
+      message: 'Use a JPG/JPEG, PNG, or WebP photo.',
+    });
   });
 
   it.each([
@@ -41,6 +44,16 @@ describe('validatePhotoFile', () => {
     expect(validatePhotoFile(file)).toEqual({ ok: true, file });
   });
 
+  it('accepts the image/jpg type', () => {
+    const file = { size: 100, type: 'image/jpg', name: 'a.jpg' } as File;
+    expect(validatePhotoFile(file)).toEqual({ ok: true, file });
+  });
+
+  it('accepts an uppercase JPG extension when the type is hidden', () => {
+    const file = { size: 100, type: '', name: 'B.JPG' } as File;
+    expect(validatePhotoFile(file)).toEqual({ ok: true, file });
+  });
+
   it('accepts a JPEG extension when the type is hidden', () => {
     const file = { size: 100, type: '', name: 'a.jpg' } as File;
     expect(validatePhotoFile(file)).toEqual({ ok: true, file });
@@ -48,7 +61,10 @@ describe('validatePhotoFile', () => {
 
   it('rejects an unsupported extension when the type is hidden', () => {
     const file = { size: 100, type: '', name: 'a.txt' } as File;
-    expect(validatePhotoFile(file)).toEqual({ ok: false, message: 'Use a JPEG, PNG, or WebP photo.' });
+    expect(validatePhotoFile(file)).toEqual({
+      ok: false,
+      message: 'Use a JPG/JPEG, PNG, or WebP photo.',
+    });
   });
 
   it('accepts a PNG extension for a generic type', () => {

@@ -47,7 +47,6 @@ def detail_context(db, registration_context):
                     id=clothing_id,
                     event_id=target_event,
                     owner_id=owner_id,
-                    photo_id=photo_id,
                     description=name,
                     status=clothing_status,
                     content_version=1,
@@ -55,6 +54,10 @@ def detail_context(db, registration_context):
                     updated_at=now,
                 )
             )
+            session.flush()
+            photo = session.get(Photo, photo_id)
+            photo.clothing_id = clothing_id
+            photo.position = 0
             rows[name] = {"id": clothing_id, "photo_id": photo_id, "status": clothing_status}
     return event, participant, token, rows, now
 
@@ -77,7 +80,7 @@ def test_get_clothing_returns_complete_resource(client, settings, detail_context
         "eventId",
         "owner",
         "isMine",
-        "photo",
+        "photos",
         "description",
         "status",
         "contentVersion",
@@ -94,7 +97,7 @@ def test_get_clothing_returns_complete_resource(client, settings, detail_context
         "isOrganizer": not is_mine,
     }
     assert body["isMine"] is is_mine
-    assert body["photo"] == {
+    assert body["photos"][0] == {
         "id": rows[name]["photo_id"],
         "url": f"{settings.app_base_url}/api/v1/photos/{rows[name]['photo_id']}",
     }

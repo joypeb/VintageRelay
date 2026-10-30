@@ -9,7 +9,7 @@ body:
   type: json
   content: |-
     {
-      "photoId": "{{photoId}}",
+      "photoIds": ["{{photoId}}"],
       "description": "Duplicate tap."
     }
 scripts:

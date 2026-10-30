@@ -170,6 +170,8 @@ def test_migration_creates_photos_table(migrated_database):
         "content_type",
         "size_bytes",
         "created_at",
+        "clothing_id",
+        "position",
     }
     assert any(
         constraint["column_names"] == ["storage_location"]
@@ -192,7 +194,6 @@ def test_migration_creates_clothes_table_and_index(migrated_database):
         "id",
         "event_id",
         "owner_id",
-        "photo_id",
         "description",
         "status",
         "content_version",
@@ -251,40 +252,87 @@ def seed_clothing_foreign_keys(engine):
 def insert_clothing(connection, clothing_id, status, now):
     connection.execute(
         text(
-            "INSERT INTO clothes (id, event_id, owner_id, photo_id, description, status, "
-            "content_version, created_at, updated_at) VALUES (:id, :event_id, :owner_id, "
-            ":photo_id, :description, :status, :content_version, :created_at, :updated_at)"
+            "INSERT INTO clothes (id, event_id, owner_id, description, status, content_version, "
+            "created_at, updated_at) VALUES (:id, 'event-1', 'participant-1', 'Jacket', "
+            ":status, 1, :now, :now)"
         ),
-        {
-            "id": clothing_id,
-            "event_id": "event-1",
-            "owner_id": "participant-1",
-            "photo_id": "photo-1",
-            "description": "Jacket",
-            "status": status,
-            "content_version": 1,
-            "created_at": now,
-            "updated_at": now,
-        },
+        {"id": clothing_id, "status": status, "now": now},
     )
 
 
-def test_migration_rejects_duplicate_clothing_photo(migrated_database):
+def test_migration_photos_reference_clothes_and_reject_duplicate_position(migrated_database):
     _, engine = migrated_database
-    assert "clothes" in inspect(engine).get_table_names()
+    inspector = inspect(engine)
+    columns = {column["name"]: column for column in inspector.get_columns("photos")}
+    assert columns["clothing_id"]["nullable"] and columns["position"]["nullable"]
+    assert any(
+        fk["constrained_columns"] == ["clothing_id"]
+        and fk["referred_table"] == "clothes"
+        and fk["referred_columns"] == ["id"]
+        for fk in inspector.get_foreign_keys("photos")
+    )
+    assert any(
+        c["column_names"] == ["clothing_id", "position"]
+        for c in inspector.get_unique_constraints("photos")
+    )
     now = seed_clothing_foreign_keys(engine)
     with engine.begin() as connection:
         insert_clothing(connection, "clothing-1", "available", now)
+        connection.execute(
+            text("UPDATE photos SET clothing_id='clothing-1', position=0 WHERE id='photo-1'")
+        )
     with pytest.raises(IntegrityError), engine.begin() as connection:
-        insert_clothing(connection, "clothing-2", "available", now)
+        connection.execute(
+            text(
+                "INSERT INTO photos (id,event_id,uploader_id,storage_location,content_type,"
+                "size_bytes,created_at,clothing_id,position) VALUES "
+                "('photo-2','event-1','participant-1','two.jpg','image/jpeg',123,:now,'clothing-1',0)"
+            ),
+            {"now": now},
+        )
 
 
 def test_migration_rejects_invalid_clothing_status(migrated_database):
     _, engine = migrated_database
-    assert "clothes" in inspect(engine).get_table_names()
     now = seed_clothing_foreign_keys(engine)
-    with pytest.raises(IntegrityError), engine.begin() as connection:
+    with pytest.raises(IntegrityError, match="ck_clothes_status"), engine.begin() as connection:
         insert_clothing(connection, "clothing-1", "invalid", now)
+
+
+def test_migration_backfills_and_downgrade_restores_main_photo(tmp_path):
+    backend = Path(__file__).resolve().parents[1]
+    url = f"sqlite:///{tmp_path / 'backfill.db'}"
+    cfg = Config(str(backend / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "bf5a4ccaa2c0")
+    engine = create_engine(url)
+    try:
+        now = seed_clothing_foreign_keys(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO clothes (id,event_id,owner_id,photo_id,description,status,"
+                    "content_version,created_at,updated_at) VALUES "
+                    "('clothing-1','event-1','participant-1','photo-1','Jacket','available',1,:now,:now)"
+                ),
+                {"now": now},
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT clothing_id, position FROM photos WHERE id='photo-1'")
+            ).one() == ("clothing-1", 0)
+        command.downgrade(cfg, "bf5a4ccaa2c0")
+        with engine.connect() as connection:
+            assert (
+                connection.execute(
+                    text("SELECT photo_id FROM clothes WHERE id='clothing-1'")
+                ).scalar_one()
+                == "photo-1"
+            )
+    finally:
+        engine.dispose()
 
 
 def test_downgrade_removes_clothes_table(migrated_database):

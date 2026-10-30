@@ -1,6 +1,6 @@
 # Register/Read Clothing API
 
-Registers a garment with an uploaded photo and description, and returns same-event clothing lists and details. Screens: C1, C2, C4, B2, B3. Common rules: [README](README.md).
+Registers a garment with 1–10 uploaded photos and a description, and returns same-event clothing lists and details. Screens: C1, C2, C4, B2, B3. Common rules: [README](README.md).
 
 ## 1. `POST /api/v1/events/{event_id}/clothing`
 
@@ -16,12 +16,12 @@ Registers a garment with an uploaded photo and description, and returns same-eve
 
 | Field | Type | Required | Rule |
 |---|---|---|---|
-| `photoId` | string | Yes | Photo uploaded by the caller in this event ([05](05-upload-photo.md)) and not attached to another garment |
+| `photoIds` | string[] | Yes | 1–10 unique photos uploaded by the caller in this event ([05](05-upload-photo.md)) and not attached to another garment. Order is kept; the first is the main photo. |
 | `description` | string | Yes | Owner's description, 1–1,000 characters |
 
 ```json
 {
-  "photoId": "e4f5a6b7-c8d9-4e0f-a1b2-c3d4e5f6a7b8",
+  "photoIds": ["e4f5a6b7-c8d9-4e0f-a1b2-c3d4e5f6a7b8", "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"],
   "description": "Cropped green denim jacket, size M. Worn a few times."
 }
 ```
@@ -33,8 +33,8 @@ Returns the created `Clothing` with `status = available`, `contentVersion = 1`, 
 ### Processing Rules
 
 1. Verify the event is active and the caller belongs to it.
-2. Verify the photo belongs to the caller and event, and is unattached.
-3. Insert the garment and attach the photo in one transaction.
+2. Verify every photo belongs to the caller and event, and is unattached.
+3. Insert the garment and attach all photos in order in one transaction (all or none).
 4. Log `INFO` event `clothing_registered` with `extra`: `clothing_id`, `event_id`, `description_length` (never the description itself).
 
 ### Errors
@@ -42,14 +42,14 @@ Returns the created `Clothing` with `status = available`, `contentVersion = 1`, 
 | Status | Code | When |
 |---|---|---|
 | 401 | `UNAUTHENTICATED` | Missing or invalid token |
-| 404 | `NOT_FOUND` | Event does not exist or the token belongs to another event; or `photoId` does not exist, belongs to another event, or was uploaded by another participant (existence hidden; see [contract](../../rules/dev/common/api-contract.md#authentication-decided)) |
+| 404 | `NOT_FOUND` | Event does not exist or the token belongs to another event; or any of `photoIds` does not exist, belongs to another event, or was uploaded by another participant (existence hidden; see [contract](../../rules/dev/common/api-contract.md#authentication-decided)) |
 | 409 | `EVENT_CLOSED` | Event is closed |
 | 409 | `PHOTO_ALREADY_ATTACHED` | Photo is attached to another garment |
 | 422 | `VALIDATION_ERROR` | Missing field, or description empty/too long |
 
 ### Idempotency
 
-Not idempotent across photos. A repeated request with the same `photoId` fails with `PHOTO_ALREADY_ATTACHED`, which prevents duplicate garments from double taps.
+Not idempotent across photos. A repeated request with any of the same `photoIds` fails with `PHOTO_ALREADY_ATTACHED` and attaches nothing, which prevents duplicate garments from double taps.
 
 ## 2. `GET /api/v1/events/{event_id}/clothing`
 
@@ -78,7 +78,7 @@ Visibility: other participants' `withdrawn` garments are never listed. The calle
       "eventId": "9a0d6c1e-2b7f-4f0a-9c8e-1d2f3a4b5c6d",
       "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false },
       "isMine": false,
-      "photo": { "id": "e4f5...", "url": "https://cdn.vintage-relay.example/photos/..." },
+      "photos": [{ "id": "e4f5...", "url": "https://cdn.vintage-relay.example/photos/..." }],
       "description": "Cropped green denim jacket, size M. Worn a few times.",
       "status": "available",
       "contentVersion": 1,
@@ -128,7 +128,7 @@ Returns a `Clothing`. Withdrawn garments of other participants are returned with
 | `eventId` | string | Event ID |
 | `owner` | object | `participantId`, `displayName`, `isOrganizer` (organizer badge) |
 | `isMine` | boolean | Whether the caller owns it |
-| `photo` | object | `id`, `url` |
+| `photos` | object[] | 1–10 `{id, url}` in order; the first is the main photo |
 | `description` | string | Owner's description, stored separately from AI estimates |
 | `status` | enum | `available`, `confirmed`, `withdrawn` |
 | `contentVersion` | integer | Increments when the photo or description changes |
@@ -143,7 +143,7 @@ Compact form embedded in intents, proposals, alternatives, and recommendations.
 |---|---|---|
 | `id` | string | Clothing ID |
 | `owner` | object | `participantId`, `displayName`, `isOrganizer` |
-| `photoUrl` | string | Photo URL |
+| `photoUrl` | string | Main (first) photo URL |
 | `description` | string | Owner's description |
 | `status` | enum | `available`, `confirmed`, `withdrawn` |
 | `contentVersion` | integer | Current content version |

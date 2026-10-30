@@ -6,16 +6,22 @@ def headers(token):
 
 
 @pytest.mark.parametrize("organizer", [True, False])
-def test_register_clothing_returns_complete_resource(client, registration_context, organizer):
+@pytest.mark.parametrize("photo_count", [1, 10])
+def test_register_clothing_returns_complete_resource(
+    client, db, registration_context, organizer, photo_count
+):
     event, participant, token, _, upload = registration_context
     event_id = event["event"]["id"]
     token = event["participantToken"] if organizer else token
     participant_id = event["event"]["organizerParticipantId"] if organizer else participant.id
-    photo = upload(event_id, token)
+    photos = [upload(event_id, token) for _ in range(photo_count)]
     response = client.post(
         f"/api/v1/events/{event_id}/clothing",
         headers=headers(token),
-        json={"photoId": photo["id"], "description": "  Green denim jacket, M  "},
+        json={
+            "photoIds": [photo["id"] for photo in photos],
+            "description": "  Green denim jacket, M  ",
+        },
     )
     assert response.status_code == 201
     body = response.json()
@@ -24,7 +30,7 @@ def test_register_clothing_returns_complete_resource(client, registration_contex
         "eventId",
         "owner",
         "isMine",
-        "photo",
+        "photos",
         "description",
         "status",
         "contentVersion",
@@ -39,7 +45,13 @@ def test_register_clothing_returns_complete_resource(client, registration_contex
         "isOrganizer": organizer,
     }
     assert body["isMine"] is True
-    assert body["photo"] == {"id": photo["id"], "url": photo["url"]}
+    assert body["photos"] == [{"id": photo["id"], "url": photo["url"]} for photo in photos]
+    from app.models.photo import Photo
+
+    with db.read() as session:
+        for index, photo in enumerate(photos):
+            row = session.get(Photo, photo["id"])
+            assert (row.clothing_id, row.position) == (body["id"], index)
     assert body["description"] == "Green denim jacket, M"
     assert body["status"] == "available"
     assert body["contentVersion"] == 1
@@ -58,7 +70,9 @@ def test_register_clothing_description_boundaries_and_event_count(client, regist
     for count, description in enumerate(("x", "x" * 1000, "first line\nsecond line"), 1):
         photo = upload(event_id, token)
         response = client.post(
-            path, headers=headers(token), json={"photoId": photo["id"], "description": description}
+            path,
+            headers=headers(token),
+            json={"photoIds": [photo["id"]], "description": description},
         )
         assert response.status_code == 201
         assert response.json()["description"] == description

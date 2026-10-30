@@ -30,10 +30,6 @@ def get_visible(
     return (row[0], row[1], row[2]) if row is not None else None
 
 
-def photo_is_attached(s: Session, photo_id: str) -> bool:
-    return s.scalar(select(Clothing.id).where(Clothing.photo_id == photo_id)) is not None
-
-
 def count_available(s: Session, event_id: str) -> int:
     stmt = (
         select(func.count())

@@ -12,12 +12,12 @@ paths:
   /api/v1/events/{event_id}/clothing:
     post:
       operationId: registerClothing
-      summary: Register a garment with an uploaded photo
+      summary: Register a garment with 1–10 uploaded photos
       description: >
         Order: body valid (else 422) -> credential valid (else 401) -> event
         exists and credential belongs to it (else 404) -> event active (else
-        409 EVENT_CLOSED) -> photo exists, same event, uploaded by caller (else
-        404, identical body) -> photo unattached (else 409
+        409 EVENT_CLOSED) -> every photo exists, same event, uploaded by caller (else
+        404, identical body) -> every photo unattached, attached all or none (else 409
         PHOTO_ALREADY_ATTACHED). Description is trimmed before validation and
         stored trimmed. Not idempotent: an exact repeat returns
         PHOTO_ALREADY_ATTACHED.
@@ -135,13 +135,18 @@ components:
     ClothingCreate:
       type: object
       additionalProperties: false
-      required: [photoId, description]
+      required: [photoIds, description]
       properties:
-        photoId: { type: string }
+        photoIds:
+          type: array
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string }
         description: { type: string, minLength: 1, maxLength: 1000 }
     Clothing:
       type: object
-      required: [id, eventId, owner, isMine, photo, description, status, contentVersion, analysis, createdAt, updatedAt]
+      required: [id, eventId, owner, isMine, photos, description, status, contentVersion, analysis, createdAt, updatedAt]
       properties:
         id: { type: string }
         eventId: { type: string }
@@ -153,12 +158,16 @@ components:
             displayName: { type: string }
             isOrganizer: { type: boolean }
         isMine: { type: boolean }
-        photo:
-          type: object
-          required: [id, url]
-          properties:
-            id: { type: string }
-            url: { type: string, format: uri }
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 10
+          items:
+            type: object
+            required: [id, url]
+            properties:
+              id: { type: string }
+              url: { type: string, format: uri }
         description: { type: string }
         status: { $ref: '#/components/schemas/ClothingStatus' }
         contentVersion: { type: integer, minimum: 1 }
