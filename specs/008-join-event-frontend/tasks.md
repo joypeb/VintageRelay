@@ -122,7 +122,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Cycle F3 — failure mapping (`lib/event.ts`, R6)
 
-- [ ] T008 [P] Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
+- [X] T008 [P] Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
   - "getLookupFailure" block:
     - `ApiError(404, 'NOT_FOUND', "We couldn't find an event with this code. Check the code and try again.")` → `{ kind: 'codeField', message: <that message> }`
     - `ApiError(500, 'INTERNAL_ERROR', 'Server says no.')` → `{ kind: 'form', message: 'Server says no.' }`
@@ -136,7 +136,7 @@ description: "Task list for feature 008-join-event-frontend"
     - `ApiError(422, 'VALIDATION_ERROR', …, { fields: [{ field: 'displayName', reason: 'too_long' }] })` → `{ kind: 'fields', fieldErrors: { displayName: 'Enter a display name of 1–30 characters.' }, formError: null }`
     - `INTERNAL_ERROR`, `NETWORK_ERROR`, and `UNKNOWN_ERROR` (status 200) → `form` with the server message
     - `new Error('x')` → `form` with the generic message
-- [ ] T009 Implement `getLookupFailure` and `getJoinFailure` (types exactly as in data-model.md "Failure mappings") in `frontend/src/lib/event.ts`, using `getFormErrorMessage` and `mapJoinServerFieldErrors`. This makes T008 pass — agent: `implementer-fe`
+- [X] T009 Implement `getLookupFailure` and `getJoinFailure` (types exactly as in data-model.md "Failure mappings") in `frontend/src/lib/event.ts`, using `getFormErrorMessage` and `mapJoinServerFieldErrors`. This makes T008 pass — agent: `implementer-fe`
 
 ### Cycle F4 — API functions and hooks (`lib/api/*`, R2–R4)
 

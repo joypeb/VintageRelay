@@ -4,6 +4,8 @@ import { ApiError } from '@/lib/api/api-error';
 import {
   getCloseEventFailure,
   getEventScreenState,
+  getJoinFailure,
+  getLookupFailure,
   isClosed,
   isOrganizer,
   keepClosedEvent,
@@ -118,6 +120,48 @@ describe('getCloseEventFailure', () => {
     [new Error('x'), { kind: 'dialog', message: 'Something went wrong. Please try again.' }],
   ])('maps %s to the appropriate failure', (error, expected) => {
     expect(getCloseEventFailure(error)).toEqual(expected);
+  });
+});
+
+describe('getLookupFailure', () => {
+  it.each([
+    [
+      new ApiError(404, 'NOT_FOUND', "We couldn't find an event with this code. Check the code and try again."),
+      { kind: 'codeField', message: "We couldn't find an event with this code. Check the code and try again." },
+    ],
+    [new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'), { kind: 'form', message: 'Server says no.' }],
+    [
+      new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+      { kind: 'form', message: 'Please check your network connection.' },
+    ],
+    [new ApiError(429, 'UNKNOWN_ERROR', 'Please try again shortly.'), { kind: 'form', message: 'Please try again shortly.' }],
+    [new Error('x'), { kind: 'form', message: 'Something went wrong. Please try again.' }],
+  ])('maps %s to the appropriate failure', (error, expected) => {
+    expect(getLookupFailure(error)).toEqual(expected);
+  });
+});
+
+describe('getJoinFailure', () => {
+  it.each([
+    [
+      new ApiError(409, 'DISPLAY_NAME_TAKEN', 'This display name is already taken.', { field: 'displayName' }),
+      { kind: 'displayNameField', message: 'This display name is already taken.' },
+    ],
+    [new ApiError(409, 'EVENT_CLOSED', 'Event closed.'), { kind: 'closed' }],
+    [new ApiError(404, 'NOT_FOUND', 'Not here.'), { kind: 'codeNotFound', message: 'Not here.' }],
+    [
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid input.', { fields: [{ field: 'displayName', reason: 'too_long' }] }),
+      { kind: 'fields', fieldErrors: { displayName: 'Enter a display name of 1–30 characters.' }, formError: null },
+    ],
+    [new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'), { kind: 'form', message: 'Server says no.' }],
+    [
+      new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+      { kind: 'form', message: 'Please check your network connection.' },
+    ],
+    [new ApiError(200, 'UNKNOWN_ERROR', 'Invalid response.'), { kind: 'form', message: 'Invalid response.' }],
+    [new Error('x'), { kind: 'form', message: 'Something went wrong. Please try again.' }],
+  ])('maps %s to the appropriate failure', (error, expected) => {
+    expect(getJoinFailure(error)).toEqual(expected);
   });
 });
 
