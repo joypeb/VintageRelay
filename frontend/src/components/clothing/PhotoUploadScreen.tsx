@@ -11,9 +11,11 @@ import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
+import { ApiError } from '@/lib/api/api-error';
 import { useEventQuery } from '@/lib/api/events';
 import { useUploadPhotoMutation } from '@/lib/api/photos';
-import { getEventScreenState, isClosed } from '@/lib/event';
+import { getEventScreenState, getPhotoUploadFailure, isClosed } from '@/lib/event';
+import { logger } from '@/lib/logger';
 import { hasEventSession } from '@/lib/session';
 import { validatePhotoFile } from '@/lib/validation/photo';
 import type { Photo } from '@/types/photo';
@@ -45,6 +47,10 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const [heldPhoto, setHeldPhoto] = useState<Photo | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [chosenFile, setChosenFile] = useState<File | null>(null);
+  const [uploadClosed, setUploadClosed] = useState(false);
+  const [uploadNoAccess, setUploadNoAccess] = useState(false);
+  const [uploadNotFound, setUploadNotFound] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const errorRef = useRef<HTMLSpanElement>(null);
@@ -95,8 +101,41 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     );
   }
 
-  const closed = isClosed(state.event);
+  const closed = isClosed(state.event) || uploadClosed;
   const isUploading = uploadMutation.isPending;
+
+  function clearUploadOverrides() {
+    setUploadClosed(false);
+    setUploadNoAccess(false);
+    setUploadNotFound(false);
+  }
+
+  function handleUploadSuccess(photo: Photo) {
+    revokePreview();
+    setHeldPhoto(photo);
+    setChosenFile(null);
+    setPhotoError(null);
+  }
+
+  function handleUploadError(error: unknown) {
+    if (!(error instanceof ApiError)) logger.error('photo upload failed', error);
+    const failure = getPhotoUploadFailure(error);
+    switch (failure.kind) {
+      case 'photoField':
+      case 'form':
+        setPhotoError(failure.message);
+        break;
+      case 'closed':
+        setUploadClosed(true);
+        break;
+      case 'no-access':
+        setUploadNoAccess(true);
+        break;
+      case 'not-found':
+        setUploadNotFound(true);
+        break;
+    }
+  }
 
   function revokePreview() {
     if (previewUrlRef.current !== null) {
@@ -121,25 +160,36 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
       event.target.value = '';
       return;
     }
+    clearUploadOverrides();
     setPhotoError(null);
     setHeldPhoto(null);
     revokePreview();
     const previewUrl = URL.createObjectURL(result.file);
     previewUrlRef.current = previewUrl;
     setLocalPreviewUrl(previewUrl);
+    setChosenFile(result.file);
     event.target.value = '';
     uploadMutation.mutate(result.file, {
-      onSuccess: (photo) => {
-        revokePreview();
-        setHeldPhoto(photo);
-      },
+      onSuccess: handleUploadSuccess,
+      onError: handleUploadError,
+    });
+  }
+
+  function handleRetry() {
+    if (uploadMutation.isPending || chosenFile === null) return;
+    setPhotoError(null);
+    uploadMutation.mutate(chosenFile, {
+      onSuccess: handleUploadSuccess,
+      onError: handleUploadError,
     });
   }
 
   function handleRemove() {
     revokePreview();
     setHeldPhoto(null);
+    setChosenFile(null);
     setPhotoError(null);
+    clearUploadOverrides();
     if (inputRef.current !== null) inputRef.current.value = '';
   }
 
@@ -178,6 +228,14 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         )}
       </VStack>
     );
+  }
+
+  if (uploadNoAccess) {
+    return <EventScreenStatus kind="no-access" />;
+  }
+
+  if (uploadNotFound) {
+    return <EventScreenStatus kind="not-found" />;
   }
 
   if (closed) {
@@ -243,6 +301,32 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
             No Astryx Button is rendered here: Button always mounts its own empty
             role="status" live region, which would duplicate this announcement. */}
         <span role="status">Uploading photo…</span>
+      </VStack>
+    );
+  }
+
+  if (photoError !== null && chosenFile !== null && !isUploading) {
+    return (
+      <VStack gap={4} padding={6}>
+        <Heading level={1}>Register clothing</Heading>
+        {renderFileControl(false)}
+        {localPreviewUrl !== null && <img src={localPreviewUrl} alt="Clothing photo preview" />}
+        <Button
+          label="Try again"
+          variant="primary"
+          size="lg"
+          width="100%"
+          onClick={handleRetry}
+          isDisabled={isUploading}
+        />
+        <Button
+          label="Choose another photo"
+          variant="secondary"
+          size="lg"
+          width="100%"
+          onClick={openPicker}
+          isDisabled={isUploading}
+        />
       </VStack>
     );
   }

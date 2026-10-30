@@ -166,7 +166,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ### Tests for User Story 2 (REQUIRED - write first) ⚠️
 
-- [ ] T013 [US2] Add a "US2 failures" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`:
+- [X] T013 [US2] Add a "US2 failures" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`:
   - Choosing an oversized file shows "Choose a photo of 10 MB or less." and sends no upload; choosing an HEIC file shows "Use a JPEG, PNG, or WebP photo." and sends no upload.
   - Upload rejected `413 FILE_TOO_LARGE` ('Photo exceeds the 10 MB limit.') → the message is shown at the photo step with [Try again] and [Choose another photo]; the file context is kept; [Try again] sends a second upload with the same file.
   - Upload rejected `415 UNSUPPORTED_MEDIA_TYPE` → the server message is shown at the photo step with the same retry actions.
@@ -179,7 +179,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] In `frontend/src/components/clothing/PhotoUploadScreen.tsx` — agent: `implementer-fe`:
+- [X] T014 [US2] In `frontend/src/components/clothing/PhotoUploadScreen.tsx` — agent: `implementer-fe`:
   - Map upload errors with `getPhotoUploadFailure`: `photoField` → photo-step error (server message preferred); `closed` → closed view; `no-access` → not-joined guidance; `not-found` → not-found view; `form` → `role="alert"` error with [Try again].
   - A failed upload keeps the chosen file context (same `File` for [Try again]); [Choose another photo] reopens the picker. Failures never show the ready state and never navigate.
   - When the failure arrives, move focus to the error region. Log only non-`ApiError` failures (`'photo upload failed'`).
