@@ -220,9 +220,10 @@ description: "Task list for feature 010-upload-photo-frontend"
 ## Phase 6: Polish & Cross-Cutting Concerns
 
 - [X] T017 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `PhotoUploadScreen.tsx` — agent: `implementer-fe`
-- [ ] T018 Run the full suites and the production build, and record the actual results — agent: orchestrator:
+- [X] T018 Run the full suites and the production build, and record the actual results — agent: orchestrator:
   - `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
   - `cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest` (the backend is unchanged; this confirms nothing regressed)
+  - **Results (2026-10-30, after T017)**: Frontend: lint 0 errors (4 `no-img-element` warnings on intentional native `img`), typecheck pass, 28 files / 402 tests pass, `pnpm build` success (route `/events/[eventId]/my-items/new` present). Backend: ruff format (82 files) + ruff check pass, mypy pass (36 files), pytest 270 passed.
 - [ ] T019 Manual verification per quickstart.md rows 1–15 at 360 px and 430 px, recording the results in the PR description — agent: orchestrator with the user. Check:
   - no horizontal scroll, touch targets ≥ 44×44 px, and English copy
   - focus moves to the upload error, and uploading/ready transitions are announced
@@ -231,7 +232,7 @@ description: "Task list for feature 010-upload-photo-frontend"
   - C2 → ready in under 60 s of user time excluding the device picker (SC-001)
   - no credential, image bytes, or response body in the browser console
   - Attach screenshots of C2 (empty, uploading, ready, failed, closed) at both widths.
-- [ ] T020 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
+- [X] T020 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
 
 ---
 

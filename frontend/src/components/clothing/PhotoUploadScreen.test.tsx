@@ -241,8 +241,7 @@ describe('US2 failures', () => {
   it('disables the photo step when an upload finds the event closed', async () => {
     rejectUpload(new ApiError(409, 'EVENT_CLOSED', 'Event closed.'));
     await chooseFile(userEvent.setup(), new File(['bytes'], 'jacket.jpg', { type: 'image/jpeg' }));
-    expect(await screen.findByText('This event has ended.')).toBeVisible();
-    expect(screen.getByLabelText('Clothing photo')).toBeDisabled();
+    await waitFor(() => expect(screen.getByLabelText('Clothing photo')).toBeDisabled());
   });
 
   it.each([
@@ -453,10 +452,88 @@ describe('US3 stability', () => {
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ['events', 'e1'] });
     });
-    expect(await screen.findByText('This event has ended.')).toBeVisible();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled());
     expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
     expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
     expect(uploadCalls()).toHaveLength(1);
   });
+
+  it('does not render a duplicate banner when the shared event is closed', async () => {
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1')
+        return Promise.resolve({ ...event, status: 'closed', closedAt: '2026-10-28T01:00:00Z' });
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    expect(await screen.findByLabelText('Clothing photo')).toBeDisabled();
+    expect(screen.queryByText('This event has ended.')).not.toBeInTheDocument();
+  });
+
+  it('refetches the shared event when an upload reports closure', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos')
+        return Promise.reject(new ApiError(409, 'EVENT_CLOSED', 'Event closed.'));
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    const input = await screen.findByLabelText('Clothing photo');
+    expect(mocks.apiFetch.mock.calls.filter((call) => call[1] === '/events/e1')).toHaveLength(1);
+    await user.upload(input, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
+    await waitFor(() =>
+      expect(mocks.apiFetch.mock.calls.filter((call) => call[1] === '/events/e1')).toHaveLength(2),
+    );
+  });
+
+  it('clears a ready photo when its replacement is rejected locally', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+    );
+    expect(await screen.findByText('Photo ready')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Change photo' }));
+    await user.upload(
+      screen.getByLabelText('Clothing photo'),
+      new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.jpg', { type: 'image/jpeg' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Choose a photo of 10 MB or less.');
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByText('Photo ready')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change photo' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Choose another photo' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(uploadCalls()).toHaveLength(1);
+  });
+
+  it('shows access guidance when an upload is unauthorized after the event closes', async () => {
+    const user = userEvent.setup();
+    let rejectUpload!: (error: Error) => void;
+    const pending = new Promise<typeof photo>((_resolve, reject) => {
+      rejectUpload = reject;
+    });
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos') return pending;
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['a'], 'a.jpg', { type: 'image/jpeg' }),
+    );
+    await act(async () => {
+      queryClient.setQueryData(['events', 'e1'], {
+        ...event,
+        status: 'closed',
+        closedAt: '2026-10-28T01:00:00Z',
+      });
+      rejectUpload(new ApiError(401, 'UNAUTHENTICATED', 'Unauthorized.'));
+    });
+    expect(await screen.findByText("You haven't joined this event on this device.")).toBeVisible();
+  });
+
 });

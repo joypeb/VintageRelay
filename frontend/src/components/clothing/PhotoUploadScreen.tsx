@@ -3,17 +3,18 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ChangeEvent } from 'react';
 
-import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
 import { useEventQuery } from '@/lib/api/events';
 import { useUploadPhotoMutation } from '@/lib/api/photos';
+import { queryKeys } from '@/lib/api/query-keys';
 import { getEventScreenState, getPhotoUploadFailure, isClosed } from '@/lib/event';
 import { logger } from '@/lib/logger';
 import { hasEventSession } from '@/lib/session';
@@ -43,6 +44,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     enabled: hasSession,
   });
   const uploadMutation = useUploadPhotoMutation(eventId);
+  const queryClient = useQueryClient();
 
   const [heldPhoto, setHeldPhoto] = useState<Photo | null>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
@@ -124,6 +126,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         break;
       case 'closed':
         setUploadClosed(true);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId), exact: true });
         break;
       case 'no-access':
         setUploadNoAccess(true);
@@ -154,6 +157,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     const result = validatePhotoFile(file);
     if (!result.ok) {
       revokePreview();
+      setHeldPhoto(null);
       setChosenFile(null);
       setPhotoError(result.message);
       event.target.value = '';
@@ -228,11 +232,18 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     );
   }
 
+  if (uploadNoAccess) {
+    return <EventScreenStatus kind="no-access" />;
+  }
+
+  if (uploadNotFound) {
+    return <EventScreenStatus kind="not-found" />;
+  }
+
   if (closed) {
     return (
       <VStack gap={4} padding={6}>
         <Heading level={1}>Register clothing</Heading>
-        <Banner status="warning" title="This event has ended." />
         {heldPhoto !== null ? (
           <VStack gap={2}>
             <img src={heldPhoto.url} alt="Uploaded clothing photo" />
@@ -257,14 +268,6 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         )}
       </VStack>
     );
-  }
-
-  if (uploadNoAccess) {
-    return <EventScreenStatus kind="no-access" />;
-  }
-
-  if (uploadNotFound) {
-    return <EventScreenStatus kind="not-found" />;
   }
 
   if (heldPhoto !== null && !isUploading) {
