@@ -79,7 +79,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Cycle F1 — join input validation (`lib/validation/join.ts`, R1, R7)
 
-- [ ] T004 [P] Create `frontend/src/lib/validation/join.test.ts` — agent: `test-author`:
+- [X] T004 [P] Create `frontend/src/lib/validation/join.test.ts` — agent: `test-author`:
   - `readInitialCode(value: string | string[] | undefined): string | null`:
     - `'K7P3QX'` → `'K7P3QX'`
     - `' k7p3qx '` → `'k7p3qx'` (trimmed, case unchanged)
@@ -100,7 +100,7 @@ description: "Task list for feature 008-join-event-frontend"
     - `{ field: 'entryCode', reason: 'required' }` → `fieldErrors.entryCode === 'Enter the entry code.'`
     - an unknown field or reason → `formError: 'Something went wrong. Please try again.'`
     - `null` or a malformed `details` → `{ fieldErrors: {}, formError: 'Something went wrong. Please try again.' }`
-- [ ] T005 Implement `frontend/src/lib/validation/join.ts` with the four functions above. Reuse `DISPLAY_NAME_MAX` (30) from `@/lib/validation/event`, count code points with `[...value].length`, and detect control characters with `/\p{Cc}/u`. Export `JoinField = 'entryCode' | 'displayName'` and `JoinFieldErrors`. This makes T004 pass — agent: `implementer-fe`
+- [X] T005 Implement `frontend/src/lib/validation/join.ts` with the four functions above. Reuse `DISPLAY_NAME_MAX` (30) from `@/lib/validation/event`, count code points with `[...value].length`, and detect control characters with `/\p{Cc}/u`. Export `JoinField = 'entryCode' | 'displayName'` and `JoinFieldErrors`. This makes T004 pass — agent: `implementer-fe`
 
 ### Cycle F2 — response parsing (`lib/validation/event-response.ts`, R2)
 
