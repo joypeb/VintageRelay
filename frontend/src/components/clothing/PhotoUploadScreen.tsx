@@ -53,7 +53,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const [uploadNotFound, setUploadNotFound] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
-  const errorRef = useRef<HTMLSpanElement>(null);
+  const errorRef = useRef<HTMLElement>(null);
 
   useEffect(
     () => () => {
@@ -75,14 +75,11 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
 
   if (state.kind === 'loading') {
     return (
-      // Astryx layout components don't forward aria attributes, so a minimal element marks the busy region.
-      <section aria-busy="true" aria-label="Loading photo step">
-        <VStack gap={4} padding={6}>
-          <Skeleton width="70%" height={32} />
-          <Skeleton height={48} />
-          <Skeleton height={72} />
-        </VStack>
-      </section>
+      <VStack as="section" aria-busy="true" aria-label="Loading photo step" gap={4} padding={6}>
+        <Skeleton width="70%" height={32} />
+        <Skeleton height={48} />
+        <Skeleton height={72} />
+      </VStack>
     );
   }
 
@@ -215,17 +212,16 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
           {HELP_TEXT}
         </Text>
         {photoError !== null && (
-          <Text type="body" as="p">
-            {/* Text doesn't forward role, so a minimal span carries the alert and focus. */}
-            <span
-              ref={errorRef}
-              role="alert"
-              tabIndex={-1}
-              id="clothing-photo-error"
-              className="text-[var(--color-error)]"
-            >
-              {photoError}
-            </span>
+          <Text
+            type="body"
+            as="p"
+            ref={errorRef}
+            role="alert"
+            tabIndex={-1}
+            id="clothing-photo-error"
+            className="text-error"
+          >
+            {photoError}
           </Text>
         )}
       </VStack>
@@ -240,8 +236,9 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         {heldPhoto !== null ? (
           <VStack gap={2}>
             <img src={heldPhoto.url} alt="Uploaded clothing photo" />
-            {/* Text doesn't forward role, so a minimal span announces the status. */}
-            <span role="status">Photo ready</span>
+            <Text type="body" role="status">
+              Photo ready
+            </Text>
             <Button label="Change photo" variant="secondary" size="lg" width="100%" isDisabled />
             <Button label="Remove" variant="ghost" size="lg" width="100%" isDisabled />
           </VStack>
@@ -276,8 +273,9 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         <Heading level={1}>Register clothing</Heading>
         {renderFileControl(false)}
         <img src={heldPhoto.url} alt="Uploaded clothing photo" />
-        {/* Text doesn't forward role, so a minimal span announces the status. */}
-        <span role="status">Photo ready</span>
+        <Text type="body" role="status">
+          Photo ready
+        </Text>
         <Text type="body" color="secondary">
           {FUTURE_STEP_NOTE}
         </Text>
@@ -299,10 +297,11 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         <Heading level={1}>Register clothing</Heading>
         {renderFileControl(true)}
         {localPreviewUrl !== null && <img src={localPreviewUrl} alt="Clothing photo preview" />}
-        {/* Text doesn't forward role, so a minimal span announces the status.
-            No Astryx Button is rendered here: Button always mounts its own empty
+        {/* No Astryx Button is rendered here: Button always mounts its own empty
             role="status" live region, which would duplicate this announcement. */}
-        <span role="status">Uploading photo…</span>
+        <Text type="body" role="status">
+          Uploading photo…
+        </Text>
       </VStack>
     );
   }

@@ -219,7 +219,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T017 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `PhotoUploadScreen.tsx` — agent: `implementer-fe`
+- [X] T017 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `PhotoUploadScreen.tsx` — agent: `implementer-fe`
 - [ ] T018 Run the full suites and the production build, and record the actual results — agent: orchestrator:
   - `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
   - `cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest` (the backend is unchanged; this confirms nothing regressed)
