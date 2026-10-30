@@ -333,10 +333,14 @@ description: "Task list for feature 008-join-event-frontend"
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T022 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `JoinEventScreen.tsx` — agent: `implementer-fe`
-- [ ] T023 Run the full suites and the production build, and record the actual results — agent: orchestrator:
+- [X] T022 Run `cd frontend && pnpm exec astryx doctor --built` and fix any findings in `JoinEventScreen.tsx` — agent: `implementer-fe`
+- [X] T023 Run the full suites and the production build, and record the actual results — agent: orchestrator:
   - `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
   - `cd backend && uv run ruff format --check --no-cache . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (the backend is unchanged; this confirms nothing regressed)
+  - **Results (2026-10-30, after T022)**:
+    - Frontend: lint pass, typecheck pass, `pnpm test` 23 files / 340 tests pass, `pnpm build` success.
+    - `astryx doctor --built .`: 0 fail, 4 warn, with no `JoinEventScreen.tsx` findings. The remaining warnings are themes and pre-existing files.
+    - Backend: ruff format (69 files) and ruff check pass, mypy pass (30 files), pytest 219 passed.
 - [ ] T024 Manual verification per quickstart.md rows 1–19 at 360 px and 430 px, recording the results in the PR description — agent: orchestrator with the user. Check:
   - no horizontal scroll, touch targets ≥ 44×44 px, and English copy
   - focus moves to the name field, and to the closed message after a join `EVENT_CLOSED`

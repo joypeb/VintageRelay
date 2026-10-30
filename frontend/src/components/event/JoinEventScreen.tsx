@@ -66,7 +66,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   const [formError, setFormError] = useState<string | null>(null);
   const [closedOverride, setClosedOverride] = useState(false);
   const [alreadyJoinedOverride, setAlreadyJoinedOverride] = useState(false);
-  const closedRef = useRef<HTMLSpanElement>(null);
+  const closedRef = useRef<HTMLParagraphElement>(null);
 
   const lookup = useEntryCodePreviewQuery(submittedCode);
   const lookupPending = useIsEntryCodeLookupPending();
@@ -217,10 +217,15 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
                 <Badge label="Closed" variant="neutral" />
               </>
             )}
-            <Text type="body" as="p">
-              <span ref={closedRef} role="status" aria-live="polite" tabIndex={-1}>
-                {CLOSED_MESSAGE}
-              </span>
+            <Text
+              ref={closedRef}
+              type="body"
+              as="p"
+              role="status"
+              aria-live="polite"
+              tabIndex={-1}
+            >
+              {CLOSED_MESSAGE}
             </Text>
           </VStack>
         )}
@@ -231,10 +236,8 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
               label={preview.status === 'closed' ? 'Closed' : 'Active'}
               variant={preview.status === 'closed' ? 'neutral' : 'success'}
             />
-            <Text type="body" as="p">
-              <span role="status" aria-live="polite">
-                {ALREADY_JOINED_MESSAGE}
-              </span>
+            <Text type="body" as="p" role="status" aria-live="polite">
+              {ALREADY_JOINED_MESSAGE}
             </Text>
           </VStack>
         )}
@@ -262,11 +265,8 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
           />
         )}
         {shownFormError !== null && (
-          <Text type="body" as="p">
-            {/* Text doesn't forward role, so a minimal span carries the alert. */}
-            <span role="alert" className="text-[var(--color-error)]">
-              {shownFormError}
-            </span>
+          <Text type="body" as="p" role="alert" className="text-[var(--color-error)]">
+            {shownFormError}
           </Text>
         )}
         {view === 'alreadyJoined' && preview !== undefined ? (
