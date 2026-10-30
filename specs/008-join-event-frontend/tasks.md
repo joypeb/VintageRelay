@@ -70,12 +70,12 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Cycle F0 — unreadable successful bodies (`lib/api/client.ts`, R2, R9)
 
-- [ ] T002 [P] Add to `frontend/src/lib/api/client.test.ts`, with `fetch` mocked — agent: `test-author`:
+- [X] T002 [P] Add to `frontend/src/lib/api/client.test.ts`, with `fetch` mocked — agent: `test-author`:
   - A `200` response whose body is `'{"participantToken":"SECRET-TOKEN","entryCode":"K7P3QX"'` (invalid JSON) makes `apiFetch` reject with `ApiError`, `status` 200, `code` `'UNKNOWN_ERROR'`, and message `'Something went wrong. Please try again.'`.
   - The rejection's `message` and `String(error)` contain neither `SECRET-TOKEN` nor `K7P3QX`.
   - A `201` with an empty body behaves the same.
   - (regression guard) `204` still resolves `undefined`, valid JSON still resolves the parsed body, and non-2xx error handling is unchanged.
-- [ ] T003 In `frontend/src/lib/api/client.ts`, wrap the 2xx `res.json()` in try/catch and throw `new ApiError(res.status, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.')` on failure. Do not keep or log the parser error. This makes T002 pass — agent: `implementer-fe`
+- [X] T003 In `frontend/src/lib/api/client.ts`, wrap the 2xx `res.json()` in try/catch and throw `new ApiError(res.status, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.')` on failure. Do not keep or log the parser error. This makes T002 pass — agent: `implementer-fe`
 
 ### Cycle F1 — join input validation (`lib/validation/join.ts`, R1, R7)
 
