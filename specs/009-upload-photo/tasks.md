@@ -48,7 +48,7 @@ cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && 
 
 - [X] T006 [P] Have `test-author` extend `backend/tests/test_migrations.py`: after `upgrade head`, table `photos` exists with columns `id`, `event_id`, `uploader_id`, `storage_location` (unique), `content_type`, `size_bytes`, `created_at`; `downgrade` to its recorded `down_revision` removes it. Add `backend/tests/services/test_photo_repository.py` asserting round-trip `add`/`get` through the `db` fixture (`Base.metadata.create_all`) and that a duplicate `storage_location` raises `IntegrityError`. Run; confirm failure.
 - [X] T007 Have `implementer-be` satisfy T006: add `Photo` to `backend/app/models/photo.py` (String(36) UUID PK, FKs to events/participants, unique `storage_location`, `content_type`, `size_bytes`, tz-aware `created_at`, index on `event_id`); add an Alembic revision under `backend/alembic/versions/` creating it in `upgrade()` and dropping it in `downgrade()`; add `add`/`get_by_id` to `backend/app/repositories/photo.py`; add the `Photo` response (`id`, `url`, `contentType`, `sizeBytes`, `createdAt`) as an `ApiModel` in `backend/app/schemas/photo.py`.
-- [ ] T008 Review and commit the T006–T007 cycle under Execution Rules.
+- [X] T008 Review and commit the T006–T007 cycle under Execution Rules.
 
 **Checkpoint**: Image verification, error vocabulary, settings, and storage exist; no endpoint behavior changed.
 
@@ -60,13 +60,13 @@ cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && 
 
 ### Tests for the serve route (write first)
 
-- [ ] T009 [P] [US1] Have `test-author` add `backend/tests/api/test_view_photo.py`: seeded JPEG row → `GET /api/v1/photos/{id}` returns 200 with the exact stored bytes and `content-type: image/jpeg`, no `Authorization` header sent; the same request with `Authorization: Bearer garbage` still returns 200; an unknown UUID returns 404 `NOT_FOUND` with message exactly "Resource not found." and an `X-Request-ID` header. Run; confirm failure (route missing).
-- [ ] T010 [P] [US1] Have `test-author` extend `backend/tests/api/test_openapi_contract.py`: `viewPhoto` at `/api/v1/photos/{photo_id}` GET has no security requirement and documents 200/404/500. Run; confirm failure.
+- [X] T009 [P] [US1] Have `test-author` add `backend/tests/api/test_view_photo.py`: seeded JPEG row → `GET /api/v1/photos/{id}` returns 200 with the exact stored bytes and `content-type: image/jpeg`, no `Authorization` header sent; the same request with `Authorization: Bearer garbage` still returns 200; an unknown UUID returns 404 `NOT_FOUND` with message exactly "Resource not found." and an `X-Request-ID` header. Run; confirm failure (route missing).
+- [X] T010 [P] [US1] Have `test-author` extend `backend/tests/api/test_openapi_contract.py`: `viewPhoto` at `/api/v1/photos/{photo_id}` GET has no security requirement and documents 200/404/500. Run; confirm failure.
 
 ### Implementation for the serve route
 
-- [ ] T012 [US1] Have `implementer-be` satisfy T009–T010: add router `backend/app/api/routers/photos.py` (prefix `/photos`, tag `photos`, `operation_id="viewPhoto"`, `error_responses(404, 500)`, no auth dependency) returning the stored file with its stored content type; include it in `backend/app/main.py`.
-- [ ] T013 Review and commit the T009–T012 cycle under Execution Rules.
+- [X] T012 [US1] Have `implementer-be` satisfy T009–T010: add router `backend/app/api/routers/photos.py` (prefix `/photos`, tag `photos`, `operation_id="viewPhoto"`, `error_responses(404, 500)`, no auth dependency) returning the stored file with its stored content type; include it in `backend/app/main.py`.
+- [X] T013 Review and commit the T009–T012 cycle under Execution Rules.
 
 **Checkpoint**: Public byte serving works and hides unknown IDs; no upload path exists yet.
 
