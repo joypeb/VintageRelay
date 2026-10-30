@@ -60,7 +60,6 @@ def list_context(db, registration_context):
                     id=clothing_id,
                     event_id=target_event,
                     owner_id=target_owner,
-                    photo_id=photo_id,
                     description=name,
                     status=status,
                     content_version=1,
@@ -68,6 +67,10 @@ def list_context(db, registration_context):
                     updated_at=created_at,
                 )
             )
+            session.flush()
+            photo = session.get(Photo, photo_id)
+            photo.clothing_id = clothing_id
+            photo.position = 0
             rows[name] = {
                 "id": clothing_id,
                 "photo_id": photo_id,
@@ -94,7 +97,7 @@ def assert_items(response, expected, rows, event_id, participant, organizer_id, 
             "eventId",
             "owner",
             "isMine",
-            "photo",
+            "photos",
             "description",
             "status",
             "contentVersion",
@@ -109,7 +112,7 @@ def assert_items(response, expected, rows, event_id, participant, organizer_id, 
             "isOrganizer": not own,
         }
         assert item["isMine"] is own
-        assert item["photo"] == {
+        assert item["photos"][0] == {
             "id": rows[name]["photo_id"],
             "url": f"{settings.app_base_url}/api/v1/photos/{rows[name]['photo_id']}",
         }
@@ -233,7 +236,7 @@ def test_registered_clothing_appears_for_owner_and_other_participant(client, reg
     registered = client.post(
         f"/api/v1/events/{event_id}/clothing",
         headers=headers(token),
-        json={"photoId": photo["id"], "description": "Green jacket"},
+        json={"photoIds": [photo["id"]], "description": "Green jacket"},
     )
     assert registered.status_code == 201
     clothing_id = registered.json()["id"]

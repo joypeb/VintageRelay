@@ -16,7 +16,6 @@ class Clothing(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     event_id: Mapped[str] = mapped_column(String(36), ForeignKey("events.id"))
     owner_id: Mapped[str] = mapped_column(String(36), ForeignKey("participants.id"))
-    photo_id: Mapped[str] = mapped_column(String(36), ForeignKey("photos.id"), unique=True)
     description: Mapped[str] = mapped_column(String(1000))
     status: Mapped[str] = mapped_column(String(16))
     content_version: Mapped[int] = mapped_column(Integer)

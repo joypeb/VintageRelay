@@ -32,7 +32,7 @@ Returns a `Photo`.
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string | Photo ID used as `photoId` |
+| `id` | string | Photo ID used in `photoIds` when registering clothing |
 | `url` | string | Externally accessible URL for display and AI analysis |
 | `contentType` | string | Stored MIME type |
 | `sizeBytes` | integer | Stored size |

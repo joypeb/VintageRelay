@@ -9,7 +9,7 @@ body:
   type: json
   content: |-
     {
-      "photoId": "{{photoId}}",
+      "photoIds": ["{{photoId}}"],
       "description": "Cropped green denim jacket, size M. Worn a few times."
     }
 scripts:
@@ -19,7 +19,7 @@ scripts:
       pm.test('Status is 201', () => pm.response.to.have.status(201));
       const b = pm.response.json();
       pm.test('Created clothing is available, version 1, not analyzed', () => {
-        pm.expect(b).to.include.keys(['id','eventId','owner','isMine','photo','description','status','contentVersion','analysis','createdAt','updatedAt']);
+        pm.expect(b).to.include.keys(['id','eventId','owner','isMine','photos','description','status','contentVersion','analysis','createdAt','updatedAt']);
         pm.expect(b.status).to.eql('available');
         pm.expect(b.contentVersion).to.eql(1);
         pm.expect(b.analysis).to.eql(null);

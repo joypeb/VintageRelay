@@ -181,8 +181,19 @@ def test_register_clothing_openapi_describes_request_and_responses(client):
     assert operation["operationId"] == "registerClothing"
     assert "HTTPValidationError" not in json.dumps(operation)
     schema = resolve(document, operation["requestBody"]["content"]["application/json"]["schema"])
-    assert set(schema["required"]) == {"photoId", "description"}
+    assert set(schema["required"]) == {"photoIds", "description"}
     assert schema["additionalProperties"] is False
+    assert "photoId" not in schema["properties"]
+    photos = schema["properties"]["photoIds"]
+    assert photos["type"] == "array" and photos["minItems"] == 1 and photos["maxItems"] == 10
+    assert photos["items"]["type"] == "string"
+    clothing = resolve(
+        document, operation["responses"]["201"]["content"]["application/json"]["schema"]
+    )
+    assert "photo" not in clothing["properties"]
+    assert "photos" in clothing["required"]
+    assert clothing["properties"]["photos"]["type"] == "array"
+    assert clothing["properties"]["photos"]["items"]["$ref"] == "#/components/schemas/ClothingPhoto"
     assert schema["properties"]["description"]["minLength"] == 1
     assert schema["properties"]["description"]["maxLength"] == 1000
     responses = operation["responses"]

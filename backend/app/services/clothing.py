@@ -1,9 +1,9 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select
 
 from app.core.config import Settings
 from app.core.db import Db
@@ -12,6 +12,7 @@ from app.domain.errors import EventClosedError, NotFoundError, PhotoAlreadyAttac
 from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
 from app.models.participant import Participant
+from app.models.photo import Photo as PhotoModel
 from app.repositories import clothing as clothing_repo
 from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
@@ -43,32 +44,41 @@ class ClothingService:
                 raise NotFoundError()
             if event.status == EventStatus.CLOSED:
                 raise EventClosedError()
-            photo = photo_repo.get_by_id(s, body.photo_id)
-            if photo is None or photo.event_id != event.id or photo.uploader_id != participant.id:
-                raise NotFoundError()
-            if clothing_repo.photo_is_attached(s, body.photo_id):
-                raise PhotoAlreadyAttachedError()
+            photos = s.scalars(select(PhotoModel).where(PhotoModel.id.in_(body.photo_ids))).all()
+            by_id = {photo.id: photo for photo in photos}
+            ordered: list[PhotoModel] = []
+            for photo_id in body.photo_ids:
+                photo = by_id.get(photo_id)
+                if (
+                    photo is None
+                    or photo.event_id != event.id
+                    or photo.uploader_id != participant.id
+                ):
+                    raise NotFoundError()
+                if photo.clothing_id is not None:
+                    raise PhotoAlreadyAttachedError()
+                ordered.append(photo)
             now = self.clock()
             clothing = ClothingModel(
                 id=self.clothing_id_generator(),
                 event_id=event.id,
                 owner_id=participant.id,
-                photo_id=photo.id,
                 description=body.description,
                 status=ClothingStatus.AVAILABLE,
                 content_version=1,
                 created_at=now,
                 updated_at=now,
             )
-            try:
-                clothing_repo.add(s, clothing)
-            except IntegrityError as exc:
-                raise PhotoAlreadyAttachedError() from exc
+            clothing_repo.add(s, clothing)
+            for position, photo in enumerate(ordered):
+                if not photo_repo.attach(s, photo.id, clothing.id, position):
+                    raise PhotoAlreadyAttachedError()
             response = self._build_response(
                 clothing,
                 owner_display_name=participant.display_name,
                 organizer_participant_id=event.organizer_participant_id,
                 viewer_id=participant.id,
+                photos=ordered,
             )
             description_length = len(clothing.description)
         logger.info(
@@ -93,12 +103,14 @@ class ClothingService:
             if event is None or participant.event_id != event.id:
                 raise NotFoundError()
             rows = clothing_repo.list_visible(s, event.id, participant.id, ownership, statuses)
+            photo_map = photo_repo.photos_for(s, [clothing.id for clothing, _, _ in rows])
             items = [
                 self._build_response(
                     clothing,
                     owner_display_name=display_name,
                     organizer_participant_id=organizer_id,
                     viewer_id=participant.id,
+                    photos=photo_map.get(clothing.id, []),
                 )
                 for clothing, display_name, organizer_id in rows
             ]
@@ -115,6 +127,7 @@ class ClothingService:
                 owner_display_name=display_name,
                 organizer_participant_id=organizer_id,
                 viewer_id=participant.id,
+                photos=photo_repo.photos_for(s, [clothing.id]).get(clothing.id, []),
             )
 
     def _build_response(
@@ -124,6 +137,7 @@ class ClothingService:
         owner_display_name: str,
         organizer_participant_id: str | None,
         viewer_id: str,
+        photos: Sequence[PhotoModel],
     ) -> ClothingSchema:
         return ClothingSchema(
             id=clothing.id,
@@ -134,10 +148,13 @@ class ClothingService:
                 is_organizer=clothing.owner_id == organizer_participant_id,
             ),
             is_mine=clothing.owner_id == viewer_id,
-            photo=ClothingPhoto(
-                id=clothing.photo_id,
-                url=photo_url(self.settings.app_base_url, clothing.photo_id),
-            ),
+            photos=[
+                ClothingPhoto(
+                    id=photo.id,
+                    url=photo_url(self.settings.app_base_url, photo.id),
+                )
+                for photo in photos
+            ],
             description=clothing.description,
             status=ClothingStatus(clothing.status),
             content_version=clothing.content_version,

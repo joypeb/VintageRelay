@@ -169,25 +169,25 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
 
 ## Phase 7: User Story 4 (backend) — `photoIds` registration and `photos[]` responses (Priority: P1)
 
-**Blocked until** 011 (`speckit-specify-register-read-clothing`) is merged into `main` and this branch is rebased onto it (research R8).
+**Unblocked**: 011 merged into `main` as `cfaf76e` (#16); this branch is rebased onto it.
 
 **Goal**: Registration attaches 1–10 ordered photos all or none. Every `Clothing` response returns `photos[]` (`contracts/register-clothing-photos.md`).
 
 **Independent Test**: Quickstart scenario 9, plus the backend suite.
 
-- [ ] T017 [P] [US4] Extend `backend/tests/test_migrations.py` — agent: `test-author`:
+- [X] T017 [P] [US4] Extend `backend/tests/test_migrations.py` — agent: `test-author`:
   - After `upgrade head`, `photos` has nullable `clothing_id` (FK `clothes.id`) and nullable `position`, with a unique constraint on `(clothing_id, position)` (inserting a duplicate pair raises `IntegrityError`).
   - `clothes` has no `photo_id` column.
   - Backfill: a `clothes` row created at 011's revision with `photo_id = P` becomes, after upgrade, a `photos` row `P` with `clothing_id` = that garment and `position = 0`.
   - `downgrade` restores `clothes.photo_id` from the `position = 0` rows.
   - Run and confirm the tests fail.
-- [ ] T018 [P] [US4] Rewrite `backend/tests/api/test_register_clothing.py` for `{"photoIds": [...], "description"}` — agent: `test-author`:
+- [X] T018 [P] [US4] Rewrite `backend/tests/api/test_register_clothing.py` for `{"photoIds": [...], "description"}` — agent: `test-author`:
   - 1 photo and 10 photos → `201`.
   - `photos` equals `[{id, url}]` in request order, and `photos[i].url` equals each upload response `url`.
   - The `Clothing` keys are exactly 011's with `photos` replacing `photo`.
   - Each photo row has `clothing_id` and `position == index`.
   - Run and confirm the tests fail.
-- [ ] T019 [P] [US4] Rewrite `backend/tests/api/test_register_clothing_rejections.py` — agent: `test-author`. Assert that the `clothes` row count and every photo's `clothing_id` are unchanged after each case:
+- [X] T019 [P] [US4] Rewrite `backend/tests/api/test_register_clothing_rejections.py` — agent: `test-author`. Assert that the `clothes` row count and every photo's `clothing_id` are unchanged after each case:
   - `photoIds` missing or `[]` → `422 VALIDATION_ERROR` with `details.fields == [{"field":"photoIds","reason":"required"}]`.
   - 11 IDs → `reason: "too_long"`.
   - A duplicate ID → `reason: "invalid"`.
@@ -196,12 +196,13 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
   - One already-attached ID among unattached ones → `409 PHOTO_ALREADY_ATTACHED`, and the unattached ones stay unattached (all or none).
   - Keep 011's validation-before-auth and closed-before-photo-check cases (regression guard).
   - Run and confirm the tests fail.
-- [ ] T020 [P] [US4] Update `backend/tests/services/test_register_clothing.py` and `backend/tests/api/test_openapi_contract.py` — agent: `test-author`:
+- [X] T020 [P] [US4] Update `backend/tests/services/test_register_clothing.py` and `backend/tests/api/test_openapi_contract.py` — agent: `test-author`:
   - Race test: after validation, another transaction attaches one of the photos, so the conditional `UPDATE` affects 0 rows. Assert it raises `PhotoAlreadyAttachedError` and that no garment row or attachment remains.
   - OpenAPI: the `registerClothing` request requires `photoIds` (`type: array`, `minItems: 1`, `maxItems: 10`, items `string`), has no `photoId`, and has `additionalProperties: false`. The `Clothing` schema has `photos` (array of `ClothingPhoto`) and no `photo`.
   - Update the list and get tests (`test_list_clothing.py`, `test_get_clothing.py`) to read `photos[0]`.
+  - Update `backend/tests/services/test_clothing_repository.py`: replace the `photo_is_attached` cases with `photo_repo.attach` (returns `True` once, `False` for an already-attached photo) and `photos_for(s, clothing_ids)` ordered by `position`.
   - Run and confirm the tests fail.
-- [ ] T021 [US4] Implement — agent: `implementer-be`:
+- [X] T021 [US4] Implement — agent: `implementer-be`:
   - Add a new Alembic revision in `backend/alembic/versions/` with `down_revision` = 011's create-clothes revision, following data-model.md "Migration" (`batch_alter_table` for SQLite).
   - `backend/app/models/photo.py`: add `clothing_id` and `position` plus `UniqueConstraint("clothing_id", "position")`.
   - `backend/app/models/clothing.py`: remove `photo_id`.
@@ -210,11 +211,11 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
   - `backend/app/services/clothing.py`, in the existing single `Db.write()`, in this order: event → active → every photo exists with `event_id == event.id` and `uploader_id == participant.id` (else `NotFoundError`) → insert the garment → `attach` each photo in order, raising `PhotoAlreadyAttachedError` if any returns `False` so the transaction rolls back. The list and get responses build `photos` with one batched query (no N+1).
   - `backend/app/api/errors.py`: map list `too_short` → `required` and list `too_long` → `too_long`. Report the field `photoIds`, not the item index.
   - T017–T020 must pass.
-- [ ] T022 [US4] Update the docs to the new contract (no tests) — agent: `implementer-be`:
+- [X] T022 [US4] Update the docs to the new contract (no tests) — agent: `implementer-be`:
   - `docs/plans/api/06-register-read-clothing.md`: `photoId` → `photoIds`, `photo` → `photos`, plus the rules from `contracts/register-clothing-photos.md`.
   - `specs/011-register-read-clothing/contracts/register-read-clothing.openapi.yaml`: same changes.
-  - `postman/collections/Vintage Relay API/03 Clothing/Register clothing with attached photo.request.yaml`: body `photoIds: [...]`.
-- [ ] T023 [US4] Review and commit T017–T022 — agent: `commit-reviewer`
+  - `postman/collections/Vintage Relay API/03 Clothing/Register clothing with attached photo.request.yaml` and `Register clothing.request.yaml`: body `photoIds: [...]`; any response assertions on `photo` → `photos[0]`.
+- [X] T023 [US4] Review and commit T017–T022 — agent: `commit-reviewer`
 
 ---
 

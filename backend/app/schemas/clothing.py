@@ -1,12 +1,19 @@
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from app.domain.enums import ClothingStatus
 from app.schemas.common import ApiModel, UtcDatetime
 
 
 class ClothingCreate(ApiModel):
-    photo_id: str
+    photo_ids: list[str] = Field(min_length=1, max_length=10)
     description: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("photo_ids", mode="after")
+    @classmethod
+    def _no_duplicate_photo_ids(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value):
+            raise ValueError("Duplicate photo IDs are not allowed.")
+        return value
 
 
 class ClothingOwner(ApiModel):
@@ -25,7 +32,7 @@ class Clothing(ApiModel):
     event_id: str
     owner: ClothingOwner
     is_mine: bool
-    photo: ClothingPhoto
+    photos: list[ClothingPhoto]
     description: str
     status: ClothingStatus
     content_version: int
