@@ -1,5 +1,6 @@
-import { ComingSoonScreen } from '@/components/ui/ComingSoonScreen';
+import { PhotoUploadScreen } from '@/components/clothing/PhotoUploadScreen';
 
-export default function NewItemPage() {
-  return <ComingSoonScreen title="Register clothing" />;
+export default async function NewItemPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const { eventId } = await params;
+  return <PhotoUploadScreen eventId={eventId} />;
 }

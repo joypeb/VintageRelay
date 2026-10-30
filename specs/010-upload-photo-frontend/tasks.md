@@ -72,7 +72,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ### Cycle F0 — local file checks (`lib/validation/photo.ts`, R3)
 
-- [ ] T002 [P] Create `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`:
+- [X] T002 [P] Create `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`:
   - `validatePhotoFile(null)` and `validatePhotoFile(undefined)` → `{ ok: false, message: 'Choose a photo to upload.' }`
   - A zero-byte JPEG object (`{ size: 0, type: 'image/jpeg', name: 'a.jpg' } as File`) → `{ ok: false, message: 'The chosen file is empty. Choose another photo.' }`
   - `{ size: 10485761, type: 'image/jpeg', name: 'a.jpg' }` → `{ ok: false, message: 'Choose a photo of 10 MB or less.' }`, and `apiFetch` is never involved (pure function, no request concept at this layer)
@@ -81,19 +81,19 @@ description: "Task list for feature 010-upload-photo-frontend"
   - Each of `image/jpeg`, `image/png`, `image/webp` with a matching name → `{ ok: true }`
   - `{ size: 100, type: '', name: 'a.jpg' }` (device hid the type) → `{ ok: true }`; `{ size: 100, type: '', name: 'a.txt' }` → the allowed-types message
   - `{ size: 100, type: 'application/octet-stream', name: 'a.png' }` → `{ ok: true }`
-- [ ] T003 Implement `frontend/src/lib/validation/photo.ts` with `MAX_PHOTO_BYTES = 10485760`, `ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const`, and `validatePhotoFile` per research R3 and the messages above. This makes T002 pass — agent: `implementer-fe`
+- [X] T003 Implement `frontend/src/lib/validation/photo.ts` with `MAX_PHOTO_BYTES = 10485760`, `ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const`, and `validatePhotoFile` per research R3 and the messages above. This makes T002 pass — agent: `implementer-fe`
 
 ### Cycle F1 — response parsing and type (`lib/validation/photo-response.ts`, `types/photo.ts`, R2)
 
-- [ ] T004 [P] Create `frontend/src/lib/validation/photo-response.test.ts` — agent: `test-author`:
+- [X] T004 [P] Create `frontend/src/lib/validation/photo-response.test.ts` — agent: `test-author`:
   - "parsePhoto" block:
     - `{ id: 'ph1', url: 'https://cdn.example/photos/ph1', contentType: 'image/jpeg', sizeBytes: 1834221, createdAt: '2026-10-27T05:42:10Z' }` parses; `contentType: 'image/webp'` parses too
     - Each of these throws `ApiError` with code `UNKNOWN_ERROR` and status 200: missing `id`, `id: ''`, a non-URL `url`, `contentType: 'image/heic'`, `sizeBytes: 0`, `sizeBytes: 10485761`, an unparseable `createdAt`, and `null`
-- [ ] T005 Implement `parsePhoto` in `frontend/src/lib/validation/photo-response.ts` (Zod schema per data-model.md "Photo"; never log the payload) and add the `Photo` type to `frontend/src/types/photo.ts`. This makes T004 pass — agent: `implementer-fe`
+- [X] T005 Implement `parsePhoto` in `frontend/src/lib/validation/photo-response.ts` (Zod schema per data-model.md "Photo"; never log the payload) and add the `Photo` type to `frontend/src/types/photo.ts`. This makes T004 pass — agent: `implementer-fe`
 
 ### Cycle F2 — failure mapping (`lib/event.ts`, R6)
 
-- [ ] T006 [P] Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
+- [X] T006 [P] Add to `frontend/src/lib/event.test.ts` — agent: `test-author`:
   - "getPhotoUploadFailure" block:
     - `ApiError(413, 'FILE_TOO_LARGE', 'Photo exceeds the 10 MB limit.')` → `{ kind: 'photoField', message: 'Photo exceeds the 10 MB limit.' }`
     - `ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use a JPEG, PNG, or WebP photo.')` → `{ kind: 'photoField', message: <that message> }`
@@ -102,18 +102,18 @@ description: "Task list for feature 010-upload-photo-frontend"
     - `ApiError(401, 'UNAUTHENTICATED', …)` → `{ kind: 'no-access' }`
     - `ApiError(404, 'NOT_FOUND', 'Not here.')` → `{ kind: 'not-found', message: 'Not here.' }`
     - `ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.')`, `ApiError(500, 'INTERNAL_ERROR', 'Server says no.')`, `ApiError(201, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.')` (unreadable 201 body via `apiFetch`), and `new Error('x')` → `{ kind: 'form', message: <server or generic message> }`
-- [ ] T007 Implement `getPhotoUploadFailure` (type exactly as in data-model.md "Failure mapping") in `frontend/src/lib/event.ts`, using `getFormErrorMessage`. This makes T006 pass — agent: `implementer-fe`
+- [X] T007 Implement `getPhotoUploadFailure` (type exactly as in data-model.md "Failure mapping") in `frontend/src/lib/event.ts`, using `getFormErrorMessage`. This makes T006 pass — agent: `implementer-fe`
 
 ### Cycle F3 — upload API function and hook (`lib/api/*`, R2, R4)
 
-- [ ] T008 [P] Create `frontend/src/lib/api/photos.test.ts` — agent: `test-author`, mocking `@/lib/api/client`:
+- [X] T008 [P] Create `frontend/src/lib/api/photos.test.ts` — agent: `test-author`, mocking `@/lib/api/client`:
   - "uploadPhoto" block:
     - `uploadPhoto('e1', file)` calls `apiFetch('e1', '/events/e1/photos', { method: 'POST', body: <FormData> }, { timeoutMs: 15000 })` (first argument `'e1'`, so the device-held token for that event is attached)
     - `init.body` is a `FormData` whose `get('file')` is the passed file, and `init` sets no `Content-Type` header
     - It URL-encodes the event ID (`'a/b'` → `/events/a%2Fb/photos`)
     - It returns the parsed `Photo`; a malformed body rejects with `UNKNOWN_ERROR` (status 200); `ApiError`s from `apiFetch` propagate unchanged
   - "useUploadPhotoMutation" block, using `renderHook` with `renderWithClient`'s client: a 500 rejection calls `apiFetch` once (`retry: 0`)
-- [ ] T009 Implement in `frontend/src/lib/api/query-keys.ts` and `frontend/src/lib/api/photos.ts` — agent: `implementer-fe`:
+- [X] T009 Implement in `frontend/src/lib/api/query-keys.ts` and `frontend/src/lib/api/photos.ts` — agent: `implementer-fe`:
   - `mutationKeys.uploadPhoto = (eventId: string) => ['events', eventId, 'photos', 'upload'] as const`
   - `uploadPhoto(eventId, file)` (builds `FormData` with the single `file` part, `parsePhoto` on the result) and `useUploadPhotoMutation(eventId)` (`mutationFn: (file: File) => uploadPhoto(eventId, file)`, `retry: 0`)
   - Never log the file, token, or body
@@ -131,7 +131,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 ### Tests for User Story 1 (REQUIRED - write first) ⚠️
 
-- [ ] T010 [US1] Create `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` using the screen-test mock boundary above, with a "US1 happy path" `describe` — agent: `test-author`. Seed access with `saveEventSession('e1', { participantToken: 't', participantId: 'p2' })`, route `/events/e1` to an active non-organizer event, and `/events/e1/photos` to `{ id: 'ph1', url: 'https://cdn.example/photos/ph1', contentType: 'image/jpeg', sizeBytes: 100, createdAt: '2026-10-27T05:42:10Z' }`:
+- [X] T010 [US1] Create `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` using the screen-test mock boundary above, with a "US1 happy path" `describe` — agent: `test-author`. Seed access with `saveEventSession('e1', { participantToken: 't', participantId: 'p2' })`, route `/events/e1` to an active non-organizer event, and `/events/e1/photos` to `{ id: 'ph1', url: 'https://cdn.example/photos/ph1', contentType: 'image/jpeg', sizeBytes: 100, createdAt: '2026-10-27T05:42:10Z' }`:
   - C2 shows a file input labelled "Clothing photo", the help text "Use a JPEG, PNG, or WebP photo of 10 MB or less.", a [Choose photo] control, and no upload call yet. The text "coming soon" is absent.
   - Uploading `new File(['bytes'], 'jacket.jpg', { type: 'image/jpeg' })` through the input shows a local preview image (`src === 'blob:preview'`), the text "Uploading photo…", and exactly one upload call whose `FormData` holds that file. While pending, the file control is busy/disabled.
   - On resolution: "Photo ready" is shown with an image whose `src` is the server URL, plus [Change photo] and [Remove]. The participant token never appears in the rendered output.
@@ -140,12 +140,12 @@ description: "Task list for feature 010-upload-photo-frontend"
   - (regression guard) Unchanged: an event query returning 401 shows the existing "not joined on this device" guidance with no picker.
   - Picker cancellation (change event with no files) sends no upload and leaves C2 unchanged.
   - An event query returning 404 shows "This event could not be found." with [Go to start] and no picker; an event query failing with 500 shows a retryable form error and no picker.
-- [ ] T011 [P] [US1] Create `frontend/src/app/events/[eventId]/(tabs)/my-items/new/page.test.tsx` — agent: `test-author`:
+- [X] T011 [P] [US1] Create `frontend/src/app/events/[eventId]/(tabs)/my-items/new/page.test.tsx` — agent: `test-author`:
   - Await `MyItemsNewPage({ params: Promise.resolve({ eventId: 'e1' }) })` and render the result with `renderWithClient`. The "Clothing photo" step is shown and the text "coming soon" is absent.
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement `frontend/src/components/clothing/PhotoUploadScreen.tsx` (`'use client'`, props `{ eventId: string }`) for the `empty`, `previewing`, `uploading`, and `ready` views, and wire `frontend/src/app/events/[eventId]/(tabs)/my-items/new/page.tsx` to it — agent: `implementer-fe`:
+- [X] T012 [US1] Implement `frontend/src/components/clothing/PhotoUploadScreen.tsx` (`'use client'`, props `{ eventId: string }`) for the `empty`, `previewing`, `uploading`, and `ready` views, and wire `frontend/src/app/events/[eventId]/(tabs)/my-items/new/page.tsx` to it — agent: `implementer-fe`:
   - The page is a server component: `params: Promise<{ eventId: string }>` → `<PhotoUploadScreen eventId={eventId} />`. Remove the `ComingSoonScreen` import from this page only. Then grep production usages of `ComingSoonScreen`; if `my-items/new/page.tsx` was its last usage, delete `frontend/src/components/ui/ComingSoonScreen.tsx` (and its test file if one exists); otherwise record in the commit message why it is kept.
   - The screen gates on `hasEventSession(eventId)` (no session → existing "not joined on this device" guidance, no upload) and reads the shared event via `useEventQuery` + `getEventScreenState` with `isClosed(data)` for the closed check (reuse `lib/event.ts` helpers; the event layout banner already polls closure, so no new polling here). 404 → "This event could not be found." with [Go to start]; a shared closed event → closed view per data-model.md precedence.
   - File input: native `<input type="file" accept="image/jpeg,image/png,image/webp">` labelled "Clothing photo". On selection, run `validatePhotoFile` (local rejection → photo-step message, no request), show the object-URL preview, and call the upload mutation. At most one upload in flight: disable the file control and [Try again] while pending.
