@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.config import Settings
 from app.core.db import Db
-from app.domain.enums import ClothingStatus, EventStatus
+from app.domain.enums import ClothingStatus, EventStatus, Ownership
 from app.domain.errors import EventClosedError, NotFoundError, PhotoAlreadyAttachedError
 from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
@@ -16,7 +16,7 @@ from app.repositories import clothing as clothing_repo
 from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
 from app.schemas.clothing import Clothing as ClothingSchema
-from app.schemas.clothing import ClothingCreate, ClothingOwner, ClothingPhoto
+from app.schemas.clothing import ClothingCreate, ClothingList, ClothingOwner, ClothingPhoto
 
 logger = logging.getLogger(__name__)
 
@@ -64,24 +64,11 @@ class ClothingService:
                 clothing_repo.add(s, clothing)
             except IntegrityError as exc:
                 raise PhotoAlreadyAttachedError() from exc
-            response = ClothingSchema(
-                id=clothing.id,
-                event_id=event.id,
-                owner=ClothingOwner(
-                    participant_id=participant.id,
-                    display_name=participant.display_name,
-                    is_organizer=participant.id == event.organizer_participant_id,
-                ),
-                is_mine=clothing.owner_id == participant.id,
-                photo=ClothingPhoto(
-                    id=photo.id, url=photo_url(self.settings.app_base_url, photo.id)
-                ),
-                description=clothing.description,
-                status=ClothingStatus.AVAILABLE,
-                content_version=clothing.content_version,
-                analysis=None,
-                created_at=clothing.created_at,
-                updated_at=clothing.updated_at,
+            response = self._build_response(
+                clothing,
+                owner_display_name=participant.display_name,
+                organizer_participant_id=event.organizer_participant_id,
+                viewer_id=participant.id,
             )
             description_length = len(clothing.description)
         logger.info(
@@ -93,3 +80,55 @@ class ClothingService:
             },
         )
         return response
+
+    def list(
+        self,
+        event_id: str,
+        participant: Participant,
+        ownership: Ownership,
+        statuses: list[ClothingStatus] | None,
+    ) -> ClothingList:
+        with self.db.read() as s:
+            event = event_repo.get(s, event_id)
+            if event is None or participant.event_id != event.id:
+                raise NotFoundError()
+            rows = clothing_repo.list_visible(s, event.id, participant.id, ownership, statuses)
+            items = [
+                self._build_response(
+                    clothing,
+                    owner_display_name=display_name,
+                    organizer_participant_id=organizer_id,
+                    viewer_id=participant.id,
+                )
+                for clothing, display_name, organizer_id in rows
+            ]
+        return ClothingList(items=items)
+
+    def _build_response(
+        self,
+        clothing: ClothingModel,
+        *,
+        owner_display_name: str,
+        organizer_participant_id: str | None,
+        viewer_id: str,
+    ) -> ClothingSchema:
+        return ClothingSchema(
+            id=clothing.id,
+            event_id=clothing.event_id,
+            owner=ClothingOwner(
+                participant_id=clothing.owner_id,
+                display_name=owner_display_name,
+                is_organizer=clothing.owner_id == organizer_participant_id,
+            ),
+            is_mine=clothing.owner_id == viewer_id,
+            photo=ClothingPhoto(
+                id=clothing.photo_id,
+                url=photo_url(self.settings.app_base_url, clothing.photo_id),
+            ),
+            description=clothing.description,
+            status=ClothingStatus(clothing.status),
+            content_version=clothing.content_version,
+            analysis=None,
+            created_at=clothing.created_at,
+            updated_at=clothing.updated_at,
+        )

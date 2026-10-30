@@ -1,6 +1,6 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPAuthorizationCredentials
 
@@ -14,13 +14,17 @@ from app.api.deps import (
     get_current_participant,
 )
 from app.api.errors import ERROR_RESPONSES, error_responses
-from app.schemas.clothing import Clothing, ClothingCreate
+from app.domain.enums import ClothingStatus, Ownership
+from app.schemas.clothing import Clothing, ClothingCreate, ClothingList
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
 from app.services.clothing import ClothingService
 from app.services.photo import PhotoService
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+# Literal (not Ownership) so OpenAPI inlines the enum with its default instead of a $ref.
+OwnershipFilter = Literal["mine", "others", "all"]
 
 
 @router.post(
@@ -135,3 +139,26 @@ def register_clothing(
 ) -> Clothing:
     participant = get_current_participant(event_id, db, credentials)
     return ClothingService(db, settings).register(event_id, participant, body)
+
+
+@router.get(
+    "/{event_id}/clothing",
+    operation_id="listClothing",
+    summary="List garments in the event",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 422, 500),
+    },
+)
+def list_clothing(
+    event_id: str,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    ownership: Annotated[OwnershipFilter, Query()] = "all",
+    status: Annotated[list[ClothingStatus] | None, Query()] = None,
+) -> ClothingList:
+    participant = get_current_participant(event_id, db, credentials)
+    return ClothingService(db, settings).list(event_id, participant, Ownership(ownership), status)

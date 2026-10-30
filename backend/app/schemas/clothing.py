@@ -32,3 +32,8 @@ class Clothing(ApiModel):
     analysis: None = None
     created_at: UtcDatetime
     updated_at: UtcDatetime
+
+
+class ClothingList(ApiModel):
+    items: list[Clothing]
+    next_cursor: None = None
