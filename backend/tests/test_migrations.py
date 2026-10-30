@@ -182,3 +182,113 @@ def test_downgrade_removes_photos_table(migrated_database):
     assert "photos" in inspect(engine).get_table_names()
     command.downgrade(cfg, "8e658c89f7b9")
     assert "photos" not in inspect(engine).get_table_names()
+
+
+def test_migration_creates_clothes_table_and_index(migrated_database):
+    _, engine = migrated_database
+    inspector = inspect(engine)
+    assert "clothes" in inspector.get_table_names()
+    assert {column["name"] for column in inspector.get_columns("clothes")} == {
+        "id",
+        "event_id",
+        "owner_id",
+        "photo_id",
+        "description",
+        "status",
+        "content_version",
+        "created_at",
+        "updated_at",
+    }
+    assert any(
+        index["name"] == "ix_clothes_event_id_created_at"
+        and index["column_names"] == ["event_id", "created_at"]
+        for index in inspector.get_indexes("clothes")
+    )
+
+
+def seed_clothing_foreign_keys(engine):
+    now = datetime.now(UTC)
+    with engine.begin() as connection:
+        connection.execute(
+            Event.__table__.insert(),
+            {
+                "id": "event-1",
+                "name": "Market",
+                "status": "active",
+                "entry_code": "111111",
+                "created_at": now,
+            },
+        )
+        connection.execute(
+            Participant.__table__.insert(),
+            {
+                "id": "participant-1",
+                "event_id": "event-1",
+                "display_name": "Mina",
+                "session_token_hash": "hash1",
+                "created_at": now,
+            },
+        )
+        connection.execute(
+            text(
+                "INSERT INTO photos (id, event_id, uploader_id, storage_location, content_type, "
+                "size_bytes, created_at) VALUES (:id, :event_id, :uploader_id, :location, "
+                ":content_type, :size_bytes, :created_at)"
+            ),
+            {
+                "id": "photo-1",
+                "event_id": "event-1",
+                "uploader_id": "participant-1",
+                "location": "photo.jpg",
+                "content_type": "image/jpeg",
+                "size_bytes": 123,
+                "created_at": now,
+            },
+        )
+    return now
+
+
+def insert_clothing(connection, clothing_id, status, now):
+    connection.execute(
+        text(
+            "INSERT INTO clothes (id, event_id, owner_id, photo_id, description, status, "
+            "content_version, created_at, updated_at) VALUES (:id, :event_id, :owner_id, "
+            ":photo_id, :description, :status, :content_version, :created_at, :updated_at)"
+        ),
+        {
+            "id": clothing_id,
+            "event_id": "event-1",
+            "owner_id": "participant-1",
+            "photo_id": "photo-1",
+            "description": "Jacket",
+            "status": status,
+            "content_version": 1,
+            "created_at": now,
+            "updated_at": now,
+        },
+    )
+
+
+def test_migration_rejects_duplicate_clothing_photo(migrated_database):
+    _, engine = migrated_database
+    assert "clothes" in inspect(engine).get_table_names()
+    now = seed_clothing_foreign_keys(engine)
+    with engine.begin() as connection:
+        insert_clothing(connection, "clothing-1", "available", now)
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        insert_clothing(connection, "clothing-2", "available", now)
+
+
+def test_migration_rejects_invalid_clothing_status(migrated_database):
+    _, engine = migrated_database
+    assert "clothes" in inspect(engine).get_table_names()
+    now = seed_clothing_foreign_keys(engine)
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        insert_clothing(connection, "clothing-1", "invalid", now)
+
+
+def test_downgrade_removes_clothes_table(migrated_database):
+    cfg, engine = migrated_database
+    assert "clothes" in inspect(engine).get_table_names()
+    command.downgrade(cfg, "d04c8b6d5381")
+    assert "clothes" not in inspect(engine).get_table_names()
