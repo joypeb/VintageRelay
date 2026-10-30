@@ -372,6 +372,35 @@ def test_migration_adds_clothing_category_title_and_measurements(migrated_databa
         assert columns[name]["nullable"]
 
 
+def test_migration_backfills_existing_clothing_title_and_category(tmp_path):
+    backend = Path(__file__).resolve().parents[1]
+    url = f"sqlite:///{tmp_path / 'backfill-category.db'}"
+    cfg = Config(str(backend / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "c9f3e2a4b1d7")
+    engine = create_engine(url)
+    try:
+        now = seed_clothing_foreign_keys(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO clothes (id,event_id,owner_id,description,status,"
+                    "content_version,created_at,updated_at) VALUES "
+                    "('clothing-1','event-1','participant-1','Green jacket',"
+                    "'available',1,:now,:now)"
+                ),
+                {"now": now},
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT title, description, category FROM clothes WHERE id='clothing-1'")
+            ).one() == ("Green jacket", "Green jacket", "other")
+    finally:
+        engine.dispose()
+
+
 def test_migration_rejects_invalid_clothing_category(migrated_database):
     _, engine = migrated_database
     now = seed_clothing_foreign_keys(engine)
