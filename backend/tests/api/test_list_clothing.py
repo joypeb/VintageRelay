@@ -52,6 +52,8 @@ def list_context(db, registration_context):
                     content_type="image/jpeg",
                     size_bytes=123,
                     created_at=created_at,
+                    clothing_id=None,
+                    position=None,
                 )
             )
             session.flush()
@@ -60,7 +62,17 @@ def list_context(db, registration_context):
                     id=clothing_id,
                     event_id=target_event,
                     owner_id=target_owner,
+                    title=name,
+                    category="top" if index == 1 else "other",
                     description=name,
+                    measure_total_length=None,
+                    measure_chest=21.0 if index == 1 else None,
+                    measure_shoulder=18.5 if index == 1 else None,
+                    measure_sleeve=None,
+                    measure_waist=None,
+                    measure_hem=None,
+                    measure_inseam=None,
+                    measure_thigh=None,
                     status=status,
                     content_version=1,
                     created_at=created_at,
@@ -76,6 +88,21 @@ def list_context(db, registration_context):
                 "photo_id": photo_id,
                 "status": status,
                 "created_at": created_at,
+                "category": "top" if index == 1 else "other",
+                "measurements": (
+                    {
+                        "totalLength": None,
+                        "chest": 21.0,
+                        "shoulder": 18.5,
+                        "sleeve": None,
+                        "waist": None,
+                        "hem": None,
+                        "inseam": None,
+                        "thigh": None,
+                    }
+                    if index == 1
+                    else None
+                ),
             }
     return event, participant, token, foreign, rows
 
@@ -98,7 +125,10 @@ def assert_items(response, expected, rows, event_id, participant, organizer_id, 
             "owner",
             "isMine",
             "photos",
+            "category",
+            "title",
             "description",
+            "measurements",
             "status",
             "contentVersion",
             "analysis",
@@ -117,6 +147,9 @@ def assert_items(response, expected, rows, event_id, participant, organizer_id, 
             "url": f"{settings.app_base_url}/api/v1/photos/{rows[name]['photo_id']}",
         }
         assert item["description"] == name
+        assert item["title"] == name
+        assert item["category"] == rows[name]["category"]
+        assert item["measurements"] == rows[name]["measurements"]
         assert item["status"] == rows[name]["status"]
         assert item["contentVersion"] == 1 and item["analysis"] is None
         assert datetime.fromisoformat(item["createdAt"]) == rows[name]["created_at"]
@@ -236,7 +269,13 @@ def test_registered_clothing_appears_for_owner_and_other_participant(client, reg
     registered = client.post(
         f"/api/v1/events/{event_id}/clothing",
         headers=headers(token),
-        json={"photoIds": [photo["id"]], "description": "Green jacket"},
+        json={
+            "photoIds": [photo["id"]],
+            "category": "top",
+            "title": "  Green jacket  ",
+            "description": "Green jacket",
+            "measurements": {"chest": 21.0, "shoulder": 18.5},
+        },
     )
     assert registered.status_code == 201
     clothing_id = registered.json()["id"]
@@ -249,3 +288,15 @@ def test_registered_clothing_appears_for_owner_and_other_participant(client, reg
         items = response.json()["items"]
         assert [item["id"] for item in items] == [clothing_id]
         assert items[0]["isMine"] is is_mine
+        assert items[0]["category"] == "top"
+        assert items[0]["title"] == "Green jacket"
+        assert items[0]["measurements"] == {
+            "totalLength": None,
+            "chest": 21.0,
+            "shoulder": 18.5,
+            "sleeve": None,
+            "waist": None,
+            "hem": None,
+            "inseam": None,
+            "thigh": None,
+        }

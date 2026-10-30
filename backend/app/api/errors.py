@@ -76,7 +76,7 @@ def register_error_handlers(app: FastAPI) -> None:
             if error_type == "extra_forbidden":
                 reason = ValidationReason.UNKNOWN_FIELD
             else:
-                field = to_camel(field)
+                field = ".".join(to_camel(p) for p in field.split("."))
                 if (
                     error_type in {"missing", "string_too_short", "too_short"}
                     or error.get("input") is None

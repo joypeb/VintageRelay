@@ -181,7 +181,7 @@ def test_register_clothing_openapi_describes_request_and_responses(client):
     assert operation["operationId"] == "registerClothing"
     assert "HTTPValidationError" not in json.dumps(operation)
     schema = resolve(document, operation["requestBody"]["content"]["application/json"]["schema"])
-    assert set(schema["required"]) == {"photoIds", "description"}
+    assert set(schema["required"]) == {"photoIds", "description", "title", "category"}
     assert schema["additionalProperties"] is False
     assert "photoId" not in schema["properties"]
     photos = schema["properties"]["photoIds"]
@@ -204,6 +204,49 @@ def test_register_clothing_openapi_describes_request_and_responses(client):
             assert responses[status]["content"]["application/json"]["schema"] == {
                 "$ref": "#/components/schemas/ErrorResponse"
             }
+
+
+def test_register_clothing_openapi_describes_category_and_measurements(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/clothing"]["post"]
+    schema = resolve(document, operation["requestBody"]["content"]["application/json"]["schema"])
+
+    category = resolve(document, schema["properties"]["category"])
+    assert set(category["enum"]) == {"top", "outer", "bottom", "other"}
+    assert "measurements" not in schema["required"]
+    measurements = schema["properties"]["measurements"]
+    if "anyOf" in measurements:
+        measurements = next(
+            option for option in measurements["anyOf"] if option.get("type") != "null"
+        )
+    measurements = resolve(document, measurements)
+    assert measurements["type"] == "object"
+    assert measurements["additionalProperties"] is False
+    assert set(measurements["properties"]) == {
+        "totalLength",
+        "chest",
+        "shoulder",
+        "sleeve",
+        "waist",
+        "hem",
+        "inseam",
+        "thigh",
+    }
+    assert not measurements.get("required")
+    for field in measurements["properties"].values():
+        if "anyOf" in field:
+            field = next(option for option in field["anyOf"] if option.get("type") != "null")
+        assert resolve(document, field)["type"] == "number"
+
+
+def test_register_clothing_openapi_response_requires_category_title_and_measurements(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/clothing"]["post"]
+    clothing = resolve(
+        document, operation["responses"]["201"]["content"]["application/json"]["schema"]
+    )
+
+    assert {"category", "title", "measurements"} <= set(clothing["required"])
 
 
 def test_list_clothing_openapi_describes_filters_and_responses(client):

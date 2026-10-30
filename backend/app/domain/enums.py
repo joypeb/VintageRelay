@@ -12,6 +12,13 @@ class ClothingStatus(StrEnum):
     WITHDRAWN = "withdrawn"
 
 
+class ClothingCategory(StrEnum):
+    TOP = "top"
+    OUTER = "outer"
+    BOTTOM = "bottom"
+    OTHER = "other"
+
+
 class Ownership(StrEnum):
     MINE = "mine"
     OTHERS = "others"

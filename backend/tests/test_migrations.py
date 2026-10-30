@@ -199,6 +199,16 @@ def test_migration_creates_clothes_table_and_index(migrated_database):
         "content_version",
         "created_at",
         "updated_at",
+        "title",
+        "category",
+        "measure_total_length",
+        "measure_chest",
+        "measure_shoulder",
+        "measure_sleeve",
+        "measure_waist",
+        "measure_hem",
+        "measure_inseam",
+        "measure_thigh",
     }
     assert any(
         index["name"] == "ix_clothes_event_id_created_at"
@@ -249,14 +259,15 @@ def seed_clothing_foreign_keys(engine):
     return now
 
 
-def insert_clothing(connection, clothing_id, status, now):
+def insert_clothing(connection, clothing_id, status, now, category="outer"):
     connection.execute(
         text(
             "INSERT INTO clothes (id, event_id, owner_id, description, status, content_version, "
-            "created_at, updated_at) VALUES (:id, 'event-1', 'participant-1', 'Jacket', "
-            ":status, 1, :now, :now)"
+            "created_at, updated_at, title, category) VALUES "
+            "(:id, 'event-1', 'participant-1', 'Jacket', "
+            ":status, 1, :now, :now, 'Jacket', :category)"
         ),
-        {"id": clothing_id, "status": status, "now": now},
+        {"id": clothing_id, "status": status, "now": now, "category": category},
     )
 
 
@@ -340,3 +351,79 @@ def test_downgrade_removes_clothes_table(migrated_database):
     assert "clothes" in inspect(engine).get_table_names()
     command.downgrade(cfg, "d04c8b6d5381")
     assert "clothes" not in inspect(engine).get_table_names()
+
+
+def test_migration_adds_clothing_category_title_and_measurements(migrated_database):
+    _, engine = migrated_database
+    columns = {column["name"]: column for column in inspect(engine).get_columns("clothes")}
+    for name, length in (("title", 100), ("category", 16)):
+        assert columns[name]["type"].length == length
+        assert not columns[name]["nullable"]
+    for name in (
+        "measure_total_length",
+        "measure_chest",
+        "measure_shoulder",
+        "measure_sleeve",
+        "measure_waist",
+        "measure_hem",
+        "measure_inseam",
+        "measure_thigh",
+    ):
+        assert columns[name]["nullable"]
+
+
+def test_migration_backfills_existing_clothing_title_and_category(tmp_path):
+    backend = Path(__file__).resolve().parents[1]
+    url = f"sqlite:///{tmp_path / 'backfill-category.db'}"
+    cfg = Config(str(backend / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", url)
+    command.upgrade(cfg, "c9f3e2a4b1d7")
+    engine = create_engine(url)
+    try:
+        now = seed_clothing_foreign_keys(engine)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO clothes (id,event_id,owner_id,description,status,"
+                    "content_version,created_at,updated_at) VALUES "
+                    "('clothing-1','event-1','participant-1','Green jacket',"
+                    "'available',1,:now,:now)"
+                ),
+                {"now": now},
+            )
+        command.upgrade(cfg, "head")
+        with engine.connect() as connection:
+            assert connection.execute(
+                text("SELECT title, description, category FROM clothes WHERE id='clothing-1'")
+            ).one() == ("Green jacket", "Green jacket", "other")
+    finally:
+        engine.dispose()
+
+
+def test_migration_rejects_invalid_clothing_category(migrated_database):
+    _, engine = migrated_database
+    now = seed_clothing_foreign_keys(engine)
+    with pytest.raises(IntegrityError, match="ck_clothes_category"), engine.begin() as connection:
+        insert_clothing(connection, "clothing-1", "available", now, category="invalid")
+
+
+def test_downgrade_removes_clothing_category_title_and_measurements(migrated_database):
+    cfg, engine = migrated_database
+    added_columns = {
+        "title",
+        "category",
+        "measure_total_length",
+        "measure_chest",
+        "measure_shoulder",
+        "measure_sleeve",
+        "measure_waist",
+        "measure_hem",
+        "measure_inseam",
+        "measure_thigh",
+    }
+    assert added_columns <= {column["name"] for column in inspect(engine).get_columns("clothes")}
+    command.downgrade(cfg, "c9f3e2a4b1d7")
+    assert added_columns.isdisjoint(
+        column["name"] for column in inspect(engine).get_columns("clothes")
+    )

@@ -46,6 +46,8 @@ def add_clothing(session, clothing_model, clothing_repo, event, status):
         id=str(uuid4()),
         event_id=event.id,
         owner_id=event.organizer_participant_id,
+        title="Jacket",
+        category="outer",
         description="Jacket",
         status=status,
         content_version=1,
