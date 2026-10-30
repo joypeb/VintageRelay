@@ -53,11 +53,19 @@ describe('US1 happy path', () => {
     );
   });
 
+  it('allows supported photo types and extensions in the picker', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    expect(await screen.findByLabelText('Clothing photo')).toHaveAttribute(
+      'accept',
+      'image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp',
+    );
+  });
+
   it('shows the empty photo step without uploading', async () => {
     renderWithClient(<PhotoUploadScreen eventId="e1" />);
 
     expect(await screen.findByLabelText('Clothing photo')).toHaveAttribute('type', 'file');
-    expect(screen.getByText('Use a JPEG, PNG, or WebP photo of 10 MB or less.')).toBeVisible();
+    expect(screen.getByText('Use a JPG/JPEG, PNG, or WebP photo of 10 MB or less.')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Choose photo' })).toBeVisible();
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
     expect(uploadCalls()).toHaveLength(0);
@@ -122,7 +130,7 @@ describe('US1 happy path', () => {
       input.dispatchEvent(new Event('change', { bubbles: true }));
     });
     expect(screen.getByRole('button', { name: 'Choose photo' })).toBeVisible();
-    expect(screen.getByText('Use a JPEG, PNG, or WebP photo of 10 MB or less.')).toBeVisible();
+    expect(screen.getByText('Use a JPG/JPEG, PNG, or WebP photo of 10 MB or less.')).toBeVisible();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(uploadCalls()).toHaveLength(0);
   });
@@ -227,7 +235,7 @@ describe('US2 failures', () => {
     [
       'HEIC',
       new File(['bytes'], 'photo.heic', { type: 'image/heic' }),
-      'Use a JPEG, PNG, or WebP photo.',
+      'Use a JPG/JPEG, PNG, or WebP photo.',
     ],
   ])('rejects an %s file locally without uploading', async (_name, file, message) => {
     await chooseFile(userEvent.setup({ applyAccept: false }), file);

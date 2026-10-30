@@ -79,19 +79,19 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
 
 **Independent Test**: Quickstart scenario 4.
 
-- [ ] T005 [P] [US3] In `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`:
+- [X] T005 [P] [US3] In `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`:
   - `{ type: 'image/jpg', name: 'a.jpg' }` → `ok: true`.
   - `{ type: '', name: 'B.JPG' }` → `ok: true`.
   - The reject message is exactly `'Use a JPG/JPEG, PNG, or WebP photo.'`; update the existing expectations at lines 32 and 51.
   - In `frontend/src/components/clothing/PhotoUploadScreen.test.tsx`, assert the interim help text `'Use a JPG/JPEG, PNG, or WebP photo of 10 MB or less.'` (lines 60, 125; T014 replaces it with the final copy) and the file input `accept` attribute `'image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp'`.
   - Leave the server-provided `UNSUPPORTED_MEDIA_TYPE` message at line 210 unchanged (regression guard).
   - Run and confirm the tests fail.
-- [ ] T006 [US3] Implement — agent: `implementer-fe`:
+- [X] T006 [US3] Implement — agent: `implementer-fe`:
   - In `frontend/src/lib/validation/photo.ts`, accept `'image/jpg'` alongside `ALLOWED_PHOTO_TYPES`. Keep `ALLOWED_PHOTO_TYPES` as the server's types, because `Photo.contentType` relies on it; add a local `ACCEPTED_FILE_TYPES` instead.
   - Change the reject message to `'Use a JPG/JPEG, PNG, or WebP photo.'`.
   - In `PhotoUploadScreen.tsx`, set `FILE_ACCEPT` and `HELP_TEXT` to the values in T005.
   - T005 must pass.
-- [ ] T007 [US3] Review and commit T005–T006 — agent: `commit-reviewer`
+- [X] T007 [US3] Review and commit T005–T006 — agent: `commit-reviewer`
 
 ---
 

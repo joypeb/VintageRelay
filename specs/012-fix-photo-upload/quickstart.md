@@ -39,3 +39,8 @@
 
 - Automated: `next-config.test.ts` and "US1 display fallback" Red before T003 and Green after; frontend 29 files / 408 tests passed, lint 0 errors, typecheck passed.
 - HTTP check (scenario 1, API level): backend on :8123 with `APP_BASE_URL=http://localhost:3123`, `next dev` on :3123. Uploaded a PNG; the returned `url` `http://localhost:3123/api/v1/photos/<id>` answered `200 image/png` through the app origin. Before the fix the app origin had no route for this path. The in-browser render on a phone width was not checked here.
+
+### US3 (T005–T006)
+
+- Red: 7 expected failures (copy, `accept`, `image/jpg`). The `B.JPG` with empty type case passed on first run because the existing extension check already lowercases; it is kept as a regression guard (planning defect reported per tasks.md rules).
+- Green: frontend 29 files / 411 tests passed, lint 0 errors, typecheck passed. Server-side type is detected from bytes (`backend/app/domain/photos.py`), so an `image/jpg` declared type uploads fine.

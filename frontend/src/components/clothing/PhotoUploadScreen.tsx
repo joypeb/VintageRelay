@@ -28,8 +28,8 @@ type PhotoUploadScreenProps = {
 const subscribe = () => () => {};
 
 const FILE_INPUT_ID = 'clothing-photo-input';
-const FILE_ACCEPT = 'image/jpeg,image/png,image/webp';
-const HELP_TEXT = 'Use a JPEG, PNG, or WebP photo of 10 MB or less.';
+const FILE_ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.webp';
+const HELP_TEXT = 'Use a JPG/JPEG, PNG, or WebP photo of 10 MB or less.';
 const FUTURE_STEP_NOTE = 'You will attach this photo when you describe your clothing in the next step.';
 
 export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {

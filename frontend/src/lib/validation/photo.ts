@@ -4,6 +4,8 @@ export const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as 
 
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
+const ACCEPTED_FILE_TYPES: readonly string[] = [...ALLOWED_PHOTO_TYPES, 'image/jpg'];
+
 export type PhotoValidation = { ok: true; file: File } | { ok: false; message: string };
 
 function extensionOf(name: string): string {
@@ -21,13 +23,13 @@ export function validatePhotoFile(file: File | null | undefined): PhotoValidatio
   if (file.size > MAX_PHOTO_BYTES) {
     return { ok: false, message: 'Choose a photo of 10 MB or less.' };
   }
-  if ((ALLOWED_PHOTO_TYPES as readonly string[]).includes(file.type)) {
+  if (ACCEPTED_FILE_TYPES.includes(file.type)) {
     return { ok: true, file };
   }
   if (file.type === '' || file.type === 'application/octet-stream') {
     return ALLOWED_EXTENSIONS.has(extensionOf(file.name))
       ? { ok: true, file }
-      : { ok: false, message: 'Use a JPEG, PNG, or WebP photo.' };
+      : { ok: false, message: 'Use a JPG/JPEG, PNG, or WebP photo.' };
   }
-  return { ok: false, message: 'Use a JPEG, PNG, or WebP photo.' };
+  return { ok: false, message: 'Use a JPG/JPEG, PNG, or WebP photo.' };
 }
