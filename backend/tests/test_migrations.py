@@ -156,3 +156,29 @@ def test_downgrade_removes_participant_name_index(migrated_database):
     assert index_sql(engine) is not None
     command.downgrade(cfg, "ee1be11dd5a7")
     assert index_sql(engine) is None
+
+
+def test_migration_creates_photos_table(migrated_database):
+    _, engine = migrated_database
+    inspector = inspect(engine)
+    assert "photos" in inspector.get_table_names()
+    assert {column["name"] for column in inspector.get_columns("photos")} == {
+        "id",
+        "event_id",
+        "uploader_id",
+        "storage_location",
+        "content_type",
+        "size_bytes",
+        "created_at",
+    }
+    assert any(
+        constraint["column_names"] == ["storage_location"]
+        for constraint in inspector.get_unique_constraints("photos")
+    )
+
+
+def test_downgrade_removes_photos_table(migrated_database):
+    cfg, engine = migrated_database
+    assert "photos" in inspect(engine).get_table_names()
+    command.downgrade(cfg, "8e658c89f7b9")
+    assert "photos" not in inspect(engine).get_table_names()
