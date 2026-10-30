@@ -223,7 +223,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
 
 - [X] T024 Run the full suites, `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` and `cd frontend && pnpm lint && pnpm typecheck && pnpm test`, then run all quickstart scenarios 1–9 against a fresh `alembic upgrade head` database. Record the actual results in `specs/012-fix-photo-upload/quickstart.md` "Implementation evidence".
 - [X] T025 Confirm 010 SC-006 / 010 FR-012 (credential and image bytes absent from app logs) still holds during scenario 5 by inspecting the browser console and backend logs, and record the result in `specs/012-fix-photo-upload/quickstart.md`
-- [ ] T026 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
+- [X] T026 Run `pr-reviewer` on `main..HEAD` before creating the PR (AGENTS.md "Code Review") — agent: `pr-reviewer`
 
 ---
 

@@ -65,3 +65,7 @@
 - Scenario 9 (fresh migrated DB, organizer token): register with 3 `photoIds` → 201, `photos` in request order, `photos[0].url` equals upload response `url`. Repeat → 409 `PHOTO_ALREADY_ATTACHED`. 12 IDs → 422 `photoIds/too_long`. Duplicate → 422 `photoIds/invalid`. Legacy `photoId` → 422 `photoIds/required` + `photoId/unknown_field`. All asserted in-script (SCENARIO9-OK).
 - Backend logs during scenario 9: `photo_uploaded` (ids, size_bytes, content_type), `clothing_registered` (clothing_id, event_id, description_length only). No tokens, no image bytes, no description text — 010 SC-006/FR-012 holds (T025 backend side).
 - Manual scenarios 1–8 on a real phone / browser render through the rewrite at 360–430 px: **not run** in this session (no device). US1 app-origin rendering was verified at HTTP level earlier (`200 image/png` through frontend origin).
+
+### T026 pr-reviewer (2026-10-30, `origin/main..1887d22`, 43 files, 100% coverage)
+- Verdict: no Critical/High; cleared for PR.
+- 1 Low (not fixed, follow-up): `ClothingService.register` raises 409 for an already-attached photo before finishing 404 checks on later IDs, while the OpenAPI/data-model documents 404-then-409 order. No disclosure (early 409 depends only on caller's own photo) and no partial state (rollback). Fix: drop the early `clothing_id is not None` check and let `photo_repo.attach` raise; needs a mixed `[attached, unknown] → 404` test first.
