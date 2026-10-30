@@ -37,3 +37,7 @@ def normalize_image(raw: bytes) -> bytes:
 def extension_for_format(content_type: str) -> str:
     """Call with a content type returned by verify_image (closed input set)."""
     return _CONTENT_TYPE_TO_EXTENSION[content_type]
+
+
+def photo_url(app_base_url: str, photo_id: str) -> str:
+    return f"{app_base_url}/api/v1/photos/{photo_id}"

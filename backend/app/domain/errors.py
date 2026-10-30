@@ -47,6 +47,11 @@ class DisplayNameTakenError(ConflictError):
     message = "This display name is already taken in this event."
 
 
+class PhotoAlreadyAttachedError(ConflictError):
+    code = "PHOTO_ALREADY_ATTACHED"
+    message = "This photo is already attached to another garment."
+
+
 class PhotoTooLargeError(AppError):
     status_code = 413
     code = "FILE_TOO_LARGE"
