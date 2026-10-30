@@ -22,6 +22,7 @@ from app.domain.errors import (
 )
 from app.models.event import Event
 from app.models.participant import Participant
+from app.repositories import clothing as clothing_repo
 from app.repositories import event as event_repo
 from app.repositories import participant as participant_repo
 from app.schemas.event import (
@@ -163,8 +164,7 @@ class EventService:
         if actor.id == event.organizer_participant_id:
             stats = EventStats(
                 participant_count=participant_repo.count_by_event(s, event.id),
-                # TODO(feature 06/11): count from clothing/proposals
-                available_clothing_count=0,
+                available_clothing_count=clothing_repo.count_available(s, event.id),
                 # TODO(feature 06/11): count from clothing/proposals
                 confirmed_exchange_count=0,
             )
