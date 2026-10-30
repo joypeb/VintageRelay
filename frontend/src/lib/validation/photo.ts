@@ -20,9 +20,6 @@ export function validatePhotoFile(file: File | null | undefined): PhotoValidatio
   if (file.size === 0) {
     return { ok: false, message: 'The chosen file is empty. Choose another photo.' };
   }
-  if (file.size > MAX_PHOTO_BYTES) {
-    return { ok: false, message: 'Choose a photo of 10 MB or less.' };
-  }
   if (ACCEPTED_FILE_TYPES.includes(file.type)) {
     return { ok: true, file };
   }

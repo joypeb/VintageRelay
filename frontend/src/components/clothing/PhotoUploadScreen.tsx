@@ -17,8 +17,9 @@ import { useUploadPhotoMutation } from '@/lib/api/photos';
 import { queryKeys } from '@/lib/api/query-keys';
 import { getEventScreenState, getPhotoUploadFailure, isClosed } from '@/lib/event';
 import { logger } from '@/lib/logger';
+import { compressPhoto } from '@/lib/photo/compress';
 import { hasEventSession } from '@/lib/session';
-import { validatePhotoFile } from '@/lib/validation/photo';
+import { MAX_PHOTO_BYTES, validatePhotoFile } from '@/lib/validation/photo';
 import type { Photo } from '@/types/photo';
 
 type PhotoUploadScreenProps = {
@@ -51,12 +52,21 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [chosenFile, setChosenFile] = useState<File | null>(null);
   const [displayFailed, setDisplayFailed] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
   const [uploadClosed, setUploadClosed] = useState(false);
   const [uploadNoAccess, setUploadNoAccess] = useState(false);
   const [uploadNotFound, setUploadNotFound] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const previewUrlRef = useRef<string | null>(null);
   const errorRef = useRef<HTMLElement>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -148,14 +158,14 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   }
 
   function openPicker() {
-    if (uploadMutation.isPending) return;
+    if (uploadMutation.isPending || isPreparing) return;
     inputRef.current?.click();
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file === undefined) return;
-    if (uploadMutation.isPending) return;
+    if (uploadMutation.isPending || isPreparing) return;
     const result = validatePhotoFile(file);
     if (!result.ok) {
       revokePreview();
@@ -163,6 +173,45 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
       setChosenFile(null);
       setPhotoError(result.message);
       event.target.value = '';
+      return;
+    }
+    if (result.file.size > MAX_PHOTO_BYTES) {
+      clearUploadOverrides();
+      setPhotoError(null);
+      setHeldPhoto(null);
+      revokePreview();
+      const previewUrl = URL.createObjectURL(result.file);
+      previewUrlRef.current = previewUrl;
+      setLocalPreviewUrl(previewUrl);
+      setChosenFile(null);
+      setIsPreparing(true);
+      event.target.value = '';
+      const original = result.file;
+      void (async () => {
+        let compressed: Awaited<ReturnType<typeof compressPhoto>>;
+        try {
+          compressed = await compressPhoto(original);
+        } catch {
+          compressed = {
+            ok: false,
+            message: 'This photo is too large. Choose a smaller photo.',
+          };
+        }
+        if (!mountedRef.current) return;
+        setIsPreparing(false);
+        if (!compressed.ok) {
+          revokePreview();
+          setHeldPhoto(null);
+          setChosenFile(null);
+          setPhotoError(compressed.message);
+          return;
+        }
+        setChosenFile(compressed.file);
+        uploadMutation.mutate(compressed.file, {
+          onSuccess: handleUploadSuccess,
+          onError: handleUploadError,
+        });
+      })();
       return;
     }
     clearUploadOverrides();
@@ -181,7 +230,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   }
 
   function handleRetry() {
-    if (uploadMutation.isPending || chosenFile === null) return;
+    if (uploadMutation.isPending || isPreparing || chosenFile === null) return;
     setPhotoError(null);
     uploadMutation.mutate(chosenFile, {
       onSuccess: handleUploadSuccess,
@@ -298,6 +347,21 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
           onClick={openPicker}
         />
         <Button label="Remove" variant="ghost" size="lg" width="100%" onClick={handleRemove} />
+      </VStack>
+    );
+  }
+
+  if (isPreparing) {
+    return (
+      <VStack gap={4} padding={6}>
+        <Heading level={1}>Register clothing</Heading>
+        {renderFileControl(true)}
+        {localPreviewUrl !== null && <img src={localPreviewUrl} alt="Clothing photo preview" />}
+        {/* No Astryx Button is rendered here: Button always mounts its own empty
+            role="status" live region, which would duplicate this announcement. */}
+        <Text type="body" role="status">
+          Preparing photo…
+        </Text>
       </VStack>
     );
   }

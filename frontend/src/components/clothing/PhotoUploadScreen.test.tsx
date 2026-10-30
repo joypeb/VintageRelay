@@ -7,8 +7,9 @@ import { ApiError } from '@/lib/api/api-error';
 import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
 
-const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), compressPhoto: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({ apiFetch: mocks.apiFetch }));
+vi.mock('@/lib/photo/compress', () => ({ compressPhoto: mocks.compressPhoto }));
 
 const event = {
   id: 'e1',
@@ -228,11 +229,6 @@ describe('US2 failures', () => {
 
   it.each([
     [
-      'oversized',
-      new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.jpg', { type: 'image/jpeg' }),
-      'Choose a photo of 10 MB or less.',
-    ],
-    [
       'HEIC',
       new File(['bytes'], 'photo.heic', { type: 'image/heic' }),
       'Use a JPG/JPEG, PNG, or WebP photo.',
@@ -450,7 +446,7 @@ describe('US3 stability', () => {
   });
 
   it('clears the failed file context when a replacement is rejected locally', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ applyAccept: false });
     mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
       if (path === '/events/e1') return Promise.resolve(event);
       if (path === '/events/e1/photos')
@@ -461,11 +457,10 @@ describe('US3 stability', () => {
     const input = await screen.findByLabelText('Clothing photo');
     await user.upload(input, new File(['a'], 'a.jpg', { type: 'image/jpeg' }));
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeVisible();
-    await user.upload(
-      input,
-      new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.jpg', { type: 'image/jpeg' }),
+    await user.upload(input, new File(['bytes'], 'photo.heic', { type: 'image/heic' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Use a JPG/JPEG, PNG, or WebP photo.',
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Choose a photo of 10 MB or less.');
     expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Choose another photo' })).toBeVisible();
     expect(screen.queryByRole('img', { name: /preview/i })).not.toBeInTheDocument();
@@ -490,7 +485,9 @@ describe('US3 stability', () => {
     await act(async () => {
       await queryClient.refetchQueries({ queryKey: ['events', 'e1'] });
     });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled(),
+    );
     expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
     expect(screen.getByRole('button', { name: 'Change photo' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
@@ -526,7 +523,7 @@ describe('US3 stability', () => {
   });
 
   it('clears a ready photo when its replacement is rejected locally', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ applyAccept: false });
     renderWithClient(<PhotoUploadScreen eventId="e1" />);
     await user.upload(
       await screen.findByLabelText('Clothing photo'),
@@ -536,9 +533,11 @@ describe('US3 stability', () => {
     await user.click(screen.getByRole('button', { name: 'Change photo' }));
     await user.upload(
       screen.getByLabelText('Clothing photo'),
-      new File([new Uint8Array(10 * 1024 * 1024 + 1)], 'large.jpg', { type: 'image/jpeg' }),
+      new File(['bytes'], 'photo.heic', { type: 'image/heic' }),
     );
-    expect(await screen.findByRole('alert')).toHaveTextContent('Choose a photo of 10 MB or less.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Use a JPG/JPEG, PNG, or WebP photo.',
+    );
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.queryByText('Photo ready')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Change photo' })).not.toBeInTheDocument();
@@ -573,5 +572,72 @@ describe('US3 stability', () => {
     });
     expect(await screen.findByText("You haven't joined this event on this device.")).toBeVisible();
   });
+});
 
+describe('US2 compression', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.compressPhoto.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos') return Promise.resolve(photo);
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+
+  it('prepares an oversized photo before uploading the compressed file', async () => {
+    const file = new File([new Uint8Array(11 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' });
+    const compressed = new File(['compressed'], 'large.jpg', { type: 'image/jpeg' });
+    let resolveCompression!: (result: { ok: true; file: File }) => void;
+    mocks.compressPhoto.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCompression = resolve;
+      }),
+    );
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    const input = await screen.findByLabelText('Clothing photo');
+    await userEvent.setup().upload(input, file);
+    expect(await screen.findByRole('status')).toHaveTextContent('Preparing photo…');
+    expect(mocks.compressPhoto).toHaveBeenCalledWith(file);
+    expect(input).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    expect(uploadCalls()).toHaveLength(0);
+    await act(async () => resolveCompression({ ok: true, file: compressed }));
+    await waitFor(() => expect(uploadCalls()).toHaveLength(1));
+    expect(uploadCalls()[0]?.[2].body.get('file')).toBe(compressed);
+  });
+
+  it('uploads a photo at the limit unchanged without compression', async () => {
+    const file = new File([new Uint8Array(10485760)], 'photo.jpg', { type: 'image/jpeg' });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photo'), file);
+    await waitFor(() => expect(uploadCalls()).toHaveLength(1));
+    expect(mocks.compressPhoto).not.toHaveBeenCalled();
+    expect(uploadCalls()[0]?.[2].body.get('file')).toBe(file);
+  });
+
+  it('shows a local error and offers another photo when compression fails', async () => {
+    const message = 'This photo is too large. Choose a smaller photo.';
+    mocks.compressPhoto.mockResolvedValue({ ok: false, message });
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent
+      .setup()
+      .upload(
+        await screen.findByLabelText('Clothing photo'),
+        new File([new Uint8Array(11 * 1024 * 1024)], 'large.jpg', { type: 'image/jpeg' }),
+      );
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('button', { name: 'Choose another photo' })).toBeVisible();
+    expect(uploadCalls()).toHaveLength(0);
+  });
 });

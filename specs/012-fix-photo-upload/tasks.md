@@ -101,28 +101,28 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
 
 **Independent Test**: Quickstart scenarios 2–3.
 
-- [ ] T008 [P] [US2] Create `frontend/src/lib/photo/compress.test.ts` against the planned `compressToLimit(encode, { maxBytes, width, height })` (research R2) — agent: `test-author`. The injected `encode(width, height, quality) => Promise<Blob>` is a fake that returns blobs of chosen sizes.
+- [X] T008 [P] [US2] Create `frontend/src/lib/photo/compress.test.ts` against the planned `compressToLimit(encode, { maxBytes, width, height })` (research R2) — agent: `test-author`. The injected `encode(width, height, quality) => Promise<Blob>` is a fake that returns blobs of chosen sizes.
   - Tries qualities `0.9, 0.8, 0.7, 0.6` at full size first and returns the first blob `<= maxBytes`.
   - Then scales the longest side by `0.8` per step, retrying qualities, until the longest side would drop below `1600` (or below the original longest side if it is already under 1600).
   - Returns `{ ok: false, message: 'This photo is too large. Choose a smaller photo.' }` when nothing fits.
   - A blob of exactly `maxBytes` is accepted.
   - Run and confirm the tests fail.
-- [ ] T009 [P] [US2] In `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`. Replace the `10485761 → 'Choose a photo of 10 MB or less.'` case (line 19–20) with `10485761 → ok: true`, because oversize is now handled by compression. Keep the empty-file and type cases (regression guard). Run and confirm it fails.
-- [ ] T010 [US2] Add a "US2 compression" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`. Mock `@/lib/photo/compress`'s exported `compressPhoto(file)` (the canvas adapter), in addition to `apiFetch`.
+- [X] T009 [P] [US2] In `frontend/src/lib/validation/photo.test.ts` — agent: `test-author`. Replace the `10485761 → 'Choose a photo of 10 MB or less.'` case (line 19–20) with `10485761 → ok: true`, because oversize is now handled by compression. Keep the empty-file and type cases (regression guard). Run and confirm it fails.
+- [X] T010 [US2] Add a "US2 compression" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` — agent: `test-author`. Mock `@/lib/photo/compress`'s exported `compressPhoto(file)` (the canvas adapter), in addition to `apiFetch`.
   - An 11 MB `image/jpeg` shows "Preparing photo…" (`role="status"`), then uploads the mocked compressed `File` (assert the `FormData` `file` is that object).
   - A 10485760-byte file calls `compressPhoto` 0 times and uploads the original.
   - When `compressPhoto` resolves `{ ok: false, message }`, `apiFetch` is never called for photos, and the message is shown at the input with [Choose another photo].
   - While compressing, [Remove], [Try again], and the file input are disabled.
   - Replace the old `'Choose a photo of 10 MB or less.'` row at line 195.
   - Run and confirm the tests fail.
-- [ ] T011 [US2] Implement — agent: `implementer-fe`:
+- [X] T011 [US2] Implement — agent: `implementer-fe`:
   - Create `frontend/src/lib/photo/compress.ts` exporting:
     - `compressToLimit`: pure, satisfies T008.
     - `compressPhoto(file: File): Promise<{ ok: true; file: File } | { ok: false; message: string }>`: decodes with `createImageBitmap(file, { imageOrientation: 'from-image' })`, draws to a canvas, and encodes with `canvas.toBlob(..., 'image/jpeg', q)`. It returns `new File([blob], '<base>.jpg', { type: 'image/jpeg' })`, and returns `ok: false` with the same message on any decode error.
   - Remove the size branch from `validatePhotoFile` in `frontend/src/lib/validation/photo.ts`.
   - In `PhotoUploadScreen.tsx`, call `compressPhoto` when `file.size > MAX_PHOTO_BYTES` and show a `preparing` view before uploading.
   - T008–T010 must pass.
-- [ ] T012 [US2] Manually run quickstart scenarios 2–3 on a phone or emulator: request size ≤ 10 MB, the image stays upright, and SC-003 timing is under 5 s for a 12–20 MB photo. Record the results in `specs/012-fix-photo-upload/quickstart.md`. Then review and commit T008–T012 — agent: `commit-reviewer`
+- [ ] T012 [US2] (Review and commit done; on-device manual run pending) Manually run quickstart scenarios 2–3 on a phone or emulator: request size ≤ 10 MB, the image stays upright, and SC-003 timing is under 5 s for a 12–20 MB photo. Record the results in `specs/012-fix-photo-upload/quickstart.md`. Then review and commit T008–T012 — agent: `commit-reviewer`
 
 ---
 

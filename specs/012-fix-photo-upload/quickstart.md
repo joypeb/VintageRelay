@@ -44,3 +44,9 @@
 
 - Red: 7 expected failures (copy, `accept`, `image/jpg`). The `B.JPG` with empty type case passed on first run because the existing extension check already lowercases; it is kept as a regression guard (planning defect reported per tasks.md rules).
 - Green: frontend 29 files / 411 tests passed, lint 0 errors, typecheck passed. Server-side type is detected from bytes (`backend/app/domain/photos.py`), so an `image/jpg` declared type uploads fine.
+
+### US2 (T008–T011)
+
+- Red: 3 files failed as expected (missing module, oversize still rejected, no preparing state). The 10485760-byte boundary case passed on first run (unchanged behavior, regression guard).
+- Green: frontend 30 files / 417 tests passed, typecheck passed, lint 0 errors (11 warnings: 5 `<img>`, 6 unused fake-encoder params in tests).
+- Manual scenarios 2–3 and SC-003 timing on a real phone: **not run** in this session (no device). Known risk: iOS Safari limits canvas area (about 16.7M px), so a full-size encode of a 48MP photo may fail and fall back to the "too large" message. Fixed after the T012 review: an encode failure at one size now moves on to the next smaller size (unit-tested); frontend 30 files / 419 tests passed.
