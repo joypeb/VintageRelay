@@ -58,16 +58,16 @@ None. Each story touches separate modules, and the shared 010 modules (`apiFetch
 
 **Note**: The root-cause fix is a Next config rewrite. Its reproducing test (Constitution II) asserts the rewrite entry. Real rendering through the rewrite is also checked manually with quickstart scenario 1, before the change (alt text only) and after it (image).
 
-- [ ] T002 [US1] Write the US1 tests — agent: `test-author`:
+- [X] T002 [US1] Write the US1 tests — agent: `test-author`:
   - Create `frontend/src/next-config.test.ts` (inside the Vitest `include` `src/**/*.test.{ts,tsx}`). Import `nextConfig` from `../next.config` and assert that `await nextConfig.rewrites?.()` contains `{ source: '/api/v1/photos/:photoId', destination: 'http://api.test/api/v1/photos/:photoId' }`. `http://api.test` comes from the Vitest `env` in `frontend/vitest.config.mts`. This is the reproducing test for the bug.
   - Add a "US1 display fallback" `describe` to `frontend/src/components/clothing/PhotoUploadScreen.test.tsx`. After a successful upload, fire `error` on the `img` named "Uploaded clothing photo". Assert that "This photo could not be displayed." is visible and that [Remove] is still enabled. [Change photo] still exists until T015 replaces it.
   - Run both tests and confirm they fail.
-- [ ] T003 [US1] Implement — agent: `implementer-fe`:
+- [X] T003 [US1] Implement — agent: `implementer-fe`:
   - In `frontend/next.config.ts`, add `async rewrites() { return [{ source: '/api/v1/photos/:photoId', destination: \`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/v1/photos/:photoId\` }]; }` (research R1).
   - In `frontend/src/components/clothing/PhotoUploadScreen.tsx`, add `onError` on the ready `<img>` that sets a `displayFailed` flag and renders "This photo could not be displayed.". Keep the held photo and its actions.
   - Before and after the change, record quickstart scenario 1 results in `specs/012-fix-photo-upload/quickstart.md`.
   - Both T002 tests must pass.
-- [ ] T004 [US1] Review and commit T002–T003 — agent: `commit-reviewer`
+- [X] T004 [US1] Review and commit T002–T003 — agent: `commit-reviewer`
 
 ---
 
@@ -161,7 +161,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
     - Revoke each `previewUrl` on remove and on unmount.
     - Ignore results after unmount.
     - Use one `role="status"` live region, and move focus to a newly failed item's error.
-    - Keep the per-item `onError` fallback from T003.
+    - Keep the per-item `onError` fallback from T003 and render ready photos through one shared fragment, so the closed-event view also shows "This photo could not be displayed." (T004 review finding: the closed branch lacked it).
   - T013–T014 must pass.
 - [ ] T016 [US4] Manually run quickstart scenarios 5–8 at 360 px and 430 px widths, including no horizontal scrolling and 44×44 px touch targets. Record the results, then review and commit T013–T016 — agent: `commit-reviewer`
 

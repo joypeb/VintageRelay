@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -153,6 +153,36 @@ describe('US1 happy path', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
     expect(screen.queryByLabelText('Clothing photo')).not.toBeInTheDocument();
     expect(uploadCalls()).toHaveLength(0);
+  });
+});
+
+describe('US1 display fallback', () => {
+  it('shows a message and keeps removal enabled when the uploaded image fails to load', async () => {
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+      if (path === '/events/e1') return Promise.resolve(event);
+      if (path === '/events/e1/photos') return Promise.resolve(photo);
+      return Promise.reject(new Error(`Unexpected path: ${path}`));
+    });
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(
+      await screen.findByLabelText('Clothing photo'),
+      new File(['bytes'], 'jacket.jpg', { type: 'image/jpeg' }),
+    );
+    fireEvent.error(await screen.findByRole('img', { name: 'Uploaded clothing photo' }));
+
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeEnabled();
+    expect(screen.getByText('This photo could not be displayed.')).toBeVisible();
   });
 });
 

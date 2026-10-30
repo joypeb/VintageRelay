@@ -50,6 +50,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [chosenFile, setChosenFile] = useState<File | null>(null);
+  const [displayFailed, setDisplayFailed] = useState(false);
   const [uploadClosed, setUploadClosed] = useState(false);
   const [uploadNoAccess, setUploadNoAccess] = useState(false);
   const [uploadNotFound, setUploadNotFound] = useState(false);
@@ -112,6 +113,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   function handleUploadSuccess(photo: Photo) {
     revokePreview();
     setHeldPhoto(photo);
+    setDisplayFailed(false);
     setChosenFile(null);
     setPhotoError(null);
   }
@@ -190,6 +192,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   function handleRemove() {
     revokePreview();
     setHeldPhoto(null);
+    setDisplayFailed(false);
     setChosenFile(null);
     setPhotoError(null);
     clearUploadOverrides();
@@ -275,7 +278,12 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
       <VStack gap={4} padding={6}>
         <Heading level={1}>Register clothing</Heading>
         {renderFileControl(false)}
-        <img src={heldPhoto.url} alt="Uploaded clothing photo" />
+        <img
+          src={heldPhoto.url}
+          alt="Uploaded clothing photo"
+          onError={() => setDisplayFailed(true)}
+        />
+        {displayFailed && <Text type="body">This photo could not be displayed.</Text>}
         <Text type="body" role="status">
           Photo ready
         </Text>

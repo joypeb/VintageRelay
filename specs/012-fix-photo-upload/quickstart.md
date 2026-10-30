@@ -34,3 +34,8 @@
 
 - Frontend: `pnpm lint` 0 errors (4 pre-existing warnings), `pnpm typecheck` passed, `pnpm test` 28 files / 406 tests passed.
 - Backend: `uv run pytest` 270 passed.
+
+### US1 (T003)
+
+- Automated: `next-config.test.ts` and "US1 display fallback" Red before T003 and Green after; frontend 29 files / 408 tests passed, lint 0 errors, typecheck passed.
+- HTTP check (scenario 1, API level): backend on :8123 with `APP_BASE_URL=http://localhost:3123`, `next dev` on :3123. Uploaded a PNG; the returned `url` `http://localhost:3123/api/v1/photos/<id>` answered `200 image/png` through the app origin. Before the fix the app origin had no route for this path. The in-browser render on a phone width was not checked here.
