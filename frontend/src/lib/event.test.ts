@@ -6,6 +6,7 @@ import {
   getEventScreenState,
   getJoinFailure,
   getLookupFailure,
+  getPhotoUploadFailure,
   isClosed,
   isOrganizer,
   keepClosedEvent,
@@ -162,6 +163,24 @@ describe('getJoinFailure', () => {
     [new Error('x'), { kind: 'form', message: 'Something went wrong. Please try again.' }],
   ])('maps %s to the appropriate failure', (error, expected) => {
     expect(getJoinFailure(error)).toEqual(expected);
+  });
+});
+
+describe('getPhotoUploadFailure', () => {
+  it.each([
+    [new ApiError(413, 'FILE_TOO_LARGE', 'Photo exceeds the 10 MB limit.'), { kind: 'photoField', message: 'Photo exceeds the 10 MB limit.' }],
+    [new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Use a JPEG, PNG, or WebP photo.'), { kind: 'photoField', message: 'Use a JPEG, PNG, or WebP photo.' }],
+    [new ApiError(422, 'VALIDATION_ERROR', 'No file.'), { kind: 'photoField', message: 'No file.' }],
+    [new ApiError(400, 'BAD_REQUEST', 'Bad body.'), { kind: 'photoField', message: 'Bad body.' }],
+    [new ApiError(409, 'EVENT_CLOSED', 'Event closed.'), { kind: 'closed' }],
+    [new ApiError(401, 'UNAUTHENTICATED', 'Unauthenticated.'), { kind: 'no-access' }],
+    [new ApiError(404, 'NOT_FOUND', 'Not here.'), { kind: 'not-found', message: 'Not here.' }],
+    [new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'), { kind: 'form', message: 'Please check your network connection.' }],
+    [new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'), { kind: 'form', message: 'Server says no.' }],
+    [new ApiError(201, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.'), { kind: 'form', message: 'Something went wrong. Please try again.' }],
+    [new Error('x'), { kind: 'form', message: 'Something went wrong. Please try again.' }],
+  ])('maps %s to the appropriate failure', (error, expected) => {
+    expect(getPhotoUploadFailure(error)).toEqual(expected);
   });
 });
 

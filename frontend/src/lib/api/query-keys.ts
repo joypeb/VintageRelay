@@ -6,4 +6,5 @@ export const queryKeys = {
 
 export const mutationKeys = {
   closeEvent: (eventId: string) => ['events', eventId, 'close'] as const,
+  uploadPhoto: (eventId: string) => ['events', eventId, 'photos', 'upload'] as const,
 };

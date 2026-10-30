@@ -60,7 +60,7 @@ description: "Task list for feature 010-upload-photo-frontend"
 
 **Purpose**: Branch and baseline. Dependencies (TanStack Query, Astryx, Zod), `apiFetch` (with `FormData` handling and unreadable-2xx normalization), `useEventQuery`, `getEventScreenState`, `session.ts`, `routes.newItem()`, and `renderWithClient` already exist from features 002/004/006/008. No test infrastructure is needed.
 
-- [ ] T001 Create branch `feature/frontend-upload-photo` from `main` and confirm the baseline passes: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`. Then run `commit-reviewer` on the `specs/010-upload-photo-frontend/` documents and commit them (`.specify/feature.json` is gitignored) — agent: orchestrator → `commit-reviewer`
+- [X] T001 Create branch `feature/frontend-upload-photo` from `main` and confirm the baseline passes: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`. Then run `commit-reviewer` on the `specs/010-upload-photo-frontend/` documents and commit them (`.specify/feature.json` is gitignored) — agent: orchestrator → `commit-reviewer`
 
 ---
 
