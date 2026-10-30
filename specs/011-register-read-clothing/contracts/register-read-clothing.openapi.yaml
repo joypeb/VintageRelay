@@ -1,0 +1,202 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Register/Read Clothing (feature 011)
+  version: 0.1.0
+  description: >
+    Design contract derived from docs/plans/api/06-register-read-clothing.md and
+    the sole shared contract docs/rules/dev/common/api-contract.md. The
+    implemented FastAPI /openapi.json must match these semantics. All three
+    operations require a participant credential. Check order: validation (422)
+    -> credential (401) -> event/resource scope (404) -> state (409).
+paths:
+  /api/v1/events/{event_id}/clothing:
+    post:
+      operationId: registerClothing
+      summary: Register a garment with an uploaded photo
+      description: >
+        Order: body valid (else 422) -> credential valid (else 401) -> event
+        exists and credential belongs to it (else 404) -> event active (else
+        409 EVENT_CLOSED) -> photo exists, same event, uploaded by caller (else
+        404, identical body) -> photo unattached (else 409
+        PHOTO_ALREADY_ATTACHED). Description is trimmed before validation and
+        stored trimmed. Not idempotent: an exact repeat returns
+        PHOTO_ALREADY_ATTACHED.
+      tags: [events]
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ClothingCreate' }
+      responses:
+        '201':
+          description: Created garment (status available, contentVersion 1, analysis null).
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Clothing' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: EVENT_CLOSED or PHOTO_ALREADY_ATTACHED.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+    get:
+      operationId: listClothing
+      summary: List garments in the event
+      description: >
+        Newest first. Other participants' withdrawn garments are never listed;
+        the caller's own withdrawn garments are. No pagination (nextCursor is
+        always null). Allowed in closed events.
+      tags: [events]
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+        - $ref: '#/components/parameters/RequestId'
+        - name: ownership
+          in: query
+          required: false
+          schema: { type: string, enum: [mine, others, all], default: all }
+        - name: status
+          in: query
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/ClothingStatus' }
+      responses:
+        '200':
+          description: Visible garments.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Clothing' } }
+                  nextCursor: { type: 'null' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/clothing/{clothing_id}:
+    get:
+      operationId: getClothing
+      summary: Read one garment
+      description: >
+        Returns any garment in the caller's event, including other
+        participants' withdrawn garments. Missing, malformed, and other-event
+        IDs return the same 404. Allowed in closed events.
+      tags: [clothing]
+      parameters:
+        - name: clothing_id
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: The garment.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/Clothing' } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/InternalError' }
+security:
+  - participantToken: []
+components:
+  securitySchemes:
+    participantToken: { type: http, scheme: bearer }
+  parameters:
+    EventId:
+      name: event_id
+      in: path
+      required: true
+      description: Opaque string; malformed values produce the same 404.
+      schema: { type: string }
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Client correlation ID; echoed back in response and error body.
+      schema: { type: string }
+  headers:
+    RequestId:
+      description: Echoed request ID, equal to error.requestId.
+      schema: { type: string }
+  schemas:
+    ClothingStatus:
+      type: string
+      enum: [available, confirmed, withdrawn]
+    ClothingCreate:
+      type: object
+      additionalProperties: false
+      required: [photoId, description]
+      properties:
+        photoId: { type: string }
+        description: { type: string, minLength: 1, maxLength: 1000 }
+    Clothing:
+      type: object
+      required: [id, eventId, owner, isMine, photo, description, status, contentVersion, analysis, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        owner:
+          type: object
+          required: [participantId, displayName, isOrganizer]
+          properties:
+            participantId: { type: string }
+            displayName: { type: string }
+            isOrganizer: { type: boolean }
+        isMine: { type: boolean }
+        photo:
+          type: object
+          required: [id, url]
+          properties:
+            id: { type: string }
+            url: { type: string, format: uri }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/ClothingStatus' }
+        contentVersion: { type: integer, minimum: 1 }
+        analysis:
+          type: 'null'
+          description: Always null until the AI analysis feature adds ClothingAnalysis.
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: [object, 'null'] }
+            requestId: { type: string }
+  responses:
+    BadRequest:
+      description: BAD_REQUEST. Malformed JSON body.
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    Unauthenticated:
+      description: UNAUTHENTICATED. Missing or invalid participant token.
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    NotFound:
+      description: NOT_FOUND. Missing, malformed, or out-of-scope resource (existence hidden).
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    ValidationError:
+      description: VALIDATION_ERROR. details.fields lists each failing field and reason.
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+    InternalError:
+      description: INTERNAL_ERROR. Unexpected server error.
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
