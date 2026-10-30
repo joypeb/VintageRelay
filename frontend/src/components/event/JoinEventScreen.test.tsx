@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { JoinEventScreen } from '@/components/event/JoinEventScreen';
+import { ApiError } from '@/lib/api/api-error';
 import { queryKeys } from '@/lib/api/query-keys';
 import * as session from '@/lib/session';
 import { renderWithClient } from '@/test/render';
@@ -303,4 +304,280 @@ describe('US2 typed code', () => {
     ]);
     expect(await screen.findByText('Mangwon Swap')).toBeVisible();
   });
+});
+
+describe('US3 failures', () => {
+  const missing = "We couldn't find an event with this code. Check the code and try again.";
+  const taken = 'This display name is already taken.';
+  const generic = 'Something went wrong. Please try again.';
+  const closed = 'This event has ended. You can no longer join.';
+  const timeout =
+    'The connection timed out. Please try again. If your display name is now taken, choose a different one.';
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mocks.apiFetch.mockReset();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  function handledRejection(error: ApiError) {
+    const result = Promise.reject(error);
+    void result.catch(() => {});
+    return result;
+  }
+
+  async function submit(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByRole('textbox', { name: 'My display name' }), 'Joon');
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+  }
+  function form() {
+    const element = screen.getByRole('heading', { name: 'Join event' }).closest('form');
+    if (!element) throw new Error('Join form not found');
+    return within(element);
+  }
+  function expectClosed() {
+    expect(screen.getByText('Mangwon Swap')).toBeVisible();
+    expect(screen.getByText('Closed', { exact: true })).toBeVisible();
+    expect(form().getByText(closed)).toHaveAttribute('role', 'status');
+    expect(screen.getByRole('link', { name: 'Go to start' })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('textbox', { name: 'My display name' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join' })).not.toBeInTheDocument();
+  }
+  it('shows lookup not found on the retained code', async () => {
+    mocks.apiFetch.mockRejectedValue(new ApiError(404, 'NOT_FOUND', missing));
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    const code = screen.getByRole('textbox', { name: 'Entry code' });
+    await waitFor(() => expect(code).toHaveAccessibleDescription(missing));
+    expect(within(container).getByText(missing)).toBeVisible();
+    expect(code).toHaveValue('K7P3QX');
+    expect(screen.queryByRole('textbox', { name: 'My display name' })).not.toBeInTheDocument();
+  });
+  it.each([
+    new ApiError(0, 'NETWORK_ERROR', 'Please check your network connection.'),
+    new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'),
+  ])('shows lookup $code and retries with the retained code', async (error) => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockRejectedValueOnce(error).mockResolvedValueOnce(preview);
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    expect(await form().findByRole('alert')).toHaveTextContent(error.message);
+    expect(screen.getByRole('textbox', { name: 'Entry code' })).toHaveValue('K7P3QX');
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    expect(await screen.findByText('Mangwon Swap')).toBeVisible();
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(2);
+  });
+  it('shows a closed preview without allowing a join', async () => {
+    mocks.apiFetch.mockResolvedValue({ ...preview, status: 'closed' });
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await form().findByText(closed);
+    expectClosed();
+    expect(joinCalls()).toHaveLength(0);
+  });
+  it('keeps a taken name and allows another join attempt', async () => {
+    const user = userEvent.setup();
+    routeRequests(
+      handledRejection(new ApiError(409, 'DISPLAY_NAME_TAKEN', taken, { field: 'displayName' })),
+    );
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    const name = screen.getByRole('textbox', { name: 'My display name' });
+    await waitFor(() => expect(name).toHaveAccessibleDescription(taken));
+    expect(within(container).getByText(taken)).toBeVisible();
+    expect(name).toHaveValue('Joon');
+    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+    await waitFor(() => expect(joinCalls()).toHaveLength(2));
+  });
+  it('focuses the closed message when the event closes during joining', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(409, 'EVENT_CLOSED', closed)));
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    const status = await form().findByText(closed);
+    expectClosed();
+    expect(status).toHaveFocus();
+  });
+  it('returns to code entry with a join not found error', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(404, 'NOT_FOUND', 'Not here.')));
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    const code = screen.getByRole('textbox', { name: 'Entry code' });
+    await waitFor(() => expect(code).toHaveAccessibleDescription('Not here.'));
+    expect(within(container).getByText('Not here.')).toBeVisible();
+    expect(screen.queryByText('Mangwon Swap')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Find event' })).toBeVisible();
+  });
+  it('maps a join validation error to the name field', async () => {
+    const user = userEvent.setup();
+    routeRequests(
+      handledRejection(
+        new ApiError(422, 'VALIDATION_ERROR', 'Invalid', {
+          fields: [{ field: 'displayName', reason: 'too_long' }],
+        }),
+      ),
+    );
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    const message = 'Enter a display name of 1–30 characters.';
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'My display name' })).toHaveAccessibleDescription(
+        message,
+      ),
+    );
+    expect(within(container).getByText(message)).toBeVisible();
+  });
+  it('shows a generic form error for an unknown validation field', async () => {
+    const user = userEvent.setup();
+    routeRequests(
+      handledRejection(
+        new ApiError(422, 'VALIDATION_ERROR', 'Invalid', {
+          fields: [{ field: 'unknown', reason: 'too_long' }],
+        }),
+      ),
+    );
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    expect(await form().findByRole('alert')).toHaveTextContent(generic);
+  });
+  it.each([
+    ['timeout', new ApiError(0, 'NETWORK_ERROR', timeout), timeout],
+    ['server error', new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'), 'Server says no.'],
+    ['invalid success', null, generic],
+  ])('retains inputs and retries after join %s', async (_label, error, message) => {
+    const user = userEvent.setup();
+    const invalid = {
+      ...joined,
+      event: { ...joined.event, me: { ...joined.event.me, participantId: 'p1' } },
+    };
+    mocks.apiFetch.mockImplementation((_eventId: string | null, path: string) => {
+      if (path === '/entry-codes/K7P3QX') return Promise.resolve(preview);
+      if (path === '/events/e1/participants')
+        return error ? Promise.reject(error) : Promise.resolve(invalid);
+      throw new Error(`Unexpected path: ${path}`);
+    });
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    expect(await form().findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('textbox', { name: 'Entry code' })).toHaveValue('K7P3QX');
+    expect(screen.getByRole('textbox', { name: 'My display name' })).toHaveValue('Joon');
+    await user.click(screen.getByRole('button', { name: 'Join' }));
+    await waitFor(() => expect(joinCalls()).toHaveLength(2));
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+  it('clears the name field error when the name is edited', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(409, 'DISPLAY_NAME_TAKEN', taken)));
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    const name = screen.getByRole('textbox', { name: 'My display name' });
+    await waitFor(() => expect(name).toHaveAccessibleDescription(taken));
+    await user.type(name, 'a');
+    expect(name).not.toHaveAccessibleDescription(taken);
+    expect(within(container).queryByText(taken)).not.toBeInTheDocument();
+  });
+  it('clears the form error when the name is edited', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.')));
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    await form().findByRole('alert');
+    await user.type(screen.getByRole('textbox', { name: 'My display name' }), 'a');
+    expect(form().queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it('clears a name error immediately on code edit and on the next preview', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockImplementation((_eventId: string | null, path: string) =>
+      path.startsWith('/entry-codes/')
+        ? Promise.resolve(preview)
+        : Promise.reject(new ApiError(409, 'DISPLAY_NAME_TAKEN', taken)),
+    );
+    const { container } = renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: 'My display name' })).toHaveAccessibleDescription(
+        taken,
+      ),
+    );
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), 'A');
+    expect(within(container).queryByText(taken)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    const name = await screen.findByRole('textbox', { name: 'My display name' });
+    expect(name).not.toHaveAccessibleDescription(taken);
+    expect(within(container).queryByText(taken)).not.toBeInTheDocument();
+  });
+  it('clears a form error when the code is edited', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.')));
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    await form().findByRole('alert');
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), 'A');
+    expect(form().queryByRole('alert')).not.toBeInTheDocument();
+  });
+  it('returns to code entry when the code is edited after a join closes', async () => {
+    const user = userEvent.setup();
+    routeRequests(handledRejection(new ApiError(409, 'EVENT_CLOSED', closed)));
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submit(user);
+    await form().findByText(closed);
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), 'A');
+    expect(screen.queryByText(closed)).not.toBeInTheDocument();
+    expect(screen.queryByText('Closed', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByText('Mangwon Swap')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Find event' })).toBeVisible();
+  });
+  it.each(['success', 'lookup network', 'join 500', 'join exception', 'save failure'])(
+    'does not log secrets during %s (regression guard)',
+    async (scenario) => {
+      const user = userEvent.setup();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const warnings = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mocks.apiFetch.mockImplementation((_eventId: string | null, path: string) => {
+        if (path === '/entry-codes/K7P3QX')
+          return scenario === 'lookup network'
+            ? Promise.reject(new ApiError(0, 'NETWORK_ERROR', 'Network failure'))
+            : Promise.resolve(preview);
+        if (path === '/events/e1/participants') {
+          if (scenario === 'join 500')
+            return Promise.reject(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'));
+          if (scenario === 'join exception') return Promise.reject(new Error('boom'));
+          return Promise.resolve(joined);
+        }
+        throw new Error(`Unexpected path: ${path}`);
+      });
+      if (scenario === 'save failure')
+        vi.spyOn(session, 'saveEventSession').mockImplementation(() => {
+          throw new Error('storage full');
+        });
+      renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+      if (scenario === 'lookup network') {
+        await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1));
+        await waitFor(() =>
+          expect(screen.getByRole('button', { name: 'Find event' })).toBeEnabled(),
+        );
+      } else {
+        await submit(user);
+        await waitFor(() => expect(joinCalls()).toHaveLength(1));
+        if (scenario === 'success')
+          await waitFor(() => expect(mocks.replace).toHaveBeenCalledOnce());
+        if (scenario === 'save failure') await form().findByRole('alert');
+        if (scenario === 'join 500' || scenario === 'join exception')
+          await waitFor(() => expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled());
+      }
+      const logged = [...errors.mock.calls, ...warnings.mock.calls]
+        .flat()
+        .map((arg: unknown) =>
+          arg instanceof Error
+            ? `${arg.message} ${arg.stack ?? ''} ${JSON.stringify(arg)}`
+            : (JSON.stringify(arg) ?? String(arg)),
+        )
+        .join(' ');
+      expect(logged).not.toContain('SECRET-TOKEN');
+      expect(logged).not.toContain('K7P3QX');
+    },
+  );
 });

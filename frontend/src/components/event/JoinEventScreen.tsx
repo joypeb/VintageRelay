@@ -12,12 +12,14 @@ import { TextInput } from '@astryxdesign/core/TextInput';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { ApiError } from '@/lib/api/api-error';
 import {
   useEntryCodePreviewQuery,
   useIsEntryCodeLookupPending,
   useJoinEventMutation,
 } from '@/lib/api/events';
 import { queryKeys } from '@/lib/api/query-keys';
+import { getJoinFailure, getLookupFailure } from '@/lib/event';
 import { logger } from '@/lib/logger';
 import { routes } from '@/lib/routes';
 import { isStorageAvailable, saveEventSession } from '@/lib/session';
@@ -30,10 +32,18 @@ const STORAGE_UNAVAILABLE_MESSAGE =
 const SESSION_SAVE_FAILED_MESSAGE =
   "You joined, but this browser couldn't keep your event access. Free up browser storage or open a regular (non-private) window, then join again with a different display name.";
 
-type JoinView = 'codeEntry' | 'lookingUp' | 'active' | 'joining';
+const CLOSED_MESSAGE = 'This event has ended. You can no longer join.';
+
+type JoinView = 'closed' | 'codeEntry' | 'lookingUp' | 'active' | 'joining';
 
 function errorStatus(message: string | undefined) {
   return message === undefined ? undefined : ({ type: 'error', message } as const);
+}
+
+function withoutField(errors: JoinFieldErrors, field: keyof JoinFieldErrors): JoinFieldErrors {
+  const next = { ...errors };
+  delete next[field];
+  return next;
 }
 
 function initialSubmittedCode(initialCode: string | null): string | null {
@@ -52,13 +62,19 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   const [displayName, setDisplayName] = useState('');
   const [fieldErrors, setFieldErrors] = useState<JoinFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [closedOverride, setClosedOverride] = useState(false);
+  const closedRef = useRef<HTMLSpanElement>(null);
 
   const lookup = useEntryCodePreviewQuery(submittedCode);
   const lookupPending = useIsEntryCodeLookupPending();
   const preview = lookup.data;
 
+  const lookupFailure = lookup.isError ? getLookupFailure(lookup.error) : null;
+  const lookupError = lookup.isError ? lookup.error : null;
+
   let view: JoinView = 'codeEntry';
-  if (preview?.status === 'active') view = mutation.isPending ? 'joining' : 'active';
+  if (closedOverride || preview?.status === 'closed') view = 'closed';
+  else if (preview?.status === 'active') view = mutation.isPending ? 'joining' : 'active';
   else if (submittedCode !== null && lookup.isFetching && preview === undefined) view = 'lookingUp';
 
   useEffect(() => {
@@ -66,6 +82,40 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
     const input = formRef.current?.elements.namedItem('displayName');
     if (input instanceof HTMLInputElement) input.focus();
   }, [view]);
+
+  useEffect(() => {
+    if (lookupError !== null && !(lookupError instanceof ApiError)) {
+      logger.error('entry code lookup failed', lookupError);
+    }
+  }, [lookupError]);
+
+  useEffect(() => {
+    if (closedOverride) closedRef.current?.focus();
+  }, [closedOverride]);
+
+  function handleJoinError(err: unknown) {
+    if (!(err instanceof ApiError)) logger.error('join event failed', err);
+    const failure = getJoinFailure(err);
+    switch (failure.kind) {
+      case 'displayNameField':
+        setFieldErrors({ displayName: failure.message });
+        break;
+      case 'closed':
+        setClosedOverride(true);
+        break;
+      case 'codeNotFound':
+        setSubmittedCode(null);
+        setFieldErrors({ entryCode: failure.message });
+        break;
+      case 'fields':
+        setFieldErrors(failure.fieldErrors);
+        setFormError(failure.formError);
+        break;
+      case 'form':
+        setFormError(failure.message);
+        break;
+    }
+  }
 
   function join() {
     if (mutation.isPending || preview === undefined || submittedCode === null) return;
@@ -83,6 +133,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
     mutation.mutate(
       { eventId: preview.eventId, body: { entryCode: submittedCode, displayName: name.value } },
       {
+        onError: handleJoinError,
         onSuccess: ({ event, participantToken }) => {
           try {
             saveEventSession(event.id, { participantToken, participantId: event.me.participantId });
@@ -105,7 +156,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
       setFieldErrors({ entryCode: code.message });
       return;
     }
-    setFieldErrors({});
+    setFieldErrors((prev) => withoutField(prev, 'entryCode'));
     if (code.value === submittedCode && lookup.isError) void lookup.refetch();
     else setSubmittedCode(code.value);
   }
@@ -113,9 +164,9 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   function handleCodeChange(value: string) {
     setCodeInput(value);
     setSubmittedCode(null);
-    setFieldErrors(({ displayName: displayNameError }) =>
-      displayNameError === undefined ? {} : { displayName: displayNameError },
-    );
+    setFieldErrors({});
+    setFormError(null);
+    setClosedOverride(false);
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -125,6 +176,11 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   }
 
   const showPreview = preview !== undefined && (view === 'active' || view === 'joining');
+  const codeError =
+    fieldErrors.entryCode ??
+    (lookupFailure?.kind === 'codeField' ? lookupFailure.message : undefined);
+  const shownFormError =
+    formError ?? (lookupFailure?.kind === 'form' ? lookupFailure.message : null);
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
@@ -136,12 +192,27 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
           value={codeInput}
           onChange={handleCodeChange}
           isReadOnly={view === 'joining'}
-          status={errorStatus(fieldErrors.entryCode)}
+          status={errorStatus(codeError)}
           statusVariant="detached"
           autoComplete="off"
           size="lg"
           width="100%"
         />
+        {view === 'closed' && (
+          <VStack gap={2}>
+            {preview !== undefined && (
+              <>
+                <Text type="body">{preview.name}</Text>
+                <Badge label="Closed" variant="neutral" />
+              </>
+            )}
+            <Text type="body" as="p">
+              <span ref={closedRef} role="status" aria-live="polite" tabIndex={-1}>
+                {CLOSED_MESSAGE}
+              </span>
+            </Text>
+          </VStack>
+        )}
         {showPreview && (
           <VStack gap={2}>
             <Text type="body">{preview.name}</Text>
@@ -155,6 +226,8 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
             value={displayName}
             onChange={(value) => {
               setDisplayName(value);
+              setFieldErrors((prev) => withoutField(prev, 'displayName'));
+              setFormError(null);
             }}
             status={errorStatus(fieldErrors.displayName)}
             statusVariant="detached"
@@ -163,15 +236,17 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
             width="100%"
           />
         )}
-        {formError !== null && (
+        {shownFormError !== null && (
           <Text type="body" as="p">
             {/* Text doesn't forward role, so a minimal span carries the alert. */}
             <span role="alert" className="text-[var(--color-error)]">
-              {formError}
+              {shownFormError}
             </span>
           </Text>
         )}
-        {showPreview ? (
+        {view === 'closed' ? (
+          <Button label="Go to start" size="lg" width="100%" href={routes.landing()} />
+        ) : showPreview ? (
           <Button
             label="Join"
             type="submit"

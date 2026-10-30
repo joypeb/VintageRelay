@@ -265,7 +265,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Tests for User Story 3 (REQUIRED - write first) ⚠️
 
-- [ ] T018 [US3] Add a "US3 failures" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx` — agent: `test-author`:
+- [X] T018 [US3] Add a "US3 failures" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx` — agent: `test-author`:
   - Lookup `NOT_FOUND` with the server message "We couldn't find an event with this code. Check the code and try again." → the message is shown on the "Entry code" field, the code is kept, and there is no display name field.
   - Lookup `NETWORK_ERROR` and `INTERNAL_ERROR` ('Server says no.') → the message is in `role="alert"`, the code is kept, and [Find event] retries.
   - A closed preview (`status: 'closed'`) → the screen shows "Mangwon Swap", "Closed", and "This event has ended. You can no longer join." inside a `role="status"` element, plus a [Go to start] link to `/`. There is no "My display name" field, no [Join], and no join request.
@@ -284,7 +284,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] In `frontend/src/components/event/JoinEventScreen.tsx` — agent: `implementer-fe`:
+- [X] T019 [US3] In `frontend/src/components/event/JoinEventScreen.tsx` — agent: `implementer-fe`:
   - Map lookup errors with `getLookupFailure` and join errors with `getJoinFailure`:
     - `codeField`/`displayNameField`/`fields` → field errors
     - `closed` → `closedOverride = true`
