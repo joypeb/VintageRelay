@@ -169,3 +169,138 @@ describe('US1 join from link', () => {
     expect(joinCalls()).toHaveLength(0);
   });
 });
+
+describe('US2 typed code', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mocks.apiFetch.mockReset();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('starts with an empty code and no lookup or display name', () => {
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    expect(screen.getByRole('textbox', { name: 'Entry code' })).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Find event' })).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: 'My display name' })).not.toBeInTheDocument();
+    expect(mocks.apiFetch).not.toHaveBeenCalled();
+  });
+
+  it.each(['', '   '])('validates a blank code and clears the error when edited', async (code) => {
+    const user = userEvent.setup();
+    const { container } = renderWithClient(<JoinEventScreen initialCode={null} />);
+    const input = screen.getByRole('textbox', { name: 'Entry code' });
+    if (code) await user.type(input, code);
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    await waitFor(() => expect(input).toHaveAccessibleDescription('Enter the entry code.'));
+    expect(within(container).getByText('Enter the entry code.')).toBeVisible();
+    expect(mocks.apiFetch).not.toHaveBeenCalled();
+    await user.type(input, 'A');
+    expect(input).not.toHaveAccessibleDescription('Enter the entry code.');
+    expect(within(container).queryByText('Enter the entry code.')).not.toBeInTheDocument();
+  });
+
+  it.each(['click', 'Enter'])('looks up the trimmed code on %s', async (method) => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockResolvedValue(preview);
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), '  k7p3qx ');
+    if (method === 'click') await user.click(screen.getByRole('button', { name: 'Find event' }));
+    else await user.keyboard('{Enter}');
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1));
+    expect(mocks.apiFetch.mock.calls[0]?.[1]).toBe('/entry-codes/k7p3qx');
+    expect(await screen.findByText('Mangwon Swap')).toBeVisible();
+    expect(screen.getByText('Active', { exact: true })).toBeVisible();
+  });
+
+  it('does not start a second lookup when Find event is double-clicked', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockImplementation(() => new Promise(() => {}));
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), 'AAA');
+    await user.dblClick(screen.getByRole('button', { name: 'Find event' }));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1));
+    expect(mocks.apiFetch.mock.calls[0]?.[1]).toBe('/entry-codes/AAA');
+  });
+
+  it('clears the preview when the entry code is edited', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockResolvedValue(preview);
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    const input = screen.getByRole('textbox', { name: 'Entry code' });
+    await user.type(input, 'AAA');
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    expect(await screen.findByText('Mangwon Swap')).toBeVisible();
+    await user.type(input, 'B');
+    expect(screen.queryByText('Mangwon Swap')).not.toBeInTheDocument();
+    expect(screen.queryByText('Active', { exact: true })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'My display name' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Find event' })).toBeVisible();
+  });
+
+  it('discards stale results and serializes lookups after editing a pending code', async () => {
+    const user = userEvent.setup();
+    let resolveFirst!: (value: typeof preview) => void;
+    let resolveSecond!: (value: typeof preview) => void;
+    let pending = 0;
+    let maxPending = 0;
+    mocks.apiFetch.mockImplementation((_eventId: string | null, path: string) => {
+      pending += 1;
+      maxPending = Math.max(maxPending, pending);
+      return new Promise<typeof preview>((resolve) => {
+        const finish = (value: typeof preview) => {
+          pending -= 1;
+          resolve(value);
+        };
+        if (path === '/entry-codes/AAA') resolveFirst = finish;
+        else if (path === '/entry-codes/BBB') resolveSecond = finish;
+        else throw new Error(`Unexpected path: ${path}`);
+      });
+    });
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    const input = screen.getByRole('textbox', { name: 'Entry code' });
+    await user.type(input, 'AAA');
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1));
+    await user.clear(input);
+    await user.type(input, 'BBB');
+    const find = screen.getByRole('button', { name: 'Find event' });
+    expect(
+      find.hasAttribute('disabled') ||
+        find.getAttribute('aria-disabled') === 'true' ||
+        find.getAttribute('aria-busy') === 'true',
+    ).toBe(true);
+    await user.click(find);
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
+    await act(async () => resolveFirst({ ...preview, name: 'AAA event' }));
+    expect(screen.queryByText('AAA event')).not.toBeInTheDocument();
+    await waitFor(() => expect(find).toBeEnabled());
+    await user.click(find);
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(2));
+    expect(mocks.apiFetch.mock.calls[1]?.[1]).toBe('/entry-codes/BBB');
+    expect(maxPending).toBe(1);
+    await act(async () => resolveSecond({ ...preview, name: 'BBB event' }));
+    expect(await screen.findByText('BBB event')).toBeVisible();
+  });
+
+  it('retries the same code after a failed lookup', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockRejectedValueOnce(new Error('lookup failed')).mockResolvedValueOnce(preview);
+    renderWithClient(<JoinEventScreen initialCode={null} />);
+    await user.type(screen.getByRole('textbox', { name: 'Entry code' }), 'AAA');
+    const find = screen.getByRole('button', { name: 'Find event' });
+    await user.click(find);
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(find).toBeEnabled());
+    await user.click(find);
+    await waitFor(() => expect(mocks.apiFetch).toHaveBeenCalledTimes(2));
+    expect(mocks.apiFetch.mock.calls.map((call) => call[1])).toEqual([
+      '/entry-codes/AAA',
+      '/entry-codes/AAA',
+    ]);
+    expect(await screen.findByText('Mangwon Swap')).toBeVisible();
+  });
+});

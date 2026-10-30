@@ -48,7 +48,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   const mutation = useJoinEventMutation();
   const formRef = useRef<HTMLFormElement>(null);
   const [codeInput, setCodeInput] = useState(initialCode?.trim() ?? '');
-  const [submittedCode] = useState(() => initialSubmittedCode(initialCode));
+  const [submittedCode, setSubmittedCode] = useState(() => initialSubmittedCode(initialCode));
   const [displayName, setDisplayName] = useState('');
   const [fieldErrors, setFieldErrors] = useState<JoinFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -98,9 +98,30 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
     );
   }
 
+  function findEvent() {
+    if (lookupPending) return;
+    const code = validateEntryCode(codeInput);
+    if (!code.ok) {
+      setFieldErrors({ entryCode: code.message });
+      return;
+    }
+    setFieldErrors({});
+    if (code.value === submittedCode && lookup.isError) void lookup.refetch();
+    else setSubmittedCode(code.value);
+  }
+
+  function handleCodeChange(value: string) {
+    setCodeInput(value);
+    setSubmittedCode(null);
+    setFieldErrors(({ displayName: displayNameError }) =>
+      displayNameError === undefined ? {} : { displayName: displayNameError },
+    );
+  }
+
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (view === 'active') join();
+    else if (view === 'codeEntry') findEvent();
   }
 
   const showPreview = preview !== undefined && (view === 'active' || view === 'joining');
@@ -113,7 +134,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
           label="Entry code"
           htmlName="entryCode"
           value={codeInput}
-          onChange={setCodeInput}
+          onChange={handleCodeChange}
           isReadOnly={view === 'joining'}
           status={errorStatus(fieldErrors.entryCode)}
           statusVariant="detached"

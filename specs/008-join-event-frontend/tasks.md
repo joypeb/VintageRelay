@@ -232,7 +232,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Tests for User Story 2 (REQUIRED - write first) ⚠️
 
-- [ ] T016 [US2] Add a "US2 typed code" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx`, rendering with `initialCode={null}` — agent: `test-author`:
+- [X] T016 [US2] Add a "US2 typed code" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx`, rendering with `initialCode={null}` — agent: `test-author`:
   - (regression guard, already established by T013/T014) The screen shows an empty "Entry code" field, a [Find event] button, no "My display name" field, and no lookup call.
   - Clicking [Find event] with `''` or `'   '` shows "Enter the entry code." and makes no lookup call. Typing in the field afterwards removes that message.
   - Typing `'  k7p3qx '` and clicking [Find event] calls the lookup once with `k7p3qx`, then shows the preview. Pressing Enter in the code field does the same.
@@ -247,7 +247,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] Extend `frontend/src/components/event/JoinEventScreen.tsx` with the `codeEntry` view — agent: `implementer-fe`:
+- [X] T017 [US2] Extend `frontend/src/components/event/JoinEventScreen.tsx` with the `codeEntry` view — agent: `implementer-fe`:
   - [Find event] validates with `validateEntryCode`, and is busy/disabled while `useIsEntryCodeLookupPending()`. If the value equals `submittedCode` and the query errored, call `refetch()`; otherwise set `submittedCode`.
   - The form submits [Find event] when there is no preview.
   - Code `onChange` sets `submittedCode` to `null` and clears the code field error only. The other resets come in later cycles with their tests.
