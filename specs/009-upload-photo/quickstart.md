@@ -43,7 +43,7 @@ Assume a running server with an active event and a participant token
 All scenarios above match the contract file; every check in Common Commands
 passes; the migration creates `photos` on an empty database (`alembic upgrade head`).
 
-## Implementation Evidence
+## Implementation Evidence (T001 baseline)
 
 ### T001 baseline (branch `009-upload-photo`, pre-implementation)
 
@@ -56,3 +56,9 @@ uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy ap
 - `ruff check`: All checks passed
 - `mypy app`: Success, no issues in 30 source files
 - `pytest -q`: 219 passed, 1 warning (pre-existing SAWarning on expression-index reflection in `test_migrations.py:33`)
+
+## Implementation Evidence (T019)
+
+- Backend: `ruff format --check .` (82 files), `ruff check --no-cache .` (all pass), `mypy app` (36 files, no issues), `pytest -q` (270 passed, 1 pre-existing SAWarning).
+- Manual validation (`/tmp/qs_validate.py`, real server on fresh SQLite via `alembic upgrade head`, `PHOTO_DIR` on disk): **23/23 scenarios passed** — create/join 201; upload 201 with exact Photo keys and public URL; public GET returns stored bytes with stored content type; stored JPEG transposed upright with empty EXIF; repeat upload yields distinct IDs; 401 (missing/bad token), identical 404s (missing/malformed/foreign event), 400 garbage body, 422 missing/empty file, 413 with `maxBytes`, 415 with `allowedTypes` (disguised + HEIC), 409 on closed event, 404 for foreign-valid token on closed event; photo row count and directory listing unchanged after all rejections.
+- Frontend (unchanged by this feature, run in main checkout on identical code): `pnpm lint` pass, `pnpm typecheck` pass, `pnpm test` 23 files / 340 tests passed.

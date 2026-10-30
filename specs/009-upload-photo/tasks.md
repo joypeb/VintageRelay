@@ -91,8 +91,8 @@ cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && 
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
-- [ ] T019 Run the full backend checks (reruns every test above, including streaming-abort, EXIF, atomicity, close-during-upload ordering, and logging); then run the [quickstart](quickstart.md) manual scenarios against a fresh SQLite file and record actual results in `specs/009-upload-photo/quickstart.md` "Implementation Evidence". Frontend is unchanged by this feature; run `cd frontend && pnpm lint && pnpm typecheck && pnpm test` once to confirm no regression and record results.
-- [ ] T020 Update `specs/009-upload-photo/spec.md` Assumptions only if implementation revealed a deviation (e.g. the exact Starlette multipart exception type), then review and commit documentation changes under Execution Rules.
+- [X] T019 Run the full backend checks (reruns every test above, including streaming-abort, EXIF, atomicity, close-during-upload ordering, and logging); then run the [quickstart](quickstart.md) manual scenarios against a fresh SQLite file and record actual results in `specs/009-upload-photo/quickstart.md` "Implementation Evidence". Frontend is unchanged by this feature; run `cd frontend && pnpm lint && pnpm typecheck && pnpm test` once to confirm no regression and record results.
+- [X] T020 Update `specs/009-upload-photo/spec.md` Assumptions only if implementation revealed a deviation (e.g. the exact Starlette multipart exception type), then review and commit documentation changes under Execution Rules.
 
 ## Dependencies & Execution Order
 
