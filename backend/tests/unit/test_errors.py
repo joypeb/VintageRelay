@@ -54,3 +54,13 @@ def test_unsupported_photo_type_error_has_expected_contract() -> None:
     assert error.status_code == 415
     assert error.code == "UNSUPPORTED_MEDIA_TYPE"
     assert error.details == {"allowedTypes": ["image/jpeg", "image/png", "image/webp"]}
+
+
+def test_photo_already_attached_error_has_expected_contract() -> None:
+    error = errors.PhotoAlreadyAttachedError()
+
+    assert isinstance(error, errors.ConflictError)
+    assert error.status_code == 409
+    assert error.code == "PHOTO_ALREADY_ATTACHED"
+    assert error.message and error.message.isascii()
+    assert error.details == {}

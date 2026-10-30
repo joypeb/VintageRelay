@@ -1,15 +1,30 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.deps import CurrentParticipant, DbDep, EventServiceDep, Organizer, SettingsDep
+from app.api.deps import (
+    CurrentParticipant,
+    DbDep,
+    EventServiceDep,
+    Organizer,
+    SettingsDep,
+    bearer_scheme,
+    get_current_participant,
+)
 from app.api.errors import ERROR_RESPONSES, error_responses
+from app.domain.enums import ClothingStatus, Ownership
+from app.schemas.clothing import Clothing, ClothingCreate, ClothingList
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
+from app.services.clothing import ClothingService
 from app.services.photo import PhotoService
 
 router = APIRouter(prefix="/events", tags=["events"])
+
+# Literal (not Ownership) so OpenAPI inlines the enum with its default instead of a $ref.
+OwnershipFilter = Literal["mine", "others", "all"]
 
 
 @router.post(
@@ -101,3 +116,49 @@ def upload_photo(
             [{"loc": ("body", "file"), "msg": "Field required.", "type": "missing"}]
         )
     return PhotoService(db, settings).upload(event_id, me, file)
+
+
+@router.post(
+    "/{event_id}/clothing",
+    status_code=201,
+    operation_id="registerClothing",
+    summary="Register a garment with an uploaded photo",
+    responses={
+        201: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(400, 401, 404, 409, 422, 500),
+    },
+)
+def register_clothing(
+    event_id: str,
+    body: ClothingCreate,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Clothing:
+    participant = get_current_participant(event_id, db, credentials)
+    return ClothingService(db, settings).register(event_id, participant, body)
+
+
+@router.get(
+    "/{event_id}/clothing",
+    operation_id="listClothing",
+    summary="List garments in the event",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 422, 500),
+    },
+)
+def list_clothing(
+    event_id: str,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    ownership: Annotated[OwnershipFilter, Query()] = "all",
+    status: Annotated[list[ClothingStatus] | None, Query()] = None,
+) -> ClothingList:
+    participant = get_current_participant(event_id, db, credentials)
+    return ClothingService(db, settings).list(event_id, participant, Ownership(ownership), status)

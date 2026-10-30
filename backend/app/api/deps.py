@@ -30,8 +30,7 @@ bearer_scheme = HTTPBearer(
 )
 
 
-def get_current_participant(
-    event_id: str,
+def get_token_participant(
     db: DbDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
 ) -> Participant:
@@ -43,9 +42,21 @@ def get_current_participant(
         )
         if participant is None:
             raise UnauthenticatedError()
-        if participant.event_id != event_id:
-            raise NotFoundError()
         return participant
+
+
+TokenParticipant = Annotated[Participant, Depends(get_token_participant)]
+
+
+def get_current_participant(
+    event_id: str,
+    db: DbDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Participant:
+    participant = get_token_participant(db, credentials)
+    if participant.event_id != event_id:
+        raise NotFoundError()
+    return participant
 
 
 CurrentParticipant = Annotated[Participant, Depends(get_current_participant)]

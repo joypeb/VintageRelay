@@ -20,6 +20,7 @@ from app.domain.photos import (
     MAX_PHOTO_BYTES,
     extension_for_format,
     normalize_image,
+    photo_url,
     verify_image,
 )
 from app.models.participant import Participant
@@ -112,7 +113,7 @@ class PhotoService:
         )
         return PhotoSchema(
             id=photo.id,
-            url=f"{self.settings.app_base_url}/api/v1/photos/{photo.id}",
+            url=photo_url(self.settings.app_base_url, photo.id),
             content_type=photo.content_type,
             size_bytes=photo.size_bytes,
             created_at=photo.created_at,

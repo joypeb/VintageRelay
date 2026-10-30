@@ -173,3 +173,50 @@ def test_join_event_openapi_describes_public_operation(client):
     assert responses["201"]["content"]["application/json"]["schema"] == {
         "$ref": "#/components/schemas/EventSession"
     }
+
+
+def test_register_clothing_openapi_describes_request_and_responses(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/clothing"]["post"]
+    assert operation["operationId"] == "registerClothing"
+    assert "HTTPValidationError" not in json.dumps(operation)
+    schema = resolve(document, operation["requestBody"]["content"]["application/json"]["schema"])
+    assert set(schema["required"]) == {"photoId", "description"}
+    assert schema["additionalProperties"] is False
+    assert schema["properties"]["description"]["minLength"] == 1
+    assert schema["properties"]["description"]["maxLength"] == 1000
+    responses = operation["responses"]
+    assert {"201", "400", "401", "404", "409", "422", "500"} <= responses.keys()
+    for status in ("201", "400", "401", "404", "409", "422", "500"):
+        assert "X-Request-ID" in responses[status]["headers"]
+        if status != "201":
+            assert responses[status]["content"]["application/json"]["schema"] == {
+                "$ref": "#/components/schemas/ErrorResponse"
+            }
+
+
+def test_list_clothing_openapi_describes_filters_and_responses(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/events/{event_id}/clothing"]["get"]
+    assert operation["operationId"] == "listClothing"
+    assert {"200", "401", "404", "422", "500"} <= operation["responses"].keys()
+    params = {parameter["name"]: parameter for parameter in operation["parameters"]}
+    ownership = resolve(document, params["ownership"]["schema"])
+    assert set(ownership["enum"]) == {"mine", "others", "all"}
+    assert ownership["default"] == "all"
+    status = resolve(document, params["status"]["schema"])
+    if "anyOf" in status:
+        status = next(option for option in status["anyOf"] if option.get("type") == "array")
+    assert status["type"] == "array"
+    assert set(resolve(document, status["items"])["enum"]) == {
+        "available",
+        "confirmed",
+        "withdrawn",
+    }
+
+
+def test_get_clothing_openapi_describes_responses(client):
+    document = client.get("/openapi.json").json()
+    operation = document["paths"]["/api/v1/clothing/{clothing_id}"]["get"]
+    assert operation["operationId"] == "getClothing"
+    assert {"200", "401", "404", "500"} <= operation["responses"].keys()

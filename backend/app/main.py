@@ -9,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.errors import register_error_handlers
-from app.api.routers import entry_codes, events, photos
+from app.api.routers import clothing, entry_codes, events, photos
 from app.core.config import Settings, get_settings
 from app.core.db import Db
 from app.core.logging import disable_access_log, request_context, setup_logging
@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
     api_router.include_router(events.router)
     api_router.include_router(entry_codes.router)
     api_router.include_router(photos.router)
+    api_router.include_router(clothing.router)
     app.include_router(api_router)
 
     def custom_openapi() -> dict[str, Any]:
@@ -68,6 +69,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             ("/api/v1/events/{event_id}", "get"),
             ("/api/v1/events/{event_id}/close", "post"),
             ("/api/v1/photos/{photo_id}", "get"),
+            ("/api/v1/clothing/{clothing_id}", "get"),
         ):
             responses = schema["paths"][path][method]["responses"]
             validation_ref = (

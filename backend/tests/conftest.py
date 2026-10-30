@@ -85,3 +85,34 @@ def close_event(db: Db, event_id: str, closed_at: datetime) -> None:
             .where(Event.id == event_id)
             .values(status=EventStatus.CLOSED, closed_at=closed_at)
         )
+
+
+@pytest.fixture
+def registration_context(client, db, tmp_path):
+    from io import BytesIO
+
+    from PIL import Image
+
+    client.app.state.settings.photo_dir = str(tmp_path / "photos")
+
+    def create_event(name):
+        response = client.post(
+            "/api/v1/events", json={"name": name, "organizerDisplayName": "Mina"}
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def upload(event_id, token):
+        buffer = BytesIO()
+        Image.new("RGB", (2, 3), "red").save(buffer, format="JPEG")
+        response = client.post(
+            f"/api/v1/events/{event_id}/photos",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("photo.jpg", buffer.getvalue(), "image/jpeg")},
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    event = create_event("Market")
+    participant, token = add_participant(db, event["event"]["id"], "Joon")
+    return event, participant, token, create_event, upload

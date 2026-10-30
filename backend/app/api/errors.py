@@ -71,7 +71,8 @@ def register_error_handlers(app: FastAPI) -> None:
         seen_fields: set[str] = set()
         for error in errors:
             error_type = error["type"]
-            field = str(error["loc"][-1])
+            # List item indexes (e.g. ("query", "status", 0)) report the parameter.
+            field = str(next(part for part in reversed(error["loc"]) if not isinstance(part, int)))
             if error_type == "extra_forbidden":
                 reason = ValidationReason.UNKNOWN_FIELD
             else:

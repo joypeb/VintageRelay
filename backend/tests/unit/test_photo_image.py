@@ -4,7 +4,13 @@ from io import BytesIO
 import pytest
 
 from app.domain.errors import UnsupportedPhotoTypeError
-from app.domain.photos import MAX_PHOTO_BYTES, extension_for_format, normalize_image, verify_image
+from app.domain.photos import (
+    MAX_PHOTO_BYTES,
+    extension_for_format,
+    normalize_image,
+    photo_url,
+    verify_image,
+)
 
 requires_pillow = pytest.mark.xfail(
     importlib.util.find_spec("PIL") is None,
@@ -70,3 +76,9 @@ def test_normalize_image_rotates_and_removes_exif_including_gps() -> None:
 )
 def test_extension_for_format_returns_expected_extension(content_type: str, extension: str) -> None:
     assert extension_for_format(content_type) == extension
+
+
+def test_photo_url_uses_app_base_url_and_photo_id() -> None:
+    assert (
+        photo_url("https://api.example.test", "abc") == "https://api.example.test/api/v1/photos/abc"
+    )
