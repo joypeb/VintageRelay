@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -21,6 +22,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         disable_access_log()
+        os.makedirs(settings.photo_dir, exist_ok=True)
         if db is not None:
             yield
             return

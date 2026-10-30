@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:3000"
     log_level: str = "INFO"
     log_format: Literal["text", "json"] = "text"
+    photo_dir: str = "data/photos"
 
     @field_validator("app_base_url")
     @classmethod

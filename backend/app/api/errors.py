@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic.alias_generators import to_camel
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.formparsers import MultiPartException
 from starlette.responses import JSONResponse
 
 from app.core.logging import mask_path, request_id_var
@@ -20,6 +21,8 @@ _ERROR_DESCRIPTIONS = {
     403: "Participant does not have permission to perform this action.",
     404: "Resource not found.",
     409: "State conflict with the current resource.",
+    413: "Uploaded file exceeds the size limit.",
+    415: "File type not allowed.",
     422: "Field validation failed.",
     500: "A temporary error occurred.",
 }
@@ -99,6 +102,12 @@ def register_error_handlers(app: FastAPI) -> None:
                 _HTTP_CODES.get(exc.status_code, "BAD_REQUEST"), "Unable to process this request."
             ),
             status_code=exc.status_code,
+        )
+
+    @app.exception_handler(MultiPartException)
+    async def multipart_error(request: Request, exc: MultiPartException) -> JSONResponse:
+        return JSONResponse(
+            _body("BAD_REQUEST", "Unable to process this request."), status_code=400
         )
 
     @app.exception_handler(Exception)

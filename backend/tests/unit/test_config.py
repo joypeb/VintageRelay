@@ -1,9 +1,11 @@
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.config import Settings
+from app.main import create_app
 
 
 @pytest.fixture(autouse=True)
@@ -51,3 +53,29 @@ def test_dotenv_in_working_directory_is_not_read(
     settings = Settings()
 
     assert settings.log_format == "text"
+
+
+def test_photo_dir_defaults_under_data(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PHOTO_DIR", raising=False)
+
+    assert Path(Settings().photo_dir).parts[0] == "data"
+
+
+def test_photo_dir_can_be_overridden(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    photo_dir = tmp_path / "photos"
+    monkeypatch.setenv("PHOTO_DIR", str(photo_dir))
+
+    assert Path(Settings().photo_dir) == photo_dir
+
+
+def test_application_startup_creates_photo_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    photo_dir = tmp_path / "nested" / "photos"
+    monkeypatch.setenv("PHOTO_DIR", str(photo_dir))
+    app = create_app(Settings())
+
+    assert not photo_dir.exists()
+    with TestClient(app) as client:
+        assert photo_dir.is_dir()
+        assert client.get("/api/v1/health").status_code == 200
