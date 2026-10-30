@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.core.config import Settings
 from app.core.db import Db
-from app.domain.enums import ClothingStatus, EventStatus, Ownership
+from app.domain.enums import ClothingCategory, ClothingStatus, EventStatus, Ownership
 from app.domain.errors import EventClosedError, NotFoundError, PhotoAlreadyAttachedError
 from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
@@ -17,7 +17,13 @@ from app.repositories import clothing as clothing_repo
 from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
 from app.schemas.clothing import Clothing as ClothingSchema
-from app.schemas.clothing import ClothingCreate, ClothingList, ClothingOwner, ClothingPhoto
+from app.schemas.clothing import (
+    ClothingCreate,
+    ClothingList,
+    ClothingOwner,
+    ClothingPhoto,
+    Measurements,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,13 +65,24 @@ class ClothingService:
                     raise PhotoAlreadyAttachedError()
                 ordered.append(photo)
             now = self.clock()
+            measurements = body.measurements
             clothing = ClothingModel(
                 id=self.clothing_id_generator(),
                 event_id=event.id,
                 owner_id=participant.id,
+                title=body.title,
+                category=body.category,
                 description=body.description,
                 status=ClothingStatus.AVAILABLE,
                 content_version=1,
+                measure_total_length=measurements.total_length if measurements else None,
+                measure_chest=measurements.chest if measurements else None,
+                measure_shoulder=measurements.shoulder if measurements else None,
+                measure_sleeve=measurements.sleeve if measurements else None,
+                measure_waist=measurements.waist if measurements else None,
+                measure_hem=measurements.hem if measurements else None,
+                measure_inseam=measurements.inseam if measurements else None,
+                measure_thigh=measurements.thigh if measurements else None,
                 created_at=now,
                 updated_at=now,
             )
@@ -81,12 +98,15 @@ class ClothingService:
                 photos=ordered,
             )
             description_length = len(clothing.description)
+            title_length = len(clothing.title)
         logger.info(
             "clothing_registered",
             extra={
                 "clothing_id": clothing.id,
                 "event_id": event.id,
                 "description_length": description_length,
+                "title_length": title_length,
+                "category": clothing.category,
             },
         )
         return response
@@ -139,6 +159,16 @@ class ClothingService:
         viewer_id: str,
         photos: Sequence[PhotoModel],
     ) -> ClothingSchema:
+        measure_values = (
+            clothing.measure_total_length,
+            clothing.measure_chest,
+            clothing.measure_shoulder,
+            clothing.measure_sleeve,
+            clothing.measure_waist,
+            clothing.measure_hem,
+            clothing.measure_inseam,
+            clothing.measure_thigh,
+        )
         return ClothingSchema(
             id=clothing.id,
             event_id=clothing.event_id,
@@ -156,6 +186,22 @@ class ClothingService:
                 for photo in photos
             ],
             description=clothing.description,
+            category=ClothingCategory(clothing.category),
+            title=clothing.title,
+            measurements=(
+                Measurements(
+                    total_length=clothing.measure_total_length,
+                    chest=clothing.measure_chest,
+                    shoulder=clothing.measure_shoulder,
+                    sleeve=clothing.measure_sleeve,
+                    waist=clothing.measure_waist,
+                    hem=clothing.measure_hem,
+                    inseam=clothing.measure_inseam,
+                    thigh=clothing.measure_thigh,
+                )
+                if any(value is not None for value in measure_values)
+                else None
+            ),
             status=ClothingStatus(clothing.status),
             content_version=clothing.content_version,
             analysis=None,

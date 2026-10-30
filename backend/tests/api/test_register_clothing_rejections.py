@@ -65,12 +65,57 @@ def test_registration_validation_precedes_auth(
     response = client.post(
         f"/api/v1/events/{event['event']['id']}/clothing",
         headers=auth(token) if authenticated else {},
-        json=body,
+        json={"category": "top", "title": "Jacket", **body},
     )
     error = assert_rejected(response, db, before, 422, "VALIDATION_ERROR")
     assert {"field": field, "reason": reason} in error["details"]["fields"]
     if field == "photoIds":
         assert error["details"]["fields"] == [{"field": field, "reason": reason}]
+
+
+@pytest.mark.parametrize(
+    ("changes", "missing", "field", "reason"),
+    [
+        ({}, "category", "category", "required"),
+        ({}, "title", "title", "required"),
+        ({"category": "shoes"}, None, "category", "invalid"),
+        ({"title": "   "}, None, "title", "required"),
+        ({"title": "x" * 101}, None, "title", "too_long"),
+        ({"title": "Jacket\x00"}, None, "title", "invalid_characters"),
+        ({"extra": True}, None, "extra", "unknown_field"),
+        (
+            {"category": "bottom", "measurements": {"sleeve": 20}},
+            None,
+            "measurements.sleeve",
+            "invalid",
+        ),
+        ({"measurements": {"waist": 20}}, None, "measurements.waist", "invalid"),
+        ({"category": "other", "measurements": {"chest": 20}}, None, "measurements", "invalid"),
+        ({"measurements": {"chest": 0}}, None, "measurements.chest", "invalid"),
+        ({"measurements": {"chest": -1}}, None, "measurements.chest", "invalid"),
+        ({"measurements": {"chest": 121}}, None, "measurements.chest", "invalid"),
+        ({"measurements": {"chest": "wide"}}, None, "measurements.chest", "invalid"),
+        ({"measurements": {"chest": "21"}}, None, "measurements.chest", "invalid"),
+        ({"measurements": {"unknown": 20}}, None, "measurements.unknown", "unknown_field"),
+    ],
+)
+@pytest.mark.parametrize("authenticated", [True, False])
+def test_registration_rejects_invalid_category_title_and_measurements(
+    client, db, registration_context, changes, missing, field, reason, authenticated
+):
+    event, _, token, _, _ = registration_context
+    body = {"photoIds": ["id"], "category": "top", "title": "Jacket", "description": "Jacket"}
+    body.update(changes)
+    if missing:
+        del body[missing]
+    before = state(db)
+    response = client.post(
+        f"/api/v1/events/{event['event']['id']}/clothing",
+        headers=auth(token) if authenticated else {},
+        json=body,
+    )
+    error = assert_rejected(response, db, before, 422, "VALIDATION_ERROR")
+    assert {"field": field, "reason": reason} in error["details"]["fields"]
 
 
 def test_registration_rejects_malformed_json(client, db, registration_context):
@@ -91,7 +136,7 @@ def test_registration_requires_authentication(client, db, registration_context, 
     response = client.post(
         f"/api/v1/events/{event['event']['id']}/clothing",
         headers=auth(token) if token else {},
-        json={"photoIds": ["id"], "description": "Jacket"},
+        json={"photoIds": ["id"], "category": "top", "title": "Jacket", "description": "Jacket"},
     )
     assert_rejected(response, db, before, 401, "UNAUTHENTICATED")
 
@@ -106,7 +151,12 @@ def test_registration_hides_inaccessible_events(client, db, registration_context
         response = client.post(
             f"/api/v1/events/{event_id}/clothing",
             headers=auth(token),
-            json={"photoIds": [photo["id"]], "description": "Jacket"},
+            json={
+                "photoIds": [photo["id"]],
+                "category": "top",
+                "title": "Jacket",
+                "description": "Jacket",
+            },
         )
         error = assert_rejected(response, db, before, 404, "NOT_FOUND").copy()
         error.pop("requestId")
@@ -128,6 +178,8 @@ def test_registration_rejects_closed_event_before_photo_lookup(
         headers=auth(token),
         json={
             "photoIds": [str(uuid4()) if unknown_photo else photo["id"]],
+            "category": "top",
+            "title": "Jacket",
             "description": "Jacket",
         },
     )
@@ -147,7 +199,12 @@ def test_registration_hides_inaccessible_photos(client, db, registration_context
         response = client.post(
             f"/api/v1/events/{event_id}/clothing",
             headers=auth(token),
-            json={"photoIds": [valid["id"], photo_id], "description": "Jacket"},
+            json={
+                "photoIds": [valid["id"], photo_id],
+                "category": "top",
+                "title": "Jacket",
+                "description": "Jacket",
+            },
         )
         error = assert_rejected(response, db, before, 404, "NOT_FOUND").copy()
         error.pop("requestId")
@@ -161,13 +218,25 @@ def test_registration_rejects_photo_already_attached(client, db, registration_co
     attached, first, last = [upload(event_id, token) for _ in range(3)]
     path = f"/api/v1/events/{event_id}/clothing"
     response = client.post(
-        path, headers=auth(token), json={"photoIds": [attached["id"]], "description": "Existing"}
+        path,
+        headers=auth(token),
+        json={
+            "photoIds": [attached["id"]],
+            "category": "top",
+            "title": "Existing",
+            "description": "Existing",
+        },
     )
     assert response.status_code == 201
     before = state(db)
     response = client.post(
         path,
         headers=auth(token),
-        json={"photoIds": [first["id"], attached["id"], last["id"]], "description": "Jacket"},
+        json={
+            "photoIds": [first["id"], attached["id"], last["id"]],
+            "category": "top",
+            "title": "Jacket",
+            "description": "Jacket",
+        },
     )
     assert_rejected(response, db, before, 409, "PHOTO_ALREADY_ATTACHED")

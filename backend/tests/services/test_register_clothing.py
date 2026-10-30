@@ -26,7 +26,9 @@ def service_context(db, settings, registration_context):
     service = ClothingService(
         db, settings, clock=lambda: now, clothing_id_generator=lambda: clothing_id
     )
-    body = ClothingCreate(photo_ids=[photo["id"]], description="  Secret denim jacket  ")
+    body = ClothingCreate.model_construct(
+        photo_ids=[photo["id"]], description="Secret denim jacket"
+    ).model_copy(update={"title": "Private garment title", "category": "top"})
     return service, body, event_id, participant, now, clothing_id
 
 
@@ -77,7 +79,9 @@ def test_register_clothing_maps_photo_uniqueness_race(db, service_context, monke
         assert all(session.get(Photo, photo_id).clothing_id is None for photo_id in body.photo_ids)
 
 
-def test_register_clothing_logs_once_after_commit_without_description(db, service_context, caplog):
+def test_register_clothing_logs_once_after_commit_without_title_or_description(
+    db, service_context, caplog
+):
     service, body, event_id, participant, _, clothing_id = service_context
     visible_counts = []
 
@@ -103,11 +107,14 @@ def test_register_clothing_logs_once_after_commit_without_description(db, servic
         "clothing_id": clothing_id,
         "event_id": event_id,
         "description_length": len("Secret denim jacket"),
+        "title_length": len("Private garment title"),
+        "category": "top",
     }
     assert visible_counts == [1]
     for record in records:
         for formatter in (JsonFormatter(), TextFormatter()):
             assert "Secret denim jacket" not in formatter.format(record)
+            assert "Private garment title" not in formatter.format(record)
 
 
 @pytest.mark.parametrize(
