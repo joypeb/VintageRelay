@@ -140,7 +140,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Cycle F4 — API functions and hooks (`lib/api/*`, R2–R4)
 
-- [ ] T010 Add to `frontend/src/lib/api/events.test.ts` — agent: `test-author`:
+- [X] T010 Add to `frontend/src/lib/api/events.test.ts` — agent: `test-author`:
   - "lookupEntryCode" block, mocking `@/lib/api/client`:
     - It calls `apiFetch(null, '/entry-codes/K7P3QX', {}, { timeoutMs: 15000 })` (first argument `null`, so no `Authorization` header).
     - It URL-encodes the code (`'a/b c'` → `/entry-codes/a%2Fb%20c`).
@@ -164,7 +164,7 @@ description: "Task list for feature 008-join-event-frontend"
     - It is `true` while a lookup for `'AAA'` is pending, **including after** the `useEntryCodePreviewQuery` consumer rerenders with `null`.
     - It is `false` after `'AAA'` settles.
   - "useJoinEventMutation" block: a 500 rejection calls `apiFetch` once (`retry: 0`).
-- [ ] T011 Implement in `frontend/src/lib/api/query-keys.ts` and `frontend/src/lib/api/events.ts` — agent: `implementer-fe`:
+- [X] T011 Implement in `frontend/src/lib/api/query-keys.ts` and `frontend/src/lib/api/events.ts` — agent: `implementer-fe`:
   - `queryKeys.entryCodePreview = (code: string) => ['entry-codes', code] as const` and `queryKeys.entryCodePreviews = () => ['entry-codes'] as const`
   - `lookupEntryCode(code)` and `joinEvent(eventId, body)` per contracts/ui-join-event.md (15 s timeouts, the join timeout message above, `parseEventPreview`/`parseJoinSession`)
   - `useEntryCodePreviewQuery(code: string | null)`: `enabled: code !== null`, `retry: 0`, `staleTime: 0`, `gcTime: 0`, `refetchOnWindowFocus: false`

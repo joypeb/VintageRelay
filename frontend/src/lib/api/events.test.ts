@@ -11,9 +11,14 @@ import {
   createEvent,
   eventRefetchInterval,
   getEvent,
+  joinEvent,
+  lookupEntryCode,
   shouldRetryEventQuery,
   useCloseEventMutation,
   useEventQuery,
+  useEntryCodePreviewQuery,
+  useIsEntryCodeLookupPending,
+  useJoinEventMutation,
   useIsCloseEventPending,
 } from '@/lib/api/events';
 import { mutationKeys, queryKeys } from '@/lib/api/query-keys';
@@ -394,5 +399,191 @@ describe('useEventQuery structural sharing', () => {
     await waitFor(() => expect(result.current.isFetching).toBe(false));
     expect(result.current.data).toEqual(closedEvent);
     expect(queryClient.getQueryData(queryKeys.event('e1'))).toEqual(closedEvent);
+  });
+});
+
+const preview = { eventId: 'e1', name: 'Mangwon Swap', status: 'active' as const };
+const joinedSession: EventSession = {
+  event: {
+    ...session.event,
+    me: { participantId: 'p2', displayName: 'Joon', isOrganizer: false },
+    stats: null,
+  },
+  participantToken: 'tok',
+};
+const joinBody = { entryCode: 'k7p3qx', displayName: 'Joon' };
+
+function setupJoinClient() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: 1, retryDelay: 0 },
+      mutations: { retry: 1, retryDelay: 0 },
+    },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: queryClient }, children);
+  return { queryClient, wrapper };
+}
+
+describe('lookupEntryCode', () => {
+  beforeEach(() => vi.resetAllMocks());
+  it('fetches without authorization and returns the parsed preview', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(preview);
+    await expect(lookupEntryCode('K7P3QX')).resolves.toEqual(preview);
+    expect(apiFetch).toHaveBeenCalledExactlyOnceWith(
+      null,
+      '/entry-codes/K7P3QX',
+      {},
+      { timeoutMs: 15000 },
+    );
+  });
+  it('encodes the entry code', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(preview);
+    await lookupEntryCode('a/b c');
+    expect(apiFetch).toHaveBeenCalledWith(null, '/entry-codes/a%2Fb%20c', {}, { timeoutMs: 15000 });
+  });
+  it('rejects a malformed response with an unknown error', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ ...preview, status: 'open' });
+    const error = await lookupEntryCode('K7P3QX').catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
+  });
+  it('propagates API errors unchanged', async () => {
+    const error = new ApiError(404, 'NOT_FOUND', 'Not found');
+    vi.mocked(apiFetch).mockRejectedValue(error);
+    await expect(lookupEntryCode('K7P3QX')).rejects.toBe(error);
+  });
+});
+
+describe('joinEvent', () => {
+  beforeEach(() => vi.resetAllMocks());
+  it('posts without authorization and returns the parsed session', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(joinedSession);
+    await expect(joinEvent('e1', joinBody)).resolves.toEqual(joinedSession);
+    expect(apiFetch).toHaveBeenCalledExactlyOnceWith(
+      null,
+      '/events/e1/participants',
+      { method: 'POST', body: JSON.stringify(joinBody) },
+      {
+        timeoutMs: 15000,
+        timeoutMessage:
+          'The connection timed out. Please try again. If your display name is now taken, choose a different one.',
+      },
+    );
+  });
+  it('encodes the event ID', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      ...joinedSession,
+      event: { ...joinedSession.event, id: 'a/b' },
+    });
+    await joinEvent('a/b', joinBody);
+    expect(apiFetch).toHaveBeenCalledWith(
+      null,
+      '/events/a%2Fb/participants',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+  it.each([
+    ['different event ID', { ...joinedSession, event: { ...joinedSession.event, id: 'e2' } }],
+    [
+      'organizer',
+      {
+        ...joinedSession,
+        event: { ...joinedSession.event, me: { ...joinedSession.event.me, isOrganizer: true } },
+      },
+    ],
+  ])('rejects a response with %s', async (_label, body) => {
+    vi.mocked(apiFetch).mockResolvedValue(body);
+    const error = await joinEvent('e1', joinBody).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
+  });
+  it('propagates API errors unchanged', async () => {
+    const error = new ApiError(500, 'INTERNAL_ERROR', 'Server says no.');
+    vi.mocked(apiFetch).mockRejectedValue(error);
+    await expect(joinEvent('e1', joinBody)).rejects.toBe(error);
+  });
+});
+
+describe('useEntryCodePreviewQuery', () => {
+  beforeEach(() => vi.resetAllMocks());
+  it('is idle with a null code', () => {
+    const { wrapper } = setupJoinClient();
+    const { result } = renderHook(() => useEntryCodePreviewQuery(null), { wrapper });
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+  it('fetches once and exposes the preview, then clears it for null', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(preview);
+    const { wrapper } = setupJoinClient();
+    const { result, rerender } = renderHook(
+      ({ code }: { code: string | null }) => useEntryCodePreviewQuery(code),
+      {
+        wrapper,
+        initialProps: { code: 'K7P3QX' as string | null },
+      },
+    );
+    await waitFor(() => expect(result.current.data).toEqual(preview));
+    expect(apiFetch).toHaveBeenCalledExactlyOnceWith(
+      null,
+      '/entry-codes/K7P3QX',
+      {},
+      { timeoutMs: 15000 },
+    );
+    rerender({ code: null });
+    expect(result.current.data).toBeUndefined();
+  });
+  it('does not retry a failed lookup', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'Error'));
+    const { wrapper } = setupJoinClient();
+    const { result } = renderHook(() => useEntryCodePreviewQuery('K7P3QX'), { wrapper });
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(apiFetch).toHaveBeenCalledOnce();
+  });
+  it('fetches again after a completed lookup is unmounted and remounted', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(preview);
+    const { wrapper } = setupJoinClient();
+    const first = renderHook(() => useEntryCodePreviewQuery('K7P3QX'), { wrapper });
+    await waitFor(() => expect(first.result.current.data).toEqual(preview));
+    first.unmount();
+    const second = renderHook(() => useEntryCodePreviewQuery('K7P3QX'), { wrapper });
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(second.result.current.isSuccess).toBe(true));
+  });
+});
+
+describe('useIsEntryCodeLookupPending', () => {
+  beforeEach(() => vi.resetAllMocks());
+  it('tracks a pending lookup after its consumer switches to null until it settles', async () => {
+    const lookup = deferred<typeof preview>();
+    vi.mocked(apiFetch).mockReturnValue(lookup.promise);
+    const { wrapper } = setupJoinClient();
+    const pending = renderHook(() => useIsEntryCodeLookupPending(), { wrapper });
+    expect(pending.result.current).toBe(false);
+    const consumer = renderHook(
+      ({ code }: { code: string | null }) => useEntryCodePreviewQuery(code),
+      {
+        wrapper,
+        initialProps: { code: 'AAA' as string | null },
+      },
+    );
+    await waitFor(() => expect(pending.result.current).toBe(true));
+    consumer.rerender({ code: null });
+    expect(pending.result.current).toBe(true);
+    await act(async () => lookup.resolve(preview));
+    await waitFor(() => expect(pending.result.current).toBe(false));
+  });
+});
+
+describe('useJoinEventMutation', () => {
+  beforeEach(() => vi.resetAllMocks());
+  it('does not retry a 500 rejection', async () => {
+    vi.mocked(apiFetch).mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'Server says no.'));
+    const { wrapper } = setupJoinClient();
+    const { result } = renderHook(() => useJoinEventMutation(), { wrapper });
+    act(() => result.current.mutate({ eventId: 'e1', body: joinBody }));
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(apiFetch).toHaveBeenCalledOnce();
   });
 });
