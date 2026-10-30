@@ -50,3 +50,11 @@
 - Red: 3 files failed as expected (missing module, oversize still rejected, no preparing state). The 10485760-byte boundary case passed on first run (unchanged behavior, regression guard).
 - Green: frontend 30 files / 417 tests passed, typecheck passed, lint 0 errors (11 warnings: 5 `<img>`, 6 unused fake-encoder params in tests).
 - Manual scenarios 2–3 and SC-003 timing on a real phone: **not run** in this session (no device). Known risk: iOS Safari limits canvas area (about 16.7M px), so a full-size encode of a 48MP photo may fail and fall back to the "too large" message. Fixed after the T012 review: an encode failure at one size now moves on to the next smaller size (unit-tested); frontend 30 files / 419 tests passed.
+
+### US4 frontend (T013–T015)
+
+- Red: queue module missing; 29 screen tests failing on the new list UI. Follow-up Red: [Add photo] enabled while one photo uploads (FR-018) after removing a global single-`status` assertion.
+- Green: frontend 31 files / 427 tests passed, typecheck passed, lint 0 errors (13 warnings).
+- `CreateEventScreen.test.tsx` failed once under full-suite load and passed 3/3 alone (pre-existing flake, unrelated).
+- T016 review fixes (Red → Green): the queue stops on event-level failure or a shared-event close, URLs for skipped files are revoked, the input error is linked by `aria-describedby`, and a per-key in-flight guard is in place. Frontend 31 files / 434 tests passed.
+- Manual scenarios 5–8 at 360/430 px: **not run** in this session.

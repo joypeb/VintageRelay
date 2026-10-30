@@ -32,6 +32,6 @@ it('shows the clothing photo step instead of the coming soon placeholder', async
 
   renderWithClient(await renderPage({ params: Promise.resolve({ eventId: 'e1' }) }));
 
-  expect(await screen.findByLabelText('Clothing photo')).toBeVisible();
+  expect(await screen.findByLabelText('Clothing photos')).toBeVisible();
   expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
 });

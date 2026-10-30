@@ -132,7 +132,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
 
 **Independent Test**: Quickstart scenarios 5–8.
 
-- [ ] T013 [P] [US4] Create `frontend/src/lib/photo/queue.test.ts` against the planned pure reducer `photoQueueReducer(state, action)` and helpers in `frontend/src/lib/photo/queue.ts`, with the state shape exactly as in data-model.md (`PhotoItem.status: 'waiting' | 'preparing' | 'uploading' | 'ready' | 'failed'`, `items.length <= 10`, `step: 1 | 2`) — agent: `test-author`:
+- [X] T013 [P] [US4] Create `frontend/src/lib/photo/queue.test.ts` against the planned pure reducer `photoQueueReducer(state, action)` and helpers in `frontend/src/lib/photo/queue.ts`, with the state shape exactly as in data-model.md (`PhotoItem.status: 'waiting' | 'preparing' | 'uploading' | 'ready' | 'failed'`, `items.length <= 10`, `step: 1 | 2`) — agent: `test-author`:
   - `add` with 12 files to an empty state keeps the first 10 as `waiting` in order and returns `skipped: 2`. `add` at 10 items adds none.
   - `nextToStart(state)` returns the first `waiting` item only when no item is `preparing` or `uploading`. Otherwise it returns `null`.
   - The transitions `start`, `prepared`, `uploaded(photo)`, and `failed(message)` apply only to the matching key.
@@ -141,7 +141,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
   - `canProceed` is `items.length >= 1 && every item ready`.
   - `next` sets `step: 2` only when `canProceed`. `back` sets `step: 1` and keeps the items.
   - Run and confirm the tests fail.
-- [ ] T014 [US4] Rework `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` for the list UI (`contracts/c2-photo-step.md`) — agent: `test-author`.
+- [X] T014 [US4] Rework `frontend/src/components/clothing/PhotoUploadScreen.test.tsx` for the list UI (`contracts/c2-photo-step.md`) — agent: `test-author`.
   - New "US4 multiple photos" `describe`:
     - Choose 3 files at once (`userEvent.upload(input, [f1, f2, f3])`, input has `multiple`). Assert that `apiFetch` photo calls happen one at a time in order: the second starts only after the first promise resolves (use deferred promises). Assert the counter "3 / 10 photos".
     - 12 files → 10 items and "2 photos were not added because the limit is 10.".
@@ -153,7 +153,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
   - There is no [Change photo] button; adding uses the file input or [Add photo].
   - Update the existing US1–US3 single-photo assertions to the per-item equivalents. Keep the closed, no-access, and not-found screen replacements as `(regression guard)`.
   - Run and confirm the tests fail.
-- [ ] T015 [US4] Implement — agent: `implementer-fe`:
+- [X] T015 [US4] Implement — agent: `implementer-fe`:
   - Create `frontend/src/lib/photo/queue.ts` satisfying T013.
   - Rewrite `frontend/src/components/clothing/PhotoUploadScreen.tsx` around `useReducer(photoQueueReducer)`:
     - One effect starts `nextToStart`. It compresses with `compressPhoto` when over 10 MB, then calls `uploadMutation.mutateAsync`.
@@ -163,7 +163,7 @@ This story is small and has no dependencies. It runs before US2 because US2 chan
     - Use one `role="status"` live region, and move focus to a newly failed item's error.
     - Keep the per-item `onError` fallback from T003 and render ready photos through one shared fragment, so the closed-event view also shows "This photo could not be displayed." (T004 review finding: the closed branch lacked it).
   - T013–T014 must pass.
-- [ ] T016 [US4] Manually run quickstart scenarios 5–8 at 360 px and 430 px widths, including no horizontal scrolling and 44×44 px touch targets. Record the results, then review and commit T013–T016 — agent: `commit-reviewer`
+- [ ] T016 [US4] (Review and commit done; on-device manual run pending) Manually run quickstart scenarios 5–8 at 360 px and 430 px widths, including no horizontal scrolling and 44×44 px touch targets. Record the results, then review and commit T013–T016 — agent: `commit-reviewer`
 
 ---
 
