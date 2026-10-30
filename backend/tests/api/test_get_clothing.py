@@ -47,9 +47,19 @@ def detail_context(db, registration_context):
                     id=clothing_id,
                     event_id=target_event,
                     owner_id=owner_id,
+                    title=f"{name} jacket",
+                    category="top",
                     description=name,
                     status=clothing_status,
                     content_version=1,
+                    measure_total_length=28.0 if name == "mine" else None,
+                    measure_chest=21.5 if name == "mine" else None,
+                    measure_shoulder=None,
+                    measure_sleeve=None,
+                    measure_waist=None,
+                    measure_hem=None,
+                    measure_inseam=None,
+                    measure_thigh=None,
                     created_at=now,
                     updated_at=now,
                 )
@@ -82,6 +92,9 @@ def test_get_clothing_returns_complete_resource(client, settings, detail_context
         "isMine",
         "photos",
         "description",
+        "title",
+        "category",
+        "measurements",
         "status",
         "contentVersion",
         "analysis",
@@ -102,10 +115,46 @@ def test_get_clothing_returns_complete_resource(client, settings, detail_context
         "url": f"{settings.app_base_url}/api/v1/photos/{rows[name]['photo_id']}",
     }
     assert body["description"] == name
+    assert body["title"] == f"{name} jacket"
+    assert body["category"] == "top"
+    assert body["measurements"] == (
+        {
+            "totalLength": 28.0,
+            "chest": 21.5,
+            "shoulder": None,
+            "sleeve": None,
+            "waist": None,
+            "hem": None,
+            "inseam": None,
+            "thigh": None,
+        }
+        if is_mine
+        else None
+    )
     assert body["status"] == rows[name]["status"]
     assert body["contentVersion"] == 1 and body["analysis"] is None
     assert datetime.fromisoformat(body["createdAt"]) == now
     assert body["updatedAt"] == body["createdAt"]
+
+
+def test_get_clothing_returns_trimmed_registered_title(client, registration_context):
+    event, _, token, _, upload = registration_context
+    event_id = event["event"]["id"]
+    photo = upload(event_id, token)
+    registered = client.post(
+        f"/api/v1/events/{event_id}/clothing",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "photoIds": [photo["id"]],
+            "title": "  Green jacket  ",
+            "category": "outer",
+            "description": "Size M",
+        },
+    )
+    assert registered.status_code == 201
+    response = get_clothing(client, registered.json()["id"], token)
+    assert response.status_code == 200
+    assert response.json()["title"] == "Green jacket"
 
 
 def test_get_clothing_hides_inaccessible_garments(client, detail_context):
