@@ -1,0 +1,160 @@
+openapi: 3.1.0
+info:
+  title: Vintage Relay API - Upload Photo (feature 009)
+  version: 0.1.0
+  description: >
+    Design contract derived from docs/plans/api/05-upload-photo.md and the sole
+    shared contract docs/rules/dev/common/api-contract.md. The implemented
+    FastAPI /openapi.json must match these semantics. Upload requires a
+    participant credential for the target event; viewing bytes at the returned
+    URL requires no credential (public unguessable URL, per clarify session
+    2026-10-30). Neither operation is idempotent across requests: each
+    successful upload creates a distinct photo.
+paths:
+  /api/v1/events/{event_id}/photos:
+    post:
+      operationId: uploadPhoto
+      summary: Upload a clothing photo for the caller in the event
+      description: >
+        Single image file (multipart part `file`); content type is verified by
+        opening the bytes (JPEG, PNG, WebP only — HEIC rejected), EXIF is
+        stripped and orientation normalized. Check order: multipart parseable
+        (else 400) and file present/non-empty (else 422) -> credential valid
+        (else 401) -> event exists and credential belongs to it (else 404,
+        identical for all three cases) -> event active (else 409 EVENT_CLOSED)
+        -> stream with 413 past 10 MiB, then 415 for non-image content.
+        Oversized files of the wrong type report 413. Success returns 201 with
+        the Photo; attach it later via clothing registration.
+      tags: [events]
+      parameters:
+        - name: event_id
+          in: path
+          required: true
+          description: Opaque string; malformed values produce the same 404.
+          schema: { type: string }
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: One image; verified JPEG, PNG, or WebP; max 10485760 bytes.
+      responses:
+        '201':
+          description: Stored Photo with public display URL.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Photo' }
+              example:
+                id: e4f5a6b7-c8d9-4e0f-a1b2-c3d4e5f6a7b8
+                url: https://cdn.vintage-relay.example/api/v1/photos/e4f5a6b7-c8d9-4e0f-a1b2-c3d4e5f6a7b8
+                contentType: image/jpeg
+                sizeBytes: 1834221
+                createdAt: 2026-10-27T05:42:10Z
+        '400':
+          description: BAD_REQUEST. Malformed multipart body.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '401':
+          description: UNAUTHENTICATED. Missing or invalid participant token.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '404':
+          description: >
+            NOT_FOUND. Event does not exist, or the token belongs to another
+            event; identical status, code, message, and details for all cases.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '409':
+          description: EVENT_CLOSED. Event is closed.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '413':
+          description: FILE_TOO_LARGE with details { maxBytes: 10485760 }.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '415':
+          description: >
+            UNSUPPORTED_MEDIA_TYPE with details
+            { allowedTypes: ["image/jpeg", "image/png", "image/webp"] }.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '422':
+          description: VALIDATION_ERROR. `file` part missing or empty.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+  /api/v1/photos/{photo_id}:
+    get:
+      operationId: viewPhoto
+      summary: View stored photo bytes
+      description: >
+        Public; no credential is checked because the UUID location is
+        unguessable. Returns the stored bytes with the stored content type.
+        Unknown IDs return the generic NOT_FOUND error.
+      tags: [photos]
+      security: []
+      parameters:
+        - name: photo_id
+          in: path
+          required: true
+          description: Opaque photo UUID.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Image bytes with stored content type.
+          content:
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+        '404':
+          description: NOT_FOUND. Unknown photo.
+          headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+          content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+        '500': { $ref: '#/components/responses/InternalError' }
+components:
+  parameters:
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      description: Client correlation ID; echoed back in response and error body.
+      schema: { type: string }
+  headers:
+    RequestId:
+      description: Echoed request ID, equal to error.requestId.
+      schema: { type: string }
+  schemas:
+    Photo:
+      type: object
+      required: [id, url, contentType, sizeBytes, createdAt]
+      properties:
+        id: { type: string, description: Photo identity used as photoId. }
+        url: { type: string, format: uri, description: Public display location. }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp] }
+        sizeBytes: { type: integer, minimum: 1, maximum: 10485760 }
+        createdAt: { type: string, format: date-time }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: [object, 'null'] }
+            requestId: { type: string }
+  responses:
+    InternalError:
+      description: INTERNAL_ERROR. Unexpected server error.
+      headers: { X-Request-ID: { $ref: '#/components/headers/RequestId' } }
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }

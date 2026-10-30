@@ -47,6 +47,35 @@ class DisplayNameTakenError(ConflictError):
     message = "This display name is already taken in this event."
 
 
+class PhotoTooLargeError(AppError):
+    status_code = 413
+    code = "FILE_TOO_LARGE"
+    message = "The photo exceeds the 10 MB size limit."
+
+    def __init__(
+        self, message: str | None = None, *, details: dict[str, object] | None = None
+    ) -> None:
+        super().__init__(
+            message, details=details if details is not None else {"maxBytes": 10485760}
+        )
+
+
+class UnsupportedPhotoTypeError(AppError):
+    status_code = 415
+    code = "UNSUPPORTED_MEDIA_TYPE"
+    message = "This photo type is not supported. Use JPEG, PNG, or WebP."
+
+    def __init__(
+        self, message: str | None = None, *, details: dict[str, object] | None = None
+    ) -> None:
+        super().__init__(
+            message,
+            details=details
+            if details is not None
+            else {"allowedTypes": ["image/jpeg", "image/png", "image/webp"]},
+        )
+
+
 class InternalError(AppError):
     status_code = 500
     code = "INTERNAL_ERROR"

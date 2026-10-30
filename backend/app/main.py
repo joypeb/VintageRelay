@@ -1,4 +1,5 @@
 import json
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -8,7 +9,7 @@ from fastapi.openapi.utils import get_openapi
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.errors import register_error_handlers
-from app.api.routers import entry_codes, events
+from app.api.routers import entry_codes, events, photos
 from app.core.config import Settings, get_settings
 from app.core.db import Db
 from app.core.logging import disable_access_log, request_context, setup_logging
@@ -21,6 +22,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         disable_access_log()
+        os.makedirs(settings.photo_dir, exist_ok=True)
         if db is not None:
             yield
             return
@@ -53,6 +55,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
 
     api_router.include_router(events.router)
     api_router.include_router(entry_codes.router)
+    api_router.include_router(photos.router)
     app.include_router(api_router)
 
     def custom_openapi() -> dict[str, Any]:
@@ -64,6 +67,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             ("/api/v1/entry-codes/{entry_code}", "get"),
             ("/api/v1/events/{event_id}", "get"),
             ("/api/v1/events/{event_id}/close", "post"),
+            ("/api/v1/photos/{photo_id}", "get"),
         ):
             responses = schema["paths"][path][method]["responses"]
             validation_ref = (
@@ -75,6 +79,20 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             )
             if validation_ref.endswith("/HTTPValidationError"):
                 del responses["422"]
+        # The upload route keeps its file part optional so malformed multipart bodies
+        # surface as 400 via the validation path; document the contract shape instead.
+        upload_operation = schema["paths"]["/api/v1/events/{event_id}/photos"]["post"]
+        upload_operation["requestBody"]["required"] = True
+        upload_body = schema["components"]["schemas"].get("Body_uploadPhoto")
+        if upload_body is not None:
+            upload_body["required"] = ["file"]
+            upload_body["properties"] = {
+                "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "One image; verified JPEG, PNG, or WebP; max 10485760 bytes.",
+                }
+            }
         schemas = schema.get("components", {}).get("schemas", {})
         for name in ("HTTPValidationError", "ValidationError"):
             component = schemas.pop(name, None)

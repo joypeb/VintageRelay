@@ -20,6 +20,8 @@ _ERROR_DESCRIPTIONS = {
     403: "Participant does not have permission to perform this action.",
     404: "Resource not found.",
     409: "State conflict with the current resource.",
+    413: "Uploaded file exceeds the size limit.",
+    415: "File type not allowed.",
     422: "Field validation failed.",
     500: "A temporary error occurred.",
 }
@@ -94,6 +96,8 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        # Starlette converts MultiPartException to HTTPException(400) in Request._get_form,
+        # so malformed multipart bodies already arrive here; no dedicated handler needed.
         return JSONResponse(
             _body(
                 _HTTP_CODES.get(exc.status_code, "BAD_REQUEST"), "Unable to process this request."
