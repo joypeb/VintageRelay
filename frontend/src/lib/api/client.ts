@@ -39,5 +39,9 @@ export async function apiFetch<T>(
 
   if (!res.ok) throw await toApiError(res);
   if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  try {
+    return (await res.json()) as T;
+  } catch {
+    throw new ApiError(res.status, 'UNKNOWN_ERROR', 'Something went wrong. Please try again.');
+  }
 }

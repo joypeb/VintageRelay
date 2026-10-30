@@ -2,6 +2,7 @@ import { replaceEqualDeep } from '@tanstack/react-query';
 
 import { ApiError } from '@/lib/api/api-error';
 import { getFormErrorMessage } from '@/lib/api/error-messages';
+import { mapJoinServerFieldErrors } from '@/lib/validation/join';
 import type { Event } from '@/types/event';
 
 export type EventScreenState =
@@ -31,6 +32,40 @@ export function getCloseEventFailure(error: unknown): CloseEventFailure {
   if (code === 'UNAUTHENTICATED') return { kind: 'no-access' };
   if (code === 'NOT_FOUND') return { kind: 'not-found' };
   return { kind: 'dialog', message: getFormErrorMessage(error) };
+}
+
+export type LookupFailure =
+  | { kind: 'codeField'; message: string }
+  | { kind: 'form'; message: string };
+
+export function getLookupFailure(error: unknown): LookupFailure {
+  if (error instanceof ApiError && error.code === 'NOT_FOUND') {
+    return { kind: 'codeField', message: error.message };
+  }
+  return { kind: 'form', message: getFormErrorMessage(error) };
+}
+
+export type JoinFailure =
+  | { kind: 'displayNameField'; message: string }
+  | { kind: 'closed' }
+  | { kind: 'codeNotFound'; message: string }
+  | ({ kind: 'fields' } & ReturnType<typeof mapJoinServerFieldErrors>)
+  | { kind: 'form'; message: string };
+
+export function getJoinFailure(error: unknown): JoinFailure {
+  if (error instanceof ApiError) {
+    if (error.code === 'DISPLAY_NAME_TAKEN') {
+      return { kind: 'displayNameField', message: error.message };
+    }
+    if (error.code === 'EVENT_CLOSED') return { kind: 'closed' };
+    if (error.code === 'NOT_FOUND') {
+      return { kind: 'codeNotFound', message: error.message };
+    }
+    if (error.code === 'VALIDATION_ERROR') {
+      return { kind: 'fields', ...mapJoinServerFieldErrors(error.details) };
+    }
+  }
+  return { kind: 'form', message: getFormErrorMessage(error) };
 }
 
 function hasStatus(value: unknown, status: Event['status']): boolean {

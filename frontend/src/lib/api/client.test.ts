@@ -50,6 +50,29 @@ describe('API client', () => {
     await expect(apiFetch(null, '/x')).resolves.toBeUndefined();
   });
 
+  it.each([
+    {
+      description: 'invalid JSON in a 200 response',
+      body: '{"participantToken":"SECRET-TOKEN","entryCode":"K7P3QX"',
+      status: 200,
+    },
+    { description: 'an empty 201 response', body: '', status: 201 },
+  ])('normalizes $description without exposing the response body', async ({ body, status }) => {
+    fetchMock.mockResolvedValue(new Response(body, { status }));
+    const error: unknown = await apiFetch(null, '/x').catch((rejection: unknown) => rejection);
+
+    expect.soft(error).toBeInstanceOf(ApiError);
+    expect.soft(error).toMatchObject({
+      status,
+      code: 'UNKNOWN_ERROR',
+      message: 'Something went wrong. Please try again.',
+    });
+    expect.soft((error as Error).message).not.toContain('SECRET-TOKEN');
+    expect.soft((error as Error).message).not.toContain('K7P3QX');
+    expect.soft(String(error)).not.toContain('SECRET-TOKEN');
+    expect.soft(String(error)).not.toContain('K7P3QX');
+  });
+
   it('rejects with the normalized API error for a failed response', async () => {
     fetchMock.mockResolvedValue(
       new Response(

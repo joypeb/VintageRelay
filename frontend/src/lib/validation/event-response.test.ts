@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { ApiError } from '@/lib/api/api-error';
-import { parseEvent } from '@/lib/validation/event-response';
+import { eventSchema, parseEvent, parseEventPreview, parseJoinSession } from '@/lib/validation/event-response';
 import type { Event } from '@/types/event';
 
 const organizer: Event = {
@@ -61,6 +61,80 @@ describe('parseEvent', () => {
         code: 'UNKNOWN_ERROR',
         message: 'Something went wrong. Please try again.',
       });
+    }
+  });
+});
+
+describe('parseEventPreview', () => {
+  const preview = { eventId: 'e1', name: 'Mangwon Swap', status: 'active' };
+  const { eventId: _eventId, ...withoutEventId } = preview;
+  void _eventId;
+
+  it.each(['active', 'closed'])('accepts an event with status %s', (status) => {
+    expect(parseEventPreview({ ...preview, status })).toEqual({ ...preview, status });
+  });
+
+  it.each([
+    ['missing event ID', withoutEventId],
+    ['empty event ID', { ...preview, eventId: '' }],
+    ['unknown status', { ...preview, status: 'open' }],
+    ['non-string name', { ...preview, name: 123 }],
+    ['null', null],
+  ])('rejects %s with an unexpected response error', (_description, data) => {
+    try {
+      parseEventPreview(data);
+      expect.fail('Expected an ApiError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
+    }
+  });
+});
+
+describe('parseJoinSession', () => {
+  const event = {
+    ...participant,
+    id: 'e1',
+    organizerParticipantId: 'p1',
+    me: { ...participant.me, participantId: 'p2' },
+  };
+  const session = { event, participantToken: 'tok' };
+  const organizerIdentity = {
+    ...event,
+    me: { ...event.me, participantId: 'p1' },
+    stats: organizer.stats,
+  };
+
+  it('returns a valid non-organizer session', () => {
+    expect(parseJoinSession(session, 'e1')).toEqual(session);
+  });
+
+  it('rejects an organizer participant ID even when the event schema accepts it', () => {
+    expect(eventSchema.safeParse(organizerIdentity).success).toBe(true);
+    try {
+      parseJoinSession({ ...session, event: organizerIdentity }, 'e1');
+      expect.fail('Expected an ApiError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
+    }
+  });
+
+  it.each([
+    ['empty token', { ...session, participantToken: '' }],
+    ['missing token', { event }],
+    ['different event ID', { ...session, event: { ...event, id: 'e2' } }],
+    ['organizer flag', { ...session, event: { ...event, me: { ...event.me, isOrganizer: true } } }],
+    ['empty participant ID', { ...session, event: { ...event, me: { ...event.me, participantId: '' } } }],
+    ['non-null statistics', { ...session, event: { ...event, stats: organizer.stats } }],
+    ['malformed event', { ...session, event: null }],
+  ])('rejects %s with an unexpected response error', (_description, data) => {
+    try {
+      parseJoinSession(data, 'e1');
+      expect.fail('Expected an ApiError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
     }
   });
 });
