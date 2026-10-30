@@ -34,6 +34,23 @@ describe('shared event cache regression guard', () => {
   });
   afterEach(() => localStorage.clear());
 
+  it('renders a cached participant event before the GET resolves (regression guard)', () => {
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    apiFetch.mockImplementation(() => new Promise(() => {}));
+    const participantEvent: Event = {
+      ...activeEvent,
+      me: { participantId: 'p2', displayName: 'Joon', isOrganizer: false },
+      stats: null,
+    };
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(queryKeys.event('e1'), participantEvent);
+    renderWithClient(<EventHomeScreen eventId="e1" />, { queryClient });
+    expect(screen.getByText(participantEvent.name)).toBeVisible();
+    expect(screen.getByText('Active', { exact: true })).toBeVisible();
+    expect(screen.queryByRole('link', { name: /manage event/i })).not.toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalled();
+  });
+
   it('shows closure and hides registration as soon as the shared cache changes', async () => {
     let reads = 0;
     apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {

@@ -185,7 +185,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Tests for User Story 1 (REQUIRED - write first) ⚠️
 
-- [ ] T012 [US1] Create `frontend/src/components/event/JoinEventScreen.test.tsx` using the screen-test mock boundary above, with a "US1 join from link" `describe` — agent: `test-author`. Render `<JoinEventScreen initialCode="K7P3QX" />`, with the lookup resolving `{ eventId: 'e1', name: 'Mangwon Swap', status: 'active' }`:
+- [X] T012 [US1] Create `frontend/src/components/event/JoinEventScreen.test.tsx` using the screen-test mock boundary above, with a "US1 join from link" `describe` — agent: `test-author`. Render `<JoinEventScreen initialCode="K7P3QX" />`, with the lookup resolving `{ eventId: 'e1', name: 'Mangwon Swap', status: 'active' }`:
   - The "Entry code" field shows `K7P3QX`, and the lookup is called once with `K7P3QX` without any click. While it is pending, [Find event] is busy or disabled.
   - After it resolves: the heading "Join event", the text "Mangwon Swap", and the text "Active" are shown, the "My display name" field has focus, and a [Join] button is shown.
   - Entering `' Joon '` and clicking [Join] sends one join to `/events/e1/participants` with body `{ entryCode: 'K7P3QX', displayName: 'Joon' }` and no `Authorization` header (first `apiFetch` argument `null`). While it is pending, [Join] is busy, a second click sends nothing, and the "Entry code" field is read-only.
@@ -198,14 +198,14 @@ description: "Task list for feature 008-join-event-frontend"
   - When `saveEventSession` throws after a successful join, the screen shows "You joined, but this browser couldn't keep your event access. Free up browser storage or open a regular (non-private) window, then join again with a different display name." and does not navigate.
   - An empty name or a 31-character name shows "Enter a display name of 1–30 characters." and sends no join.
   - The participant token never appears in the rendered output.
-- [ ] T013 [P] [US1] Create `frontend/src/app/join/page.test.tsx` using the same mock boundary — agent: `test-author`:
+- [X] T013 [P] [US1] Create `frontend/src/app/join/page.test.tsx` using the same mock boundary — agent: `test-author`:
   - Await `JoinPage({ searchParams: Promise.resolve({ code: ' K7P3QX ' }) })` and render the result with `renderWithClient`. The "Entry code" field shows `K7P3QX` and a lookup for `/entry-codes/K7P3QX` is made.
   - With `{}` the field is empty and no lookup is made.
   - The text "coming soon" is absent.
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Implement `frontend/src/components/event/JoinEventScreen.tsx` (`'use client'`, props `{ initialCode: string | null }`) and `frontend/src/app/join/page.tsx` — agent: `implementer-fe`:
+- [X] T014 [US1] Implement `frontend/src/components/event/JoinEventScreen.tsx` (`'use client'`, props `{ initialCode: string | null }`) and `frontend/src/app/join/page.tsx` — agent: `implementer-fe`:
   - The page is a server component: `searchParams: Promise<{ code?: string | string[] }>` → `readInitialCode` → `<JoinEventScreen initialCode={…} />`. Remove the `ComingSoonScreen` import from this page only.
   - The screen follows data-model.md "P1 view state" for the `lookingUp`, `active`, and `joining` views only, with elements and copy exactly as in contracts/ui-join-event.md.
   - Use `useEntryCodePreviewQuery(submittedCode)` and `useJoinEventMutation()`.
@@ -218,7 +218,7 @@ description: "Task list for feature 008-join-event-frontend"
   - Use the `Badge` state label as in `EventHomeScreen`. Field errors use `TextInput` `status` with `statusVariant="detached"`; the form error uses the `role="alert"` span pattern from `CreateEventScreen`.
   - Do **not** implement code editing, failure mapping, or the closed and already-joined views yet. Those belong to later cycles.
   - This makes T012 and T013 pass.
-- [ ] T015 [US1] (regression guard) Add to `frontend/src/components/event/EventHomeScreen.cache.test.tsx`: after `saveEventSession('e1', { participantToken: 't', participantId: 'p2' })` and seeding `queryKeys.event('e1')` with a non-organizer active event (`stats: null`), P2 renders the event name, "Active", and no manage card before any GET resolves — agent: `test-author` (same commit as T014)
+- [X] T015 [US1] (regression guard) Add to `frontend/src/components/event/EventHomeScreen.cache.test.tsx`: after `saveEventSession('e1', { participantToken: 't', participantId: 'p2' })` and seeding `queryKeys.event('e1')` with a non-organizer active event (`stats: null`), P2 renders the event name, "Active", and no manage card before any GET resolves — agent: `test-author` (same commit as T014)
 
 **Checkpoint**: The MVP is demoable: QR link → P1 → P2.
 

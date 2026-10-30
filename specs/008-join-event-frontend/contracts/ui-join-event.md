@@ -43,7 +43,7 @@ The "coming soon" placeholder is removed. `routes.join()` is unchanged.
 | Element | Text | Condition / behavior |
 |---|---|---|
 | Heading | "Join event" | always |
-| Entry code | `TextInput` label "Entry code", `autoComplete="off"`, `autoCapitalize="characters"` | always; read-only while joining; editing clears the preview |
+| Entry code | `TextInput` label "Entry code", `autoComplete="off"` (Astryx `TextInput` has no `autoCapitalize` prop; codes match case-insensitively on the server, so none is set) | always; read-only while joining; editing clears the preview |
 | [Find event] | secondary, full width | shown when there is no preview; validates ("Enter the entry code."); busy while **any** entry-code lookup is in flight, including one for a code the visitor has since edited |
 | Event card | event name + `Badge` "Active" (`success`) / "Closed" (`neutral`), same as P2 | when a preview is shown |
 | My display name | `TextInput` label "My display name", `htmlName="displayName"`, `autoComplete="nickname"` | active view only; focused when the active view appears; validated before sending |
