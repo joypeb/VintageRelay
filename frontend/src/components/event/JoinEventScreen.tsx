@@ -22,7 +22,7 @@ import { queryKeys } from '@/lib/api/query-keys';
 import { getJoinFailure, getLookupFailure } from '@/lib/event';
 import { logger } from '@/lib/logger';
 import { routes } from '@/lib/routes';
-import { isStorageAvailable, saveEventSession } from '@/lib/session';
+import { hasEventSession, isStorageAvailable, saveEventSession } from '@/lib/session';
 import { validateDisplayName, validateEntryCode } from '@/lib/validation/join';
 import type { JoinFieldErrors } from '@/lib/validation/join';
 
@@ -34,7 +34,9 @@ const SESSION_SAVE_FAILED_MESSAGE =
 
 const CLOSED_MESSAGE = 'This event has ended. You can no longer join.';
 
-type JoinView = 'closed' | 'codeEntry' | 'lookingUp' | 'active' | 'joining';
+const ALREADY_JOINED_MESSAGE = "You've already joined this event on this device.";
+
+type JoinView = 'closed' | 'alreadyJoined' | 'codeEntry' | 'lookingUp' | 'active' | 'joining';
 
 function errorStatus(message: string | undefined) {
   return message === undefined ? undefined : ({ type: 'error', message } as const);
@@ -63,6 +65,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   const [fieldErrors, setFieldErrors] = useState<JoinFieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [closedOverride, setClosedOverride] = useState(false);
+  const [alreadyJoinedOverride, setAlreadyJoinedOverride] = useState(false);
   const closedRef = useRef<HTMLSpanElement>(null);
 
   const lookup = useEntryCodePreviewQuery(submittedCode);
@@ -73,7 +76,10 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
   const lookupError = lookup.isError ? lookup.error : null;
 
   let view: JoinView = 'codeEntry';
-  if (closedOverride || preview?.status === 'closed') view = 'closed';
+  if (closedOverride) view = 'closed';
+  else if (preview !== undefined && (alreadyJoinedOverride || hasEventSession(preview.eventId)))
+    view = 'alreadyJoined';
+  else if (preview?.status === 'closed') view = 'closed';
   else if (preview?.status === 'active') view = mutation.isPending ? 'joining' : 'active';
   else if (submittedCode !== null && lookup.isFetching && preview === undefined) view = 'lookingUp';
 
@@ -126,6 +132,10 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
       return;
     }
     setFieldErrors({});
+    if (hasEventSession(preview.eventId)) {
+      setAlreadyJoinedOverride(true);
+      return;
+    }
     if (!isStorageAvailable()) {
       setFormError(STORAGE_UNAVAILABLE_MESSAGE);
       return;
@@ -167,6 +177,7 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
     setFieldErrors({});
     setFormError(null);
     setClosedOverride(false);
+    setAlreadyJoinedOverride(false);
   }
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -213,6 +224,20 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
             </Text>
           </VStack>
         )}
+        {view === 'alreadyJoined' && preview !== undefined && (
+          <VStack gap={2}>
+            <Text type="body">{preview.name}</Text>
+            <Badge
+              label={preview.status === 'closed' ? 'Closed' : 'Active'}
+              variant={preview.status === 'closed' ? 'neutral' : 'success'}
+            />
+            <Text type="body" as="p">
+              <span role="status" aria-live="polite">
+                {ALREADY_JOINED_MESSAGE}
+              </span>
+            </Text>
+          </VStack>
+        )}
         {showPreview && (
           <VStack gap={2}>
             <Text type="body">{preview.name}</Text>
@@ -244,7 +269,14 @@ export function JoinEventScreen({ initialCode }: { initialCode: string | null })
             </span>
           </Text>
         )}
-        {view === 'closed' ? (
+        {view === 'alreadyJoined' && preview !== undefined ? (
+          <Button
+            label="Go to event home"
+            size="lg"
+            width="100%"
+            href={routes.eventHome(preview.eventId)}
+          />
+        ) : view === 'closed' ? (
           <Button label="Go to start" size="lg" width="100%" href={routes.landing()} />
         ) : showPreview ? (
           <Button

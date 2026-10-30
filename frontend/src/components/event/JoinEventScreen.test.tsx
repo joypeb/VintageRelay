@@ -581,3 +581,97 @@ describe('US3 failures', () => {
     },
   );
 });
+
+describe('US4 already joined', () => {
+  const notice = "You've already joined this event on this device.";
+  const closedMessage = 'This event has ended. You can no longer join.';
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    mocks.apiFetch.mockReset();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it.each(['active', 'closed'])('shows existing access for an %s preview', async (status) => {
+    session.saveEventSession('e1', { participantToken: 't', participantId: 'p1' });
+    mocks.apiFetch.mockResolvedValue({ ...preview, status });
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+
+    expect(await screen.findByText(notice)).toBeVisible();
+    expect(screen.getByText('Mangwon Swap')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Go to event home' })).toHaveAttribute(
+      'href',
+      '/events/e1',
+    );
+    expect(screen.queryByText(closedMessage)).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'My display name' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join' })).not.toBeInTheDocument();
+    expect(joinCalls()).toHaveLength(0);
+  });
+
+  it('shows the active form when access belongs to another event', async () => {
+    session.saveEventSession('e9', { participantToken: 't', participantId: 'p1' });
+    mocks.apiFetch.mockResolvedValue(preview);
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+
+    expect(await screen.findByRole('textbox', { name: 'My display name' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeVisible();
+    expect(screen.queryByText(notice)).not.toBeInTheDocument();
+  });
+
+  it('shows the active form when the stored session is invalid', async () => {
+    localStorage.setItem('vr:event:e1', '{}');
+    mocks.apiFetch.mockResolvedValue(preview);
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+
+    expect(await screen.findByRole('textbox', { name: 'My display name' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeVisible();
+    expect(screen.queryByText(notice)).not.toBeInTheDocument();
+  });
+
+  async function submitAfterAccessAppears(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(await screen.findByRole('textbox', { name: 'My display name' }), 'Joon');
+    const join = screen.getByRole('button', { name: 'Join' });
+    session.saveEventSession('e1', { participantToken: 'other', participantId: 'p9' });
+    await user.click(join);
+  }
+
+  it('rechecks access on submit without sending a join or replacing the session', async () => {
+    const user = userEvent.setup();
+    routeRequests(new Promise(() => {}));
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submitAfterAccessAppears(user);
+
+    expect(joinCalls()).toHaveLength(0);
+    expect(await screen.findByText(notice)).toBeVisible();
+    expect(session.getEventSession('e1')?.participantToken).toBe('other');
+  });
+
+  it('clears the already-joined override when looking up another event', async () => {
+    const user = userEvent.setup();
+    mocks.apiFetch.mockImplementation((_eventId: string | null, path: string) => {
+      if (path === '/entry-codes/K7P3QX') return Promise.resolve(preview);
+      if (path === '/entry-codes/BBB')
+        return Promise.resolve({ eventId: 'e2', name: 'Other Swap', status: 'active' });
+      if (path === '/events/e1/participants') return new Promise(() => {});
+      throw new Error(`Unexpected path: ${path}`);
+    });
+    renderWithClient(<JoinEventScreen initialCode="K7P3QX" />);
+    await submitAfterAccessAppears(user);
+    expect(await screen.findByText(notice)).toBeVisible();
+    expect(joinCalls()).toHaveLength(0);
+
+    const code = screen.getByRole('textbox', { name: 'Entry code' });
+    await user.clear(code);
+    await user.type(code, 'BBB');
+    await user.click(screen.getByRole('button', { name: 'Find event' }));
+    expect(await screen.findByText('Other Swap')).toBeVisible();
+    expect(screen.getByRole('textbox', { name: 'My display name' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeVisible();
+    expect(screen.queryByText(notice)).not.toBeInTheDocument();
+  });
+});

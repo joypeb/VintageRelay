@@ -307,7 +307,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Tests for User Story 4 (REQUIRED - write first) ⚠️
 
-- [ ] T020 [US4] Add a "US4 already joined" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx` — agent: `test-author`:
+- [X] T020 [US4] Add a "US4 already joined" `describe` to `frontend/src/components/event/JoinEventScreen.test.tsx` — agent: `test-author`:
   - With `saveEventSession('e1', { participantToken: 't', participantId: 'p1' })` set before rendering and an active preview for `e1` → the screen shows "Mangwon Swap" and "You've already joined this event on this device.", plus a [Go to event home] link to `/events/e1`. There is no "My display name" field, no [Join], and no join request.
   - The same with a closed preview → the already-joined notice is shown, not the closed join message.
   - A stored session for a different event (`e9`) → the normal active view.
@@ -321,7 +321,7 @@ description: "Task list for feature 008-join-event-frontend"
 
 ### Implementation for User Story 4
 
-- [ ] T021 [US4] In `frontend/src/components/event/JoinEventScreen.tsx` — agent: `implementer-fe`:
+- [X] T021 [US4] In `frontend/src/components/event/JoinEventScreen.tsx` — agent: `implementer-fe`:
   - Render the `alreadyJoined` view when a preview exists and (`alreadyJoinedOverride` or `hasEventSession(preview.eventId)`). This follows data-model.md precedence: after `closedOverride`, before `active`. [Go to event home] → `routes.eventHome(preview.eventId)`.
   - In the [Join] handler, call `hasEventSession(preview.eventId)` immediately before `mutate`. If it returns true, set `alreadyJoinedOverride` and return.
   - Code `onChange` clears `alreadyJoinedOverride`.
