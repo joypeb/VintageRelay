@@ -68,6 +68,34 @@ export function getJoinFailure(error: unknown): JoinFailure {
   return { kind: 'form', message: getFormErrorMessage(error) };
 }
 
+export type PhotoUploadFailure =
+  | { kind: 'photoField'; message: string }
+  | { kind: 'closed' }
+  | { kind: 'no-access' }
+  | { kind: 'not-found'; message: string }
+  | { kind: 'form'; message: string };
+
+export function getPhotoUploadFailure(error: unknown): PhotoUploadFailure {
+  if (error instanceof ApiError) {
+    switch (error.code) {
+      case 'FILE_TOO_LARGE':
+      case 'UNSUPPORTED_MEDIA_TYPE':
+      case 'VALIDATION_ERROR':
+      case 'BAD_REQUEST':
+        return { kind: 'photoField', message: error.message };
+      case 'EVENT_CLOSED':
+        return { kind: 'closed' };
+      case 'UNAUTHENTICATED':
+        return { kind: 'no-access' };
+      case 'NOT_FOUND':
+        return { kind: 'not-found', message: error.message };
+      default:
+        break;
+    }
+  }
+  return { kind: 'form', message: getFormErrorMessage(error) };
+}
+
 function hasStatus(value: unknown, status: Event['status']): boolean {
   return (
     typeof value === 'object' &&
