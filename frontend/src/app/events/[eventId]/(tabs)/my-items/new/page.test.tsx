@@ -9,6 +9,7 @@ import { renderWithClient } from '@/test/render';
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({ apiFetch: mocks.apiFetch }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn(), push: vi.fn() }) }));
 
 const renderPage = MyItemsNewPage as unknown as (props: {
   params: Promise<{ eventId: string }>;

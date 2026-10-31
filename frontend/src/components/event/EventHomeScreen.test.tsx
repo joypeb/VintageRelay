@@ -10,6 +10,7 @@ import type { Event } from '@/types/event';
 
 const useEventQuery = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/events', () => ({ useEventQuery }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams() }));
 
 const token = 'secret-token-xyz';
 const event: Event = {

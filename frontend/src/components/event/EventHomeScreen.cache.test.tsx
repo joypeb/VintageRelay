@@ -11,6 +11,7 @@ import type { Event } from '@/types/event';
 const apiFetch = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/api/client', () => ({ apiFetch }));
 vi.mock('qrcode.react', () => ({ QRCodeSVG: () => null }));
+vi.mock('next/navigation', () => ({ useSearchParams: () => new URLSearchParams() }));
 
 const activeEvent: Event = {
   id: 'e1',
