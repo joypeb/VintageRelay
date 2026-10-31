@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import type { ChangeEvent } from 'react';
 
@@ -10,9 +11,11 @@ import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { ClothingDetailsForm } from '@/components/clothing/ClothingDetailsForm';
 import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
+import { useRegisterClothingMutation } from '@/lib/api/clothing';
 import { useEventQuery } from '@/lib/api/events';
 import { useUploadPhotoMutation } from '@/lib/api/photos';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -26,10 +29,12 @@ import {
   photoQueueReducer,
 } from '@/lib/photo/queue';
 import type { PhotoItem } from '@/lib/photo/queue';
+import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
+import type { ClothingDraft, ClothingFieldErrors } from '@/lib/validation/clothing-form';
+import { buildRegisterClothingBody, validateClothingDraft } from '@/lib/validation/clothing-form';
 import { MAX_PHOTO_BYTES, validatePhotoFile } from '@/lib/validation/photo';
 import type { Event } from '@/types/event';
-import type { Photo } from '@/types/photo';
 
 type PhotoUploadScreenProps = {
   eventId: string;
@@ -42,22 +47,8 @@ const FILE_ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.
 const HELP_TEXT = 'Add up to 10 JPG/JPEG, PNG, or WebP photos. Photos over 10 MB are compressed.';
 const MAX_TEXT = 'You have added 10 photos, the maximum.';
 const FAILED_SUMMARY = 'Some photos failed to upload. Try again or remove them.';
-const STEP2_NOTE = 'You will describe your clothing and register it here in the next update.';
 
-type ReadyPhotoViewProps = {
-  photo: Photo;
-  displayFailed: boolean;
-  onLoadError: () => void;
-};
-
-function ReadyPhotoView({ photo, displayFailed, onLoadError }: ReadyPhotoViewProps) {
-  return (
-    <>
-      <img src={photo.url} alt="Uploaded clothing photo" onError={onLoadError} />
-      {displayFailed && <Text type="body">This photo could not be displayed.</Text>}
-    </>
-  );
-}
+const EMPTY_DRAFT: ClothingDraft = { title: '', description: '', category: '', measurements: {} };
 
 type FocusedAlertProps = {
   message: string;
@@ -87,9 +78,13 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     enabled: hasSession,
   });
   const uploadMutation = useUploadPhotoMutation(eventId);
+  const registerMutation = useRegisterClothingMutation(eventId);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [queue, dispatch] = useReducer(photoQueueReducer, initialPhotoQueueState);
+  const [draft, setDraft] = useState<ClothingDraft>(EMPTY_DRAFT);
+  const [fieldErrors, setFieldErrors] = useState<ClothingFieldErrors>({});
   const [inputError, setInputError] = useState<string | null>(null);
   const [uploadClosed, setUploadClosed] = useState(false);
   const [uploadNoAccess, setUploadNoAccess] = useState(false);
@@ -321,6 +316,22 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     dispatch({ type: 'retry', key });
   }
 
+  function handleRegister() {
+    if (registerMutation.isPending) return;
+    const errors = validateClothingDraft(draft);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+    const photoIds = queue.items.flatMap((item) =>
+      item.status === 'ready' && item.photo ? [item.photo.id] : [],
+    );
+    const body = buildRegisterClothingBody(draft, photoIds);
+    registerMutation.mutate(body, {
+      onSuccess: () => {
+        router.replace(`${routes.eventHome(eventId)}?registered=1`);
+      },
+    });
+  }
+
   function renderFileControl(disabled: boolean) {
     return (
       <VStack gap={2}>
@@ -427,28 +438,21 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   }
 
   if (queue.step === 2) {
-    const readyItems = queue.items.filter((item) => item.status === 'ready' && item.photo);
     return (
       <VStack gap={4} padding={6}>
         <Heading level={1}>Register clothing</Heading>
         <Text type="body">Step 2 of 2: Details</Text>
-        {readyItems.map((item, index) => {
-          if (!item.photo) return null;
-          return (
-            <VStack key={item.key} gap={2}>
-              {index === 0 && <Text type="body">Main photo</Text>}
-              <ReadyPhotoView
-                photo={item.photo}
-                displayFailed={item.displayFailed ?? false}
-                onLoadError={() => dispatch({ type: 'displayFailed', key: item.key })}
-              />
-            </VStack>
-          );
-        })}
-        <Text type="body" color="secondary">
-          {STEP2_NOTE}
-        </Text>
-        <Button label="Back" variant="secondary" size="lg" width="100%" onClick={() => dispatch({ type: 'back' })} />
+        <ClothingDetailsForm
+          draft={draft}
+          errors={fieldErrors}
+          isPending={registerMutation.isPending}
+          onDraftChange={(next) => {
+            setDraft(next);
+            setFieldErrors({});
+          }}
+          onSubmit={handleRegister}
+          onBack={() => dispatch({ type: 'back' })}
+        />
       </VStack>
     );
   }
