@@ -12,10 +12,12 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { ClothingDetailsForm } from '@/components/clothing/ClothingDetailsForm';
+import type { RegisterOutcome } from '@/components/clothing/ClothingDetailsForm';
 import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
 import { useRegisterClothingMutation } from '@/lib/api/clothing';
+import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { useEventQuery } from '@/lib/api/events';
 import { useUploadPhotoMutation } from '@/lib/api/photos';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -32,7 +34,13 @@ import type { PhotoItem } from '@/lib/photo/queue';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
 import type { ClothingDraft, ClothingFieldErrors } from '@/lib/validation/clothing-form';
-import { buildRegisterClothingBody, validateClothingDraft } from '@/lib/validation/clothing-form';
+import type { RegisterClothingBody } from '@/lib/validation/clothing-form';
+import {
+  buildRegisterClothingBody,
+  mapClothingServerFieldErrors,
+  measurementFieldsFor,
+  validateClothingDraft,
+} from '@/lib/validation/clothing-form';
 import { MAX_PHOTO_BYTES, validatePhotoFile } from '@/lib/validation/photo';
 import type { Event } from '@/types/event';
 
@@ -85,11 +93,16 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const [queue, dispatch] = useReducer(photoQueueReducer, initialPhotoQueueState);
   const [draft, setDraft] = useState<ClothingDraft>(EMPTY_DRAFT);
   const [fieldErrors, setFieldErrors] = useState<ClothingFieldErrors>({});
+  const [registerOutcome, setRegisterOutcome] = useState<RegisterOutcome>('idle');
+  const [registerMessage, setRegisterMessage] = useState<string | null>(null);
+  const hadUncertainRef = useRef(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [uploadClosed, setUploadClosed] = useState(false);
   const [uploadNoAccess, setUploadNoAccess] = useState(false);
   const [uploadNotFound, setUploadNotFound] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
+  const lastBodyRef = useRef<RegisterClothingBody | null>(null);
   const mountedRef = useRef(true);
   const itemsRef = useRef<PhotoItem[]>([]);
   const inFlightRef = useRef<Set<string>>(new Set());
@@ -316,20 +329,109 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     dispatch({ type: 'retry', key });
   }
 
+  function handleRegisterError(error: unknown) {
+    if (!(error instanceof ApiError)) {
+      setRegisterOutcome('networkError');
+      setRegisterMessage(getFormErrorMessage(error));
+      hadUncertainRef.current = true;
+      return;
+    }
+    if (error.code === 'VALIDATION_ERROR') {
+      const mapped = mapClothingServerFieldErrors(error.details);
+      const nextErrors: ClothingFieldErrors = { ...mapped.fieldErrors };
+      if (mapped.formError !== null) nextErrors.form = mapped.formError;
+      setFieldErrors(nextErrors);
+      if (mapped.photoProblem) {
+        setRegisterOutcome('photoProblem');
+        setRegisterMessage('Some photos can no longer be used. Add your photos again.');
+      } else {
+        setRegisterOutcome('idle');
+        setRegisterMessage(null);
+      }
+      return;
+    }
+    if (error.code === 'PHOTO_ALREADY_ATTACHED') {
+      if (hadUncertainRef.current) {
+        setRegisterOutcome('maybeRegistered');
+        setRegisterMessage('Your clothing may already be registered, so it was not sent again.');
+      } else {
+        setRegisterOutcome('photoProblem');
+        setRegisterMessage('Some photos can no longer be used. Add your photos again.');
+      }
+      return;
+    }
+    if (error.code === 'NOT_FOUND') {
+      setRegisterOutcome('notAvailable');
+      setRegisterMessage('This event or some photos are no longer available.');
+      return;
+    }
+    if (error.code === 'EVENT_CLOSED') {
+      setUploadClosed(true);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId), exact: true });
+      return;
+    }
+    if (error.code === 'UNAUTHENTICATED') {
+      setUploadNoAccess(true);
+      return;
+    }
+    setRegisterOutcome('networkError');
+    setRegisterMessage(getFormErrorMessage(error));
+    hadUncertainRef.current = true;
+  }
+
+  function submitRegisterBody(body: RegisterClothingBody) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    lastBodyRef.current = body;
+    try {
+      registerMutation.mutate(body, {
+        onSuccess: () => {
+          router.replace(`${routes.eventHome(eventId)}?registered=1`);
+        },
+        onError: handleRegisterError,
+        onSettled: () => {
+          submittingRef.current = false;
+        },
+      });
+    } catch {
+      submittingRef.current = false;
+    }
+  }
+
   function handleRegister() {
-    if (registerMutation.isPending) return;
+    if (submittingRef.current || registerMutation.isPending) return;
     const errors = validateClothingDraft(draft);
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setRegisterOutcome('idle');
+      setRegisterMessage(null);
+      return;
+    }
+    setRegisterOutcome('idle');
+    setRegisterMessage(null);
+    hadUncertainRef.current = false;
     const photoIds = queue.items.flatMap((item) =>
       item.status === 'ready' && item.photo ? [item.photo.id] : [],
     );
     const body = buildRegisterClothingBody(draft, photoIds);
-    registerMutation.mutate(body, {
-      onSuccess: () => {
-        router.replace(`${routes.eventHome(eventId)}?registered=1`);
-      },
-    });
+    submitRegisterBody(body);
+  }
+
+  function handleRegisterRetry() {
+    const body = lastBodyRef.current;
+    if (body === null) return;
+    if (submittingRef.current || registerMutation.isPending) return;
+    submitRegisterBody(body);
+  }
+
+  function handleBackToPhotos() {
+    setRegisterOutcome('idle');
+    setRegisterMessage(null);
+    dispatch({ type: 'back' });
+  }
+
+  function handleGoHome() {
+    router.push(routes.eventHome(eventId));
   }
 
   function renderFileControl(disabled: boolean) {
@@ -454,12 +556,40 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
           draft={draft}
           errors={fieldErrors}
           isPending={registerMutation.isPending}
-          onDraftChange={(next) => {
+          outcome={registerOutcome}
+          outcomeMessage={registerMessage}
+          onDraftChange={(next, field) => {
             setDraft(next);
-            setFieldErrors({});
+            setFieldErrors((prev) => {
+              const nextErrors = { ...prev };
+              let changed = false;
+              if (nextErrors[field] !== undefined) {
+                delete nextErrors[field];
+                changed = true;
+              }
+              if (nextErrors.form !== undefined) {
+                delete nextErrors.form;
+                changed = true;
+              }
+              if (field === 'category') {
+                const allowed = new Set<string>(measurementFieldsFor(next.category));
+                for (const key of Object.keys(nextErrors)) {
+                  if (key === 'title' || key === 'description' || key === 'category' || key === 'form')
+                    continue;
+                  if (!allowed.has(key)) {
+                    delete nextErrors[key as keyof typeof nextErrors];
+                    changed = true;
+                  }
+                }
+              }
+              return changed ? nextErrors : prev;
+            });
           }}
           onSubmit={handleRegister}
           onBack={() => dispatch({ type: 'back' })}
+          onBackToPhotos={handleBackToPhotos}
+          onGoHome={handleGoHome}
+          onRetry={handleRegisterRetry}
         />
       </VStack>
     );

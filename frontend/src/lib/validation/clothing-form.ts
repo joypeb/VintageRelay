@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export type ClothingCategoryValue = 'top' | 'outer' | 'bottom' | 'other' | '';
 
 export type MeasurementField =
@@ -122,4 +124,74 @@ export function buildRegisterClothingBody(
     body.measurements = measurements;
   }
   return body;
+}
+
+const CLOTHING_FORM_ERROR = 'Check your entries and try again.';
+
+const MEASUREMENT_MESSAGE = 'Enter a number from 0.1 to 120.';
+
+const serverDetailsSchema = z.object({
+  fields: z.array(z.object({ field: z.string(), reason: z.string() })).min(1),
+});
+
+const ALL_MEASUREMENT_FIELDS: MeasurementField[] = [
+  'totalLength',
+  'chest',
+  'shoulder',
+  'sleeve',
+  'waist',
+  'hem',
+  'inseam',
+  'thigh',
+];
+
+function isMeasurementField(field: string): field is MeasurementField {
+  return (ALL_MEASUREMENT_FIELDS as string[]).includes(field);
+}
+
+export function mapClothingServerFieldErrors(details: unknown): {
+  fieldErrors: ClothingFieldErrors;
+  formError: string | null;
+  photoProblem: boolean;
+} {
+  const parsed = serverDetailsSchema.safeParse(details);
+  if (!parsed.success) return { fieldErrors: {}, formError: CLOTHING_FORM_ERROR, photoProblem: false };
+
+  const fieldErrors: ClothingFieldErrors = {};
+  let formError: string | null = null;
+  let photoProblem = false;
+  for (const { field, reason } of parsed.data.fields) {
+    if (field === 'photoIds') {
+      photoProblem = true;
+      continue;
+    }
+    let target: ClothingField | undefined;
+    let message: string | undefined;
+    if (field === 'title') {
+      if (reason === 'required') message = 'Enter a title.';
+      else if (reason === 'too_long') message = 'Use 100 characters or fewer.';
+      else if (reason === 'invalid_characters')
+        message = 'Use a single line without special characters.';
+      if (message !== undefined) target = 'title';
+    } else if (field === 'description') {
+      if (reason === 'required') message = 'Enter a description.';
+      else if (reason === 'too_long') message = 'Use 1,000 characters or fewer.';
+      if (message !== undefined) target = 'description';
+    } else if (field === 'category') {
+      if (reason === 'required' || reason === 'invalid') message = 'Choose a category.';
+      if (message !== undefined) target = 'category';
+    } else if (field.startsWith('measurements.')) {
+      const sub = field.slice('measurements.'.length);
+      if (isMeasurementField(sub) && reason === 'invalid') {
+        target = sub;
+        message = MEASUREMENT_MESSAGE;
+      }
+    }
+    if (target === undefined || message === undefined) {
+      formError = CLOTHING_FORM_ERROR;
+    } else {
+      fieldErrors[target] ??= message;
+    }
+  }
+  return { fieldErrors, formError, photoProblem };
 }

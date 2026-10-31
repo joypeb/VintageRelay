@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRegisterClothingBody,
   codePointLength,
+  mapClothingServerFieldErrors,
   measurementFieldsFor,
   pruneMeasurements,
   validateClothingDraft,
@@ -103,5 +104,69 @@ it('builds a trimmed request with ordered photos and numeric entered measurement
     category: 'top',
     title: 'Jacket',
     description: 'Green jacket',
+  });
+});
+
+describe('mapClothingServerFieldErrors', () => {
+  it.each([
+    ['title', 'required', 'title', 'Enter a title.'],
+    ['title', 'too_long', 'title', 'Use 100 characters or fewer.'],
+    ['title', 'invalid_characters', 'title', 'Use a single line without special characters.'],
+    ['description', 'required', 'description', 'Enter a description.'],
+    ['description', 'too_long', 'description', 'Use 1,000 characters or fewer.'],
+    ['category', 'required', 'category', 'Choose a category.'],
+    ['category', 'invalid', 'category', 'Choose a category.'],
+    ...['totalLength', 'chest', 'shoulder', 'sleeve', 'waist', 'hem', 'inseam', 'thigh'].map(
+      (field) => [`measurements.${field}`, 'invalid', field, 'Enter a number from 0.1 to 120.'],
+    ),
+  ])('maps %s %s to its field message', (field, reason, target, message) => {
+    expect(mapClothingServerFieldErrors({ fields: [{ field, reason }] })).toEqual({
+      fieldErrors: { [target]: message },
+      formError: null,
+      photoProblem: false,
+    });
+  });
+
+  it.each(['invalid', 'anything'])('maps photoIds %s to a photo problem', (reason) => {
+    expect(mapClothingServerFieldErrors({ fields: [{ field: 'photoIds', reason }] })).toEqual({
+      fieldErrors: {},
+      formError: null,
+      photoProblem: true,
+    });
+  });
+
+  it.each([
+    [
+      'unknown measurement reason',
+      { fields: [{ field: 'measurements.chest', reason: 'unknown_field' }] },
+    ],
+    ['measurements object', { fields: [{ field: 'measurements', reason: 'invalid' }] }],
+    ['unknown field', { fields: [{ field: 'unknown', reason: 'required' }] }],
+    ['unknown reason', { fields: [{ field: 'title', reason: 'unknown' }] }],
+    ['null', null],
+    ['empty object', {}],
+    ['malformed fields', { fields: 'x' }],
+  ])('uses a form error for %s', (_name, details) => {
+    expect(mapClothingServerFieldErrors(details)).toEqual({
+      fieldErrors: {},
+      formError: 'Check your entries and try again.',
+      photoProblem: false,
+    });
+  });
+
+  it('keeps the first message for each field while reporting unknown fields', () => {
+    expect(
+      mapClothingServerFieldErrors({
+        fields: [
+          { field: 'title', reason: 'required' },
+          { field: 'title', reason: 'too_long' },
+          { field: 'unknown', reason: 'invalid' },
+        ],
+      }),
+    ).toEqual({
+      fieldErrors: { title: 'Enter a title.' },
+      formError: 'Check your entries and try again.',
+      photoProblem: false,
+    });
   });
 });

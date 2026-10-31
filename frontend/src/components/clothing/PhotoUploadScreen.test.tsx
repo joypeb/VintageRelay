@@ -1,11 +1,13 @@
 import { StrictMode } from 'react';
 
+import type { QueryClient } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PhotoUploadScreen } from '@/components/clothing/PhotoUploadScreen';
 import { ApiError } from '@/lib/api/api-error';
+import { queryKeys } from '@/lib/api/query-keys';
 import { saveEventSession } from '@/lib/session';
 import '@/test/dialog-polyfill';
 import { installMatchMedia } from '@/test/match-media';
@@ -1234,5 +1236,264 @@ describe('US4 details form', () => {
     expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green');
     expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
     expect(screen.getByRole('textbox', { name: 'Chest (in)' })).toHaveValue('21');
+  });
+});
+
+describe('US5 errors', () => {
+  let restoreMatchMedia: () => void;
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.compressPhoto.mockReset();
+    mocks.registerClothing.mockReset();
+    mocks.push.mockReset();
+    mocks.replace.mockReset();
+    mocks.apiFetch.mockImplementation((_id: string, path: string) =>
+      Promise.resolve(path === '/events/e1' ? event : photo),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => {
+    restoreMatchMedia();
+    localStorage.clear();
+  });
+
+  async function openDetails(onClient?: (client: QueryClient) => void) {
+    const user = userEvent.setup();
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    onClient?.(queryClient);
+    await user.upload(
+      await screen.findByLabelText('Clothing photos'),
+      new File(['one'], 'one.jpg', { type: 'image/jpeg' }),
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    return user;
+  }
+  async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Jacket');
+    await user.type(screen.getByRole('textbox', { name: /description/i }), 'Green jacket');
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Top' }));
+    await user.type(screen.getByRole('textbox', { name: 'Chest (in)' }), '21');
+  }
+  function expectDraft() {
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Jacket');
+    expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green jacket');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).toHaveValue('21');
+  }
+  it('shows required errors and focuses Title without submitting', async () => {
+    const user = await openDetails();
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(mocks.registerClothing).not.toHaveBeenCalled();
+    for (const message of ['Enter a title.', 'Enter a description.', 'Choose a category.'])
+      expect(screen.getByText(message)).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveFocus();
+  });
+  it('rejects an invalid chest measurement without submitting', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    const chest = screen.getByRole('textbox', { name: 'Chest (in)' });
+    await user.clear(chest);
+    await user.type(chest, '0');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(mocks.registerClothing).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    expect(chest).toHaveValue('0');
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Jacket');
+    expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green jacket');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+  });
+  it('maps server validation errors and keeps the draft', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', {
+        fields: [
+          { field: 'title', reason: 'too_long' },
+          { field: 'measurements.chest', reason: 'invalid' },
+        ],
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Use 100 characters or fewer.')).toBeVisible();
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    expectDraft();
+  });
+  it('returns to photos after an attached-photo error and keeps the draft', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('Some photos can no longer be used. Add your photos again.'),
+    ).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Back to photos' }));
+    expect(screen.getByText('1 / 10 photos')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expectDraft();
+  });
+  it('offers photos and event home when the event or photos are unavailable', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'Not found.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('This event or some photos are no longer available.'),
+    ).toBeVisible();
+    expectDraft();
+    expect(screen.getByRole('button', { name: 'Back to photos' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Go to event home' }));
+    expect(mocks.push).toHaveBeenCalledWith('/events/e1');
+  });
+  it('retries the same body and warns when the first response may have been lost', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing
+      .mockRejectedValueOnce(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.'))
+      .mockRejectedValueOnce(new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Network unavailable.')).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText('Your clothing may already be registered, so it was not sent again.'),
+    ).toBeVisible();
+    expect(mocks.registerClothing).toHaveBeenCalledTimes(2);
+    expect(mocks.registerClothing.mock.calls[1]).toEqual(mocks.registerClothing.mock.calls[0]);
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Go to event home' }));
+    expect(mocks.push).toHaveBeenCalledWith('/events/e1');
+  });
+  it('treats an attached photo as a photo problem on a fresh registration after a network error', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing
+      .mockRejectedValueOnce(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.'))
+      .mockRejectedValueOnce(new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Network unavailable.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('Some photos can no longer be used. Add your photos again.'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to photos' })).toBeVisible();
+    expect(
+      screen.queryByText('Your clothing may already be registered, so it was not sent again.'),
+    ).not.toBeInTheDocument();
+  });
+  it('invalidates the event query when registration finds the event closed', async () => {
+    let client!: QueryClient;
+    const user = await openDetails((value) => {
+      client = value;
+    });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(409, 'EVENT_CLOSED', 'Event closed.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    await screen.findByLabelText('Clothing photos');
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.event('e1'), exact: true });
+  });
+  it('retries the same body after an unexpected error', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new Error('boom'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Something went wrong. Please try again.')).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mocks.registerClothing).toHaveBeenCalledTimes(2));
+    expect(mocks.registerClothing.mock.calls[1]).toEqual(mocks.registerClothing.mock.calls[0]);
+  });
+  it('clears a hidden measurement error when category changes', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    const chest = screen.getByRole('textbox', { name: 'Chest (in)' });
+    await user.clear(chest);
+    await user.type(chest, '0');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Other' }));
+    expect(screen.queryByRole('textbox', { name: 'Chest (in)' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Top' }));
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+  it('clears an unmapped server validation message when a field is edited', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', {
+        fields: [{ field: 'unknown', reason: 'invalid' }],
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Check your entries and try again.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: /title/i }), '!');
+    expect(screen.queryByText('Check your entries and try again.')).not.toBeInTheDocument();
+  });
+  it.each([
+    [409, 'EVENT_CLOSED'],
+    [401, 'UNAUTHENTICATED'],
+  ])('uses existing handling for %s %s', async (status, code) => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(status, code, 'Event unavailable.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    if (code === 'EVENT_CLOSED') {
+      expect(await screen.findByLabelText('Clothing photos')).toBeDisabled();
+      expect(screen.getByText('1 / 10 photos')).toBeVisible();
+    } else
+      expect(
+        await screen.findByText("You haven't joined this event on this device."),
+      ).toBeVisible();
+  });
+  it('guards against two synchronous Register clicks', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockImplementation(() => new Promise(() => {}));
+    const register = screen.getByRole('button', { name: 'Register' });
+    act(() => {
+      fireEvent.click(register);
+      fireEvent.click(register);
+    });
+    await waitFor(() => expect(mocks.registerClothing).toHaveBeenCalledTimes(1));
+  });
+  it('marks Register as busy while the request is pending', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockImplementation(() => new Promise(() => {}));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByRole('button', { name: /Registering/ })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+  });
+  it('clears only the edited field error', async () => {
+    const user = await openDetails();
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByText('Enter a title.')).toBeVisible();
+    expect(screen.getByText('Enter a description.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Jacket');
+    expect(screen.queryByText('Enter a title.')).not.toBeInTheDocument();
+    expect(screen.getByText('Enter a description.')).toBeVisible();
   });
 });
