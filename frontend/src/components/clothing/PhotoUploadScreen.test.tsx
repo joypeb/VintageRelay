@@ -895,3 +895,89 @@ describe('US1 carousel', () => {
     expect(uploadCalls()).toHaveLength(1);
   });
 });
+
+describe('US2 arrows', () => {
+  let restoreMatchMedia: () => void;
+  const files = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, i) => new File([String(i)], `${i}.jpg`, { type: 'image/jpeg' }),
+    );
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia({ '(prefers-reduced-motion: reduce)': true });
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1' ? Promise.resolve(event) : new Promise(() => {}),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  it('moves one photo per click, jumps without motion, and disables arrows at the ends', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', { configurable: true, writable: true, value: 600 });
+    fireEvent.scroll(scroller);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+    const previous = within(region).getByRole('button', { name: 'Previous photo' });
+    const next = within(region).getByRole('button', { name: 'Next photo' });
+    expect(next).toBeDisabled();
+
+    await user.click(previous);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+    await user.click(previous);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(0);
+    expect(within(region).getByText('1 / 3')).toBeVisible();
+    expect(previous).toBeDisabled();
+    await user.click(next);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+  });
+
+  it('activates arrows with Enter and Space', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', { configurable: true, writable: true, value: 600 });
+    fireEvent.scroll(scroller);
+
+    within(region).getByRole('button', { name: 'Previous photo' }).focus();
+    await user.keyboard('{Enter}');
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+    within(region).getByRole('button', { name: 'Next photo' }).focus();
+    await user.keyboard(' ');
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(600);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+  });
+
+  it('does not render arrows for one photo', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    expect(within(region).queryByRole('button', { name: 'Previous photo' })).not.toBeInTheDocument();
+    expect(within(region).queryByRole('button', { name: 'Next photo' })).not.toBeInTheDocument();
+  });
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import type { ChangeEvent } from 'react';
 
 import { Button } from '@astryxdesign/core/Button';
@@ -124,10 +124,14 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     [],
   );
 
-  // Read the cached event synchronously so the closed view appears in the same
-  // render that updates the cache (React Query notifies observers on a timer).
+  // Read the cached event during render so the closed view appears in the
+  // same commit that updates the cache, without waiting for a re-render.
+  const subscribeToCache = useCallback(
+    (notify: () => void) => queryClient.getQueryCache().subscribe(notify),
+    [queryClient],
+  );
   const cachedEvent = useSyncExternalStore(
-    (notify) => queryClient.getQueryCache().subscribe(notify),
+    subscribeToCache,
     () => queryClient.getQueryData<Event>(queryKeys.event(eventId)),
     () => undefined,
   );

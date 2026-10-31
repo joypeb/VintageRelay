@@ -49,3 +49,7 @@ Expected new/updated suites pass:
   - #10b: closed view covered by the automated "keeps slides but hides actions when the event closes" test; not run manually.
   - Observation: the horizontal scrollbar is visible in a desktop browser; hide it in US2.
   - Review (commit-reviewer, US1): no Critical/High. Accepted: per-slide `role="status"` replaces the single live region; locked [Remove] is rendered disabled (action still blocked). Deferred to US2: memoize the query-cache subscribe callback, hide the desktop scrollbar.
+- **T010 US2** (same setup; `(pointer: fine)` true, reduced motion false):
+  - #4: arrows visible and vertically centered on the frame (screenshot at 430×800). One Next click sampled per frame: scrollLeft 0→312 at ~1.04 px/ms, reaching 312 at ~300 ms (linear, under 0.5 s); snap restored to `x mandatory` afterwards. 4 rapid Previous clicks from "5 / 5" landed exactly on "1 / 5" (no overshoot); Previous disabled at 1, Next disabled at 5 after 4 clicks (SC-003). Resize 375→430 at slide 3 kept "3 / 5" (scrollLeft 624→734). Scrollbar hidden (`scrollbar-width: none`, 0 px gap).
+  - #5: reduced-motion jump covered by the automated "US2 arrows" test; OS setting not toggled manually. Arrow hiding on touch-only devices relies on Tailwind `pointer-fine:`; not run on a touch device.
+  - Review (commit-reviewer, US2): no Critical/High. Accepted Low: in reduced-motion mode a second click before re-render can be dropped (no overshoot). The rAF path is covered by manual evidence only.
