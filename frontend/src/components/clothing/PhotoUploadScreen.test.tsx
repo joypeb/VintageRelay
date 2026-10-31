@@ -1,12 +1,13 @@
 import { StrictMode } from 'react';
 
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PhotoUploadScreen } from '@/components/clothing/PhotoUploadScreen';
 import { ApiError } from '@/lib/api/api-error';
 import { saveEventSession } from '@/lib/session';
+import { installMatchMedia } from '@/test/match-media';
 import { renderWithClient } from '@/test/render';
 
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), compressPhoto: vi.fn() }));
@@ -399,7 +400,7 @@ describe('US3 stability', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
     fireEvent.error(screen.getByRole('img'));
     expect(screen.getByText('This photo could not be displayed.')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
     expect(uploadCalls()).toHaveLength(1);
   });
 
@@ -784,5 +785,113 @@ describe('US4 multiple photos', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByText('3 / 10 photos')).toBeVisible();
     expect(uploadCalls()).toHaveLength(3);
+  });
+});
+
+describe('US1 carousel', () => {
+  let restoreMatchMedia: () => void;
+  const files = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, i) => new File([String(i)], `${i}.jpg`, { type: 'image/jpeg' }),
+    );
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1' ? Promise.resolve(event) : new Promise(() => {}),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  it('shows ordered slides and updates the position on scroll', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const slides = [1, 2, 3].map((n) => within(region).getByLabelText(`Photo ${n} of 3`));
+    expect(slides.map((slide) => within(slide).getByRole('img').getAttribute('src'))).toEqual([
+      'blob:0.jpg',
+      'blob:1.jpg',
+      'blob:2.jpg',
+    ]);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', { configurable: true, writable: true, value: 0 });
+    fireEvent.scroll(scroller);
+    expect(within(region).getByText('1 / 3')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeVisible();
+  });
+
+  it('omits the position for one photo', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    expect(within(region).getByLabelText('Photo 1 of 1')).toBeInTheDocument();
+    expect(within(region).queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it('keeps waiting and uploading actions on their own slides', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const first = within(region).getByLabelText('Photo 1 of 3');
+    const second = within(region).getByLabelText('Photo 2 of 3');
+    const third = within(region).getByLabelText('Photo 3 of 3');
+    expect(within(first).getByText('Uploading photo…')).toBeVisible();
+    expect(within(first).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    for (const slide of [second, third]) {
+      expect(within(slide).getByText('Waiting')).toBeVisible();
+      expect(within(slide).getByRole('button', { name: 'Remove' })).toBeEnabled();
+      expect(within(slide).queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    }
+  });
+
+  it('keeps retry and remove on the failed slide', async () => {
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1'
+        ? Promise.resolve(event)
+        : Promise.reject(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.')),
+    );
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    await screen.findByText('Network unavailable.');
+    const slide = within(screen.getByRole('region', { name: 'Photo carousel' })).getByLabelText(
+      'Photo 1 of 1',
+    );
+    expect(within(slide).getByText('Network unavailable.')).toBeVisible();
+    expect(within(slide).getByRole('button', { name: 'Try again' })).toBeEnabled();
+    expect(within(slide).getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
+  it('keeps slides but hides actions when the event closes', async () => {
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    await act(async () => {
+      queryClient.setQueryData(['events', 'e1'], {
+        ...event,
+        status: 'closed',
+        closedAt: '2026-10-28T01:00:00Z',
+      });
+    });
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    for (const n of [1, 2, 3])
+      expect(within(region).getByLabelText(`Photo ${n} of 3`)).toBeInTheDocument();
+    expect(within(region).getAllByRole('img')).toHaveLength(3);
+    for (const name of ['Remove', 'Try again', 'Add photo', 'Next']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect(uploadCalls()).toHaveLength(1);
   });
 });

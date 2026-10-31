@@ -41,3 +41,11 @@ Expected new/updated suites pass:
 ## Implementation evidence
 
 - **T001 baseline** (2026-10-31, base `b312f89`): `pnpm lint` 0 errors / 13 warnings (pre-existing); `pnpm typecheck` pass; `pnpm test` 31 files / 434 tests passed.
+- **T007 US1** (local backend :8014 + `next dev` :3014, Paseo browser at 375×667; desktop engine, touch swipe itself not exercised):
+  - #1: 5 photos → carousel region 499 px tall; still 499 px after removing one; adding scrolled to "5 / 5"; scrolling to slide 3 showed "3 / 5". Swipe snap on a real touch device not run.
+  - #2: 1600×600 photo in a 312×416 frame rendered 1109×416, offset −399 px (even side crop), not stretched.
+  - #3: 720×1280 photo rendered 234×416, centered with 39 px each side, no vertical crop.
+  - #7: removing the in-view photo 3/5 → "3 / 4" with the neighbour in view; add → newest in view.
+  - #10b: closed view covered by the automated "keeps slides but hides actions when the event closes" test; not run manually.
+  - Observation: the horizontal scrollbar is visible in a desktop browser; hide it in US2.
+  - Review (commit-reviewer, US1): no Critical/High. Accepted: per-slide `role="status"` replaces the single live region; locked [Remove] is rendered disabled (action still blocked). Deferred to US2: memoize the query-cache subscribe callback, hide the desktop scrollbar.
