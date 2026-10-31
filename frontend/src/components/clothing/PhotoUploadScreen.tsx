@@ -370,6 +370,13 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     return <img src={item.previewUrl} alt="Clothing photo preview" />;
   }
 
+  function getCarouselOverlayMedia(item: PhotoItem, index: number) {
+    if (item.displayFailed) return null;
+    const src = item.status === 'ready' && item.photo ? item.photo.url : item.previewUrl;
+    if (!src) return null;
+    return { src, alt: `Clothing photo ${index + 1}` };
+  }
+
   function renderCarouselBelow(item: PhotoItem) {
     const locked = item.status === 'preparing' || item.status === 'uploading';
     return (
@@ -432,6 +439,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
           items={queue.items}
           renderMedia={renderCarouselMedia}
           renderBelow={renderClosedCarouselBelow}
+          getOverlayMedia={getCarouselOverlayMedia}
         />
       </VStack>
     );
@@ -476,6 +484,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         items={queue.items}
         renderMedia={renderCarouselMedia}
         renderBelow={renderCarouselBelow}
+        getOverlayMedia={getCarouselOverlayMedia}
       />
       <Button
         label="Add photo"

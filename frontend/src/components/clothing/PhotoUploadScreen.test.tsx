@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PhotoUploadScreen } from '@/components/clothing/PhotoUploadScreen';
 import { ApiError } from '@/lib/api/api-error';
 import { saveEventSession } from '@/lib/session';
+import '@/test/dialog-polyfill';
 import { installMatchMedia } from '@/test/match-media';
 import { renderWithClient } from '@/test/render';
 
@@ -980,6 +981,105 @@ describe('US2 arrows', () => {
       within(region).queryByRole('button', { name: 'Previous photo' }),
     ).not.toBeInTheDocument();
     expect(within(region).queryByRole('button', { name: 'Next photo' })).not.toBeInTheDocument();
+  });
+});
+
+describe('US3 overlay', () => {
+  let restoreMatchMedia: () => void;
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  const files = [
+    new File(['one'], 'one.jpg', { type: 'image/jpeg' }),
+    new File(['two'], 'two.jpg', { type: 'image/jpeg' }),
+  ] as const;
+
+  it.each(['Close button', 'Escape'])(
+    'closes with %s and preserves the carousel',
+    async (method) => {
+      mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+        if (path === '/events/e1') return Promise.resolve(event);
+        return uploadCalls().length === 1 ? Promise.resolve(photo) : new Promise(() => {});
+      });
+      const user = userEvent.setup();
+      renderWithClient(<PhotoUploadScreen eventId="e1" />);
+      await user.upload(await screen.findByLabelText('Clothing photos'), [...files]);
+      await screen.findByRole('img', { name: 'Uploaded clothing photo' });
+      await screen.findByText('Uploading photo…');
+      const region = screen.getByRole('region', { name: 'Photo carousel' });
+      const slides = [
+        within(region).getByLabelText('Photo 1 of 2'),
+        within(region).getByLabelText('Photo 2 of 2'),
+      ] as const;
+      const contents = slides.map((slide) => slide.textContent);
+      expect(within(region).getByText('2 / 2')).toBeVisible();
+      const trigger = within(slides[0]).getByRole('button', { name: 'View full photo 1' });
+      await user.click(trigger);
+      const dialog = screen.getByRole('dialog', { name: 'Clothing photo 1' });
+      expect(within(dialog).getByRole('img', { name: 'Clothing photo 1' })).toHaveAttribute(
+        'src',
+        photo.url,
+      );
+      const close = within(dialog).getByRole('button', { name: 'Close' });
+      if (method === 'Close button') {
+        await user.click(close);
+      } else {
+        // jsdom does not turn Escape into the native dialog cancel event.
+        fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
+      }
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(trigger).toHaveFocus();
+      expect(within(region).getByText('2 / 2')).toBeVisible();
+      expect(slides.map((slide) => slide.textContent)).toEqual(contents);
+      expect(within(slides[1]).getByText('Uploading photo…')).toBeVisible();
+      expect(uploadCalls()).toHaveLength(2);
+    },
+  );
+
+  it('keeps the preview in the open overlay when its upload finishes', async () => {
+    let resolve!: (value: typeof photo) => void;
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1'
+        ? Promise.resolve(event)
+        : new Promise((r) => {
+            resolve = r;
+          }),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), files[0]);
+    await screen.findByText('Uploading photo…');
+    await user.click(screen.getByRole('button', { name: 'View full photo 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Clothing photo 1' });
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', 'blob:one.jpg');
+    await act(async () => resolve(photo));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
+    expect(screen.getByRole('dialog', { name: 'Clothing photo 1' })).toBe(dialog);
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', 'blob:one.jpg');
+  });
+
+  it('does not offer an overlay for an image that failed to display', async () => {
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      Promise.resolve(path === '/events/e1' ? event : photo),
+    );
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files[0]);
+    fireEvent.error(await screen.findByRole('img', { name: 'Uploaded clothing photo' }));
+    expect(screen.getByText('This photo could not be displayed.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'View full photo 1' })).not.toBeInTheDocument();
   });
 });
 
