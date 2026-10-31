@@ -132,8 +132,8 @@ Shared test fixture and navigation mocks needed by every later screen test. Test
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T024 Run the full suites: `cd frontend && pnpm lint && pnpm typecheck && pnpm test` and `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; regression guard). Record actual results in `specs/014-clothing-register-form/quickstart.md` — agent: orchestrator
-- [ ] T025 Confirm all new UI strings are English (FR-024) and touch targets are ≥ 44×44 px at 360 px width — agent: orchestrator; then `pr-reviewer` before PR work (AGENTS.md)
+- [X] T024 Run the full suites: `cd frontend && pnpm lint && pnpm typecheck && pnpm test` and `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest` (backend unchanged; regression guard). Record actual results in `specs/014-clothing-register-form/quickstart.md` — agent: orchestrator
+- [ ] T025 (open: Title input and Category selector are 32 px tall, below 44 px — see quickstart T025) Confirm all new UI strings are English (FR-024) and touch targets are ≥ 44×44 px at 360 px width — agent: orchestrator; then `pr-reviewer` before PR work (AGENTS.md)
 
 ---
 
