@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useReducer, useRef, useState, useSyncExternalStore } from 'react';
 import type { ChangeEvent } from 'react';
 
 import { Button } from '@astryxdesign/core/Button';
@@ -10,8 +11,13 @@ import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useQueryClient } from '@tanstack/react-query';
 
+import { ClothingDetailsForm } from '@/components/clothing/ClothingDetailsForm';
+import type { RegisterOutcome } from '@/components/clothing/ClothingDetailsForm';
+import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
+import { useRegisterClothingMutation } from '@/lib/api/clothing';
+import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { useEventQuery } from '@/lib/api/events';
 import { useUploadPhotoMutation } from '@/lib/api/photos';
 import { queryKeys } from '@/lib/api/query-keys';
@@ -25,9 +31,18 @@ import {
   photoQueueReducer,
 } from '@/lib/photo/queue';
 import type { PhotoItem } from '@/lib/photo/queue';
+import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
+import type { ClothingDraft, ClothingFieldErrors } from '@/lib/validation/clothing-form';
+import type { RegisterClothingBody } from '@/lib/validation/clothing-form';
+import {
+  buildRegisterClothingBody,
+  mapClothingServerFieldErrors,
+  measurementFieldsFor,
+  validateClothingDraft,
+} from '@/lib/validation/clothing-form';
 import { MAX_PHOTO_BYTES, validatePhotoFile } from '@/lib/validation/photo';
-import type { Photo } from '@/types/photo';
+import type { Event } from '@/types/event';
 
 type PhotoUploadScreenProps = {
   eventId: string;
@@ -40,29 +55,8 @@ const FILE_ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,.jpg,.jpeg,.png,.
 const HELP_TEXT = 'Add up to 10 JPG/JPEG, PNG, or WebP photos. Photos over 10 MB are compressed.';
 const MAX_TEXT = 'You have added 10 photos, the maximum.';
 const FAILED_SUMMARY = 'Some photos failed to upload. Try again or remove them.';
-const STEP2_NOTE = 'You will describe your clothing and register it here in the next update.';
 
-function statusLabel(status: PhotoItem['status']): string | null {
-  if (status === 'waiting') return 'Waiting';
-  if (status === 'preparing') return 'Preparing photo…';
-  if (status === 'uploading') return 'Uploading photo…';
-  return null;
-}
-
-type ReadyPhotoViewProps = {
-  photo: Photo;
-  displayFailed: boolean;
-  onLoadError: () => void;
-};
-
-function ReadyPhotoView({ photo, displayFailed, onLoadError }: ReadyPhotoViewProps) {
-  return (
-    <>
-      <img src={photo.url} alt="Uploaded clothing photo" onError={onLoadError} />
-      {displayFailed && <Text type="body">This photo could not be displayed.</Text>}
-    </>
-  );
-}
+const EMPTY_DRAFT: ClothingDraft = { title: '', description: '', category: '', measurements: {} };
 
 type FocusedAlertProps = {
   message: string;
@@ -92,14 +86,23 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     enabled: hasSession,
   });
   const uploadMutation = useUploadPhotoMutation(eventId);
+  const registerMutation = useRegisterClothingMutation(eventId);
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [queue, dispatch] = useReducer(photoQueueReducer, initialPhotoQueueState);
+  const [draft, setDraft] = useState<ClothingDraft>(EMPTY_DRAFT);
+  const [fieldErrors, setFieldErrors] = useState<ClothingFieldErrors>({});
+  const [registerOutcome, setRegisterOutcome] = useState<RegisterOutcome>('idle');
+  const [registerMessage, setRegisterMessage] = useState<string | null>(null);
+  const hadUncertainRef = useRef(false);
   const [inputError, setInputError] = useState<string | null>(null);
   const [uploadClosed, setUploadClosed] = useState(false);
   const [uploadNoAccess, setUploadNoAccess] = useState(false);
   const [uploadNotFound, setUploadNotFound] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
+  const lastBodyRef = useRef<RegisterClothingBody | null>(null);
   const mountedRef = useRef(true);
   const itemsRef = useRef<PhotoItem[]>([]);
   const inFlightRef = useRef<Set<string>>(new Set());
@@ -129,8 +132,23 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     [],
   );
 
+  // Read the cached event during render so the closed view appears in the
+  // same commit that updates the cache, without waiting for a re-render.
+  const subscribeToCache = useCallback(
+    (notify: () => void) => queryClient.getQueryCache().subscribe(notify),
+    [queryClient],
+  );
+  const cachedEvent = useSyncExternalStore(
+    subscribeToCache,
+    () => queryClient.getQueryData<Event>(queryKeys.event(eventId)),
+    () => undefined,
+  );
+  const liveEvent = cachedEvent ?? data;
   const queueStopped =
-    (data !== undefined && isClosed(data)) || uploadClosed || uploadNoAccess || uploadNotFound;
+    (liveEvent !== undefined && isClosed(liveEvent)) ||
+    uploadClosed ||
+    uploadNoAccess ||
+    uploadNotFound;
 
   useEffect(() => {
     if (queueStopped) return;
@@ -253,11 +271,7 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     return <EventScreenStatus kind="not-found" />;
   }
 
-  const closed = isClosed(state.event) || uploadClosed;
-  const activeItem = queue.items.find(
-    (item) => item.status === 'preparing' || item.status === 'uploading',
-  );
-  const liveText = activeItem ? statusLabel(activeItem.status) : null;
+  const closed = (liveEvent !== undefined && isClosed(liveEvent)) || uploadClosed;
   const hasFailed = queue.items.some((item) => item.status === 'failed');
   const atLimit = queue.items.length >= 10;
   const proceed = canProceed(queue);
@@ -315,6 +329,111 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     dispatch({ type: 'retry', key });
   }
 
+  function handleRegisterError(error: unknown) {
+    if (!(error instanceof ApiError)) {
+      setRegisterOutcome('networkError');
+      setRegisterMessage(getFormErrorMessage(error));
+      hadUncertainRef.current = true;
+      return;
+    }
+    if (error.code === 'VALIDATION_ERROR') {
+      const mapped = mapClothingServerFieldErrors(error.details);
+      const nextErrors: ClothingFieldErrors = { ...mapped.fieldErrors };
+      if (mapped.formError !== null) nextErrors.form = mapped.formError;
+      setFieldErrors(nextErrors);
+      if (mapped.photoProblem) {
+        setRegisterOutcome('photoProblem');
+        setRegisterMessage('Some photos can no longer be used. Add your photos again.');
+      } else {
+        setRegisterOutcome('idle');
+        setRegisterMessage(null);
+      }
+      return;
+    }
+    if (error.code === 'PHOTO_ALREADY_ATTACHED') {
+      if (hadUncertainRef.current) {
+        setRegisterOutcome('maybeRegistered');
+        setRegisterMessage('Your clothing may already be registered, so it was not sent again.');
+      } else {
+        setRegisterOutcome('photoProblem');
+        setRegisterMessage('Some photos can no longer be used. Add your photos again.');
+      }
+      return;
+    }
+    if (error.code === 'NOT_FOUND') {
+      setRegisterOutcome('notAvailable');
+      setRegisterMessage('This event or some photos are no longer available.');
+      return;
+    }
+    if (error.code === 'EVENT_CLOSED') {
+      setUploadClosed(true);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.event(eventId), exact: true });
+      return;
+    }
+    if (error.code === 'UNAUTHENTICATED') {
+      setUploadNoAccess(true);
+      return;
+    }
+    setRegisterOutcome('networkError');
+    setRegisterMessage(getFormErrorMessage(error));
+    hadUncertainRef.current = true;
+  }
+
+  function submitRegisterBody(body: RegisterClothingBody) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    lastBodyRef.current = body;
+    try {
+      registerMutation.mutate(body, {
+        onSuccess: () => {
+          router.replace(`${routes.eventHome(eventId)}?registered=1`);
+        },
+        onError: handleRegisterError,
+        onSettled: () => {
+          submittingRef.current = false;
+        },
+      });
+    } catch {
+      submittingRef.current = false;
+    }
+  }
+
+  function handleRegister() {
+    if (submittingRef.current || registerMutation.isPending) return;
+    const errors = validateClothingDraft(draft);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setRegisterOutcome('idle');
+      setRegisterMessage(null);
+      return;
+    }
+    setRegisterOutcome('idle');
+    setRegisterMessage(null);
+    hadUncertainRef.current = false;
+    const photoIds = queue.items.flatMap((item) =>
+      item.status === 'ready' && item.photo ? [item.photo.id] : [],
+    );
+    const body = buildRegisterClothingBody(draft, photoIds);
+    submitRegisterBody(body);
+  }
+
+  function handleRegisterRetry() {
+    const body = lastBodyRef.current;
+    if (body === null) return;
+    if (submittingRef.current || registerMutation.isPending) return;
+    submitRegisterBody(body);
+  }
+
+  function handleBackToPhotos() {
+    setRegisterOutcome('idle');
+    setRegisterMessage(null);
+    dispatch({ type: 'back' });
+  }
+
+  function handleGoHome() {
+    router.push(routes.eventHome(eventId));
+  }
+
   function renderFileControl(disabled: boolean) {
     return (
       <VStack gap={2}>
@@ -336,54 +455,77 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         {inputError !== null && (
           <FocusedAlert key={inputError} message={inputError} id="clothing-photo-error" />
         )}
-        <Text type="body" role="status" id="clothing-photo-status">
-          {liveText ?? ''}
-        </Text>
       </VStack>
     );
   }
 
-  function renderItemRow(item: PhotoItem, disabledActions: boolean) {
+  function renderCarouselMedia(item: PhotoItem) {
+    if (item.status === 'ready' && item.photo) {
+      return (
+        <img
+          src={item.photo.url}
+          alt="Uploaded clothing photo"
+          onError={() => dispatch({ type: 'displayFailed', key: item.key })}
+        />
+      );
+    }
+    return <img src={item.previewUrl} alt="Clothing photo preview" />;
+  }
+
+  function getCarouselOverlayMedia(item: PhotoItem, index: number) {
+    if (item.displayFailed) return null;
+    const src = item.status === 'ready' && item.photo ? item.photo.url : item.previewUrl;
+    if (!src) return null;
+    return { src, alt: `Clothing photo ${index + 1}` };
+  }
+
+  function renderCarouselBelow(item: PhotoItem) {
     const locked = item.status === 'preparing' || item.status === 'uploading';
     return (
-      <VStack key={item.key} gap={2}>
-        {item.status === 'ready' && item.photo ? (
-          <ReadyPhotoView
-            photo={item.photo}
-            displayFailed={item.displayFailed ?? false}
-            onLoadError={() => dispatch({ type: 'displayFailed', key: item.key })}
-          />
-        ) : (
-          <img src={item.previewUrl} alt="Clothing photo preview" />
+      <VStack gap={2}>
+        {item.status === 'ready' && item.displayFailed && (
+          <Text type="body">This photo could not be displayed.</Text>
         )}
         {item.status === 'waiting' && <Text type="body">Waiting</Text>}
+        {item.status === 'preparing' && (
+          <Text type="body" role="status">
+            Preparing photo…
+          </Text>
+        )}
+        {item.status === 'uploading' && (
+          <Text type="body" role="status">
+            Uploading photo…
+          </Text>
+        )}
         {item.status === 'failed' && item.error && (
           <FocusedAlert key={`${item.key}-${item.error}`} message={item.error} />
         )}
-        <VStack gap={2}>
-          {item.status === 'failed' && (
-            <Button
-              label="Try again"
-              variant="primary"
-              size="lg"
-              width="100%"
-              isDisabled={disabledActions}
-              onClick={() => handleRetry(item.key)}
-            />
-          )}
-          {!locked && (
-            <Button
-              label="Remove"
-              variant="ghost"
-              size="lg"
-              width="100%"
-              isDisabled={disabledActions}
-              onClick={() => handleRemove(item.key)}
-            />
-          )}
-        </VStack>
+        {item.status === 'failed' && (
+          <Button
+            label="Try again"
+            variant="primary"
+            size="lg"
+            width="100%"
+            onClick={() => handleRetry(item.key)}
+          />
+        )}
+        <Button
+          label="Remove"
+          variant="ghost"
+          size="lg"
+          width="100%"
+          isDisabled={locked}
+          onClick={() => handleRemove(item.key)}
+        />
       </VStack>
     );
+  }
+
+  function renderClosedCarouselBelow(item: PhotoItem) {
+    if (item.status === 'ready' && item.displayFailed) {
+      return <Text type="body">This photo could not be displayed.</Text>;
+    }
+    return null;
   }
 
   if (closed) {
@@ -395,53 +537,60 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         <Text type="body">
           {queue.items.length} / 10 photos
         </Text>
-        {queue.items.map((item) => {
-          if (item.status === 'ready' && item.photo) {
-            return (
-              <VStack key={item.key} gap={2}>
-                <ReadyPhotoView
-                  photo={item.photo}
-                  displayFailed={item.displayFailed ?? false}
-                  onLoadError={() => dispatch({ type: 'displayFailed', key: item.key })}
-                />
-                <Button label="Remove" variant="ghost" size="lg" width="100%" isDisabled />
-              </VStack>
-            );
-          }
-          return (
-            <VStack key={item.key} gap={2}>
-              <img src={item.previewUrl} alt="Clothing photo preview" />
-              <Button label="Remove" variant="ghost" size="lg" width="100%" isDisabled />
-            </VStack>
-          );
-        })}
+        <PhotoCarousel
+          items={queue.items}
+          renderMedia={renderCarouselMedia}
+          renderBelow={renderClosedCarouselBelow}
+          getOverlayMedia={getCarouselOverlayMedia}
+        />
       </VStack>
     );
   }
 
   if (queue.step === 2) {
-    const readyItems = queue.items.filter((item) => item.status === 'ready' && item.photo);
     return (
       <VStack gap={4} padding={6}>
         <Heading level={1}>Register clothing</Heading>
         <Text type="body">Step 2 of 2: Details</Text>
-        {readyItems.map((item, index) => {
-          if (!item.photo) return null;
-          return (
-            <VStack key={item.key} gap={2}>
-              {index === 0 && <Text type="body">Main photo</Text>}
-              <ReadyPhotoView
-                photo={item.photo}
-                displayFailed={item.displayFailed ?? false}
-                onLoadError={() => dispatch({ type: 'displayFailed', key: item.key })}
-              />
-            </VStack>
-          );
-        })}
-        <Text type="body" color="secondary">
-          {STEP2_NOTE}
-        </Text>
-        <Button label="Back" variant="secondary" size="lg" width="100%" onClick={() => dispatch({ type: 'back' })} />
+        <ClothingDetailsForm
+          draft={draft}
+          errors={fieldErrors}
+          isPending={registerMutation.isPending}
+          outcome={registerOutcome}
+          outcomeMessage={registerMessage}
+          onDraftChange={(next, field) => {
+            setDraft(next);
+            setFieldErrors((prev) => {
+              const nextErrors = { ...prev };
+              let changed = false;
+              if (nextErrors[field] !== undefined) {
+                delete nextErrors[field];
+                changed = true;
+              }
+              if (nextErrors.form !== undefined) {
+                delete nextErrors.form;
+                changed = true;
+              }
+              if (field === 'category') {
+                const allowed = new Set<string>(measurementFieldsFor(next.category));
+                for (const key of Object.keys(nextErrors)) {
+                  if (key === 'title' || key === 'description' || key === 'category' || key === 'form')
+                    continue;
+                  if (!allowed.has(key)) {
+                    delete nextErrors[key as keyof typeof nextErrors];
+                    changed = true;
+                  }
+                }
+              }
+              return changed ? nextErrors : prev;
+            });
+          }}
+          onSubmit={handleRegister}
+          onBack={() => dispatch({ type: 'back' })}
+          onBackToPhotos={handleBackToPhotos}
+          onGoHome={handleGoHome}
+          onRetry={handleRegisterRetry}
+        />
       </VStack>
     );
   }
@@ -461,7 +610,12 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
         </Text>
       )}
       {hasFailed && <Text type="body">{FAILED_SUMMARY}</Text>}
-      {queue.items.map((item) => renderItemRow(item, false))}
+      <PhotoCarousel
+        items={queue.items}
+        renderMedia={renderCarouselMedia}
+        renderBelow={renderCarouselBelow}
+        getOverlayMedia={getCarouselOverlayMedia}
+      />
       <Button
         label="Add photo"
         variant="secondary"

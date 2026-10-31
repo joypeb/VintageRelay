@@ -9,7 +9,9 @@ import { renderWithClient } from '@/test/render';
 import type { Event } from '@/types/event';
 
 const useEventQuery = vi.hoisted(() => vi.fn());
+const useSearchParams = vi.hoisted(() => vi.fn(() => new URLSearchParams()));
 vi.mock('@/lib/api/events', () => ({ useEventQuery }));
+vi.mock('next/navigation', () => ({ useSearchParams }));
 
 const token = 'secret-token-xyz';
 const event: Event = {
@@ -178,5 +180,29 @@ describe('US4 states', () => {
     renderWithClient(<EventHomeScreen eventId="e1" />);
     expect(screen.getByRole('heading', { name: event.name })).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('registration confirmation', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: token, participantId: 'p-org' });
+    useSearchParams.mockReturnValue(new URLSearchParams());
+    setQuery(event);
+  });
+  afterEach(() => {
+    useSearchParams.mockReturnValue(new URLSearchParams());
+    localStorage.clear();
+  });
+
+  it('shows a status when registered is 1', () => {
+    useSearchParams.mockReturnValue(new URLSearchParams('registered=1'));
+    renderWithClient(<EventHomeScreen eventId="e1" />);
+    expect(screen.getByText('Clothing registered.')).toHaveAttribute('role', 'status');
+  });
+  it.each(['registered=0', ''])('does not show a registration status for %s', (params) => {
+    useSearchParams.mockReturnValue(new URLSearchParams(params));
+    renderWithClient(<EventHomeScreen eventId="e1" />);
+    expect(screen.queryByText('Clothing registered.')).not.toBeInTheDocument();
   });
 });

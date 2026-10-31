@@ -1,17 +1,38 @@
 import { StrictMode } from 'react';
 
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import type { QueryClient } from '@tanstack/react-query';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PhotoUploadScreen } from '@/components/clothing/PhotoUploadScreen';
 import { ApiError } from '@/lib/api/api-error';
+import { queryKeys } from '@/lib/api/query-keys';
 import { saveEventSession } from '@/lib/session';
+import '@/test/dialog-polyfill';
+import { installMatchMedia } from '@/test/match-media';
 import { renderWithClient } from '@/test/render';
 
-const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), compressPhoto: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  apiFetch: vi.fn(),
+  compressPhoto: vi.fn(),
+  registerClothing: vi.fn(),
+  replace: vi.fn(),
+  push: vi.fn(),
+}));
 vi.mock('@/lib/api/client', () => ({ apiFetch: mocks.apiFetch }));
 vi.mock('@/lib/photo/compress', () => ({ compressPhoto: mocks.compressPhoto }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
+}));
+vi.mock('@/lib/api/clothing', async () => {
+  const { useMutation } = await import('@tanstack/react-query');
+  return {
+    registerClothing: mocks.registerClothing,
+    useRegisterClothingMutation: (eventId: string) =>
+      useMutation({ mutationFn: (body: unknown) => mocks.registerClothing(eventId, body) }),
+  };
+});
 
 const event = {
   id: 'e1',
@@ -399,7 +420,7 @@ describe('US3 stability', () => {
     expect(screen.getByRole('img')).toHaveAttribute('src', photo.url);
     fireEvent.error(screen.getByRole('img'));
     expect(screen.getByText('This photo could not be displayed.')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
     expect(uploadCalls()).toHaveLength(1);
   });
 
@@ -759,30 +780,720 @@ describe('US4 multiple photos', () => {
     expect(uploadCalls()[3]?.[2].body.get('file')).toBe(selected[0]);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
   });
+});
 
-  it('shows ordered photos on Details and preserves them on Back', async () => {
+describe('US1 carousel', () => {
+  let restoreMatchMedia: () => void;
+  const files = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, i) => new File([String(i)], `${i}.jpg`, { type: 'image/jpeg' }),
+    );
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1' ? Promise.resolve(event) : new Promise(() => {}),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  it('shows ordered slides and updates the position on scroll', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const slides = [1, 2, 3].map((n) => within(region).getByLabelText(`Photo ${n} of 3`));
+    expect(slides.map((slide) => within(slide).getByRole('img').getAttribute('src'))).toEqual([
+      'blob:0.jpg',
+      'blob:1.jpg',
+      'blob:2.jpg',
+    ]);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', { configurable: true, writable: true, value: 0 });
+    fireEvent.scroll(scroller);
+    expect(within(region).getByText('1 / 3')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Add photo' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeVisible();
+  });
+
+  it('omits the position for one photo', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    expect(within(region).getByLabelText('Photo 1 of 1')).toBeInTheDocument();
+    expect(within(region).queryByText(/^\d+ \/ \d+$/)).not.toBeInTheDocument();
+  });
+
+  it('keeps waiting and uploading actions on their own slides', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const first = within(region).getByLabelText('Photo 1 of 3');
+    const second = within(region).getByLabelText('Photo 2 of 3');
+    const third = within(region).getByLabelText('Photo 3 of 3');
+    expect(within(first).getByText('Uploading photo…')).toBeVisible();
+    expect(within(first).getByRole('button', { name: 'Remove' })).toBeDisabled();
+    for (const slide of [second, third]) {
+      expect(within(slide).getByText('Waiting')).toBeVisible();
+      expect(within(slide).getByRole('button', { name: 'Remove' })).toBeEnabled();
+      expect(within(slide).queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument();
+    }
+  });
+
+  it('keeps retry and remove on the failed slide', async () => {
     mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
       path === '/events/e1'
         ? Promise.resolve(event)
-        : Promise.resolve(result(uploadCalls().length)),
+        : Promise.reject(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.')),
     );
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    await screen.findByText('Network unavailable.');
+    const slide = within(screen.getByRole('region', { name: 'Photo carousel' })).getByLabelText(
+      'Photo 1 of 1',
+    );
+    expect(within(slide).getByText('Network unavailable.')).toBeVisible();
+    expect(within(slide).getByRole('button', { name: 'Try again' })).toBeEnabled();
+    expect(within(slide).getByRole('button', { name: 'Remove' })).toBeEnabled();
+  });
+
+  it('keeps slides but hides actions when the event closes', async () => {
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(3));
+    await act(async () => {
+      queryClient.setQueryData(['events', 'e1'], {
+        ...event,
+        status: 'closed',
+        closedAt: '2026-10-28T01:00:00Z',
+      });
+    });
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    for (const n of [1, 2, 3])
+      expect(within(region).getByLabelText(`Photo ${n} of 3`)).toBeInTheDocument();
+    expect(within(region).getAllByRole('img')).toHaveLength(3);
+    for (const name of ['Remove', 'Try again', 'Add photo', 'Next']) {
+      expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+    }
+    expect(uploadCalls()).toHaveLength(1);
+  });
+});
+
+describe('US2 arrows', () => {
+  let restoreMatchMedia: () => void;
+  const files = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, i) => new File([String(i)], `${i}.jpg`, { type: 'image/jpeg' }),
+    );
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia({ '(prefers-reduced-motion: reduce)': true });
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1' ? Promise.resolve(event) : new Promise(() => {}),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  it('moves one photo per click, jumps without motion, and disables arrows at the ends', async () => {
     const user = userEvent.setup();
     renderWithClient(<PhotoUploadScreen eventId="e1" />);
     await user.upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', {
+      configurable: true,
+      writable: true,
+      value: 600,
+    });
+    fireEvent.scroll(scroller);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+    const previous = within(region).getByRole('button', { name: 'Previous photo' });
+    const next = within(region).getByRole('button', { name: 'Next photo' });
+    expect(next).toBeDisabled();
+
+    await user.click(previous);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+    await user.click(previous);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(0);
+    expect(within(region).getByText('1 / 3')).toBeVisible();
+    expect(previous).toBeDisabled();
+    await user.click(next);
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+  });
+
+  it('activates arrows with Enter and Space', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), files(3));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    const scroller = within(region).getByTestId('photo-carousel-scroller');
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollLeft', {
+      configurable: true,
+      writable: true,
+      value: 600,
+    });
+    fireEvent.scroll(scroller);
+
+    within(region).getByRole('button', { name: 'Previous photo' }).focus();
+    await user.keyboard('{Enter}');
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(300);
+    expect(within(region).getByText('2 / 3')).toBeVisible();
+    within(region).getByRole('button', { name: 'Next photo' }).focus();
+    await user.keyboard(' ');
+    fireEvent.scroll(scroller);
+    expect(scroller.scrollLeft).toBe(600);
+    expect(within(region).getByText('3 / 3')).toBeVisible();
+  });
+
+  it('does not render arrows for one photo', async () => {
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files(1));
+    const region = screen.getByRole('region', { name: 'Photo carousel' });
+    expect(
+      within(region).queryByRole('button', { name: 'Previous photo' }),
+    ).not.toBeInTheDocument();
+    expect(within(region).queryByRole('button', { name: 'Next photo' })).not.toBeInTheDocument();
+  });
+});
+
+describe('US3 overlay', () => {
+  let restoreMatchMedia: () => void;
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn((file: File) => `blob:${file.name}`),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => restoreMatchMedia());
+
+  const files = [
+    new File(['one'], 'one.jpg', { type: 'image/jpeg' }),
+    new File(['two'], 'two.jpg', { type: 'image/jpeg' }),
+  ] as const;
+
+  it.each(['Close button', 'Escape'])(
+    'closes with %s and preserves the carousel',
+    async (method) => {
+      mocks.apiFetch.mockImplementation((_eventId: string, path: string) => {
+        if (path === '/events/e1') return Promise.resolve(event);
+        return uploadCalls().length === 1 ? Promise.resolve(photo) : new Promise(() => {});
+      });
+      const user = userEvent.setup();
+      renderWithClient(<PhotoUploadScreen eventId="e1" />);
+      await user.upload(await screen.findByLabelText('Clothing photos'), [...files]);
+      await screen.findByRole('img', { name: 'Uploaded clothing photo' });
+      await screen.findByText('Uploading photo…');
+      const region = screen.getByRole('region', { name: 'Photo carousel' });
+      const slides = [
+        within(region).getByLabelText('Photo 1 of 2'),
+        within(region).getByLabelText('Photo 2 of 2'),
+      ] as const;
+      const contents = slides.map((slide) => slide.textContent);
+      expect(within(region).getByText('2 / 2')).toBeVisible();
+      const trigger = within(slides[0]).getByRole('button', { name: 'View full photo 1' });
+      await user.click(trigger);
+      const dialog = screen.getByRole('dialog', { name: 'Clothing photo 1' });
+      expect(within(dialog).getByRole('img', { name: 'Clothing photo 1' })).toHaveAttribute(
+        'src',
+        photo.url,
+      );
+      const close = within(dialog).getByRole('button', { name: 'Close' });
+      if (method === 'Close button') {
+        await user.click(close);
+      } else {
+        // jsdom does not turn Escape into the native dialog cancel event.
+        fireEvent(dialog, new Event('cancel', { bubbles: false, cancelable: true }));
+      }
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      expect(trigger).toHaveFocus();
+      expect(within(region).getByText('2 / 2')).toBeVisible();
+      expect(slides.map((slide) => slide.textContent)).toEqual(contents);
+      expect(within(slides[1]).getByText('Uploading photo…')).toBeVisible();
+      expect(uploadCalls()).toHaveLength(2);
+    },
+  );
+
+  it('keeps the preview in the open overlay when its upload finishes', async () => {
+    let resolve!: (value: typeof photo) => void;
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1'
+        ? Promise.resolve(event)
+        : new Promise((r) => {
+            resolve = r;
+          }),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), files[0]);
+    await screen.findByText('Uploading photo…');
+    await user.click(screen.getByRole('button', { name: 'View full photo 1' }));
+    const dialog = screen.getByRole('dialog', { name: 'Clothing photo 1' });
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', 'blob:one.jpg');
+    await act(async () => resolve(photo));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
+    expect(screen.getByRole('dialog', { name: 'Clothing photo 1' })).toBe(dialog);
+    expect(within(dialog).getByRole('img')).toHaveAttribute('src', 'blob:one.jpg');
+  });
+
+  it('does not offer an overlay for an image that failed to display', async () => {
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      Promise.resolve(path === '/events/e1' ? event : photo),
+    );
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await userEvent.setup().upload(await screen.findByLabelText('Clothing photos'), files[0]);
+    fireEvent.error(await screen.findByRole('img', { name: 'Uploaded clothing photo' }));
+    expect(screen.getByText('This photo could not be displayed.')).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'View full photo 1' })).not.toBeInTheDocument();
+  });
+});
+
+describe('US4 details form', () => {
+  let restoreMatchMedia: () => void;
+
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.compressPhoto.mockReset();
+    mocks.registerClothing.mockReset();
+    mocks.replace.mockReset();
+    mocks.push.mockReset();
+    let photoNumber = 0;
+    mocks.apiFetch.mockImplementation((_eventId: string, path: string) =>
+      path === '/events/e1'
+        ? Promise.resolve(event)
+        : Promise.resolve({ ...photo, id: `ph${++photoNumber}` }),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => {
+    restoreMatchMedia();
+    localStorage.clear();
+  });
+
+  async function openDetails() {
+    const user = userEvent.setup();
+    renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    await user.upload(await screen.findByLabelText('Clothing photos'), [
+      new File(['one'], 'one.jpg', { type: 'image/jpeg' }),
+      new File(['two'], 'two.jpg', { type: 'image/jpeg' }),
+    ]);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: 'Next' }));
+    return user;
+  }
+
+  async function chooseCategory(user: ReturnType<typeof userEvent.setup>, category: string) {
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: category }));
+  }
+
+  it('shows the ordered fields, no photos, and code-point counters', async () => {
+    const user = await openDetails();
     expect(screen.getByText('Step 2 of 2: Details')).toBeVisible();
-    expect(screen.getByText('Main photo')).toBeVisible();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.queryByText('Main photo')).not.toBeInTheDocument();
+    const title = screen.getByRole('textbox', { name: /title/i });
+    const description = screen.getByRole('textbox', { name: /description/i });
+    const category = screen.getByRole('combobox', { name: /category/i });
+    const measurements = screen.getByText(/Measurements \(optional, inches\)/i);
     expect(
-      screen.getByText('You will describe your clothing and register it here in the next update.'),
-    ).toBeVisible();
-    expect(screen.getAllByRole('img').map((img) => img.getAttribute('src'))).toEqual([
-      result(1).url,
-      result(2).url,
-      result(3).url,
-    ]);
+      title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      description.compareDocumentPosition(category) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      category.compareDocumentPosition(measurements) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByText('0 / 100')).toBeVisible();
+    expect(screen.getByText('0 / 1,000')).toBeVisible();
+    await user.type(title, '😀a');
+    await user.type(description, '😀a');
+    expect(screen.getByText('2 / 100')).toBeVisible();
+    expect(screen.getByText('2 / 1,000')).toBeVisible();
+    expect(screen.getByText('Choose a category first.')).toBeVisible();
+    expect(screen.queryByRole('textbox', { name: /\(in\)/ })).not.toBeInTheDocument();
+  });
+
+  it('offers all categories and keeps the selection when dismissed', async () => {
+    const user = await openDetails();
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    expect(
+      (await screen.findAllByRole('option')).map((option) => option.textContent?.trim()),
+    ).toEqual(['Top', 'Outer', 'Bottom', 'Other']);
+    await user.click(screen.getByRole('option', { name: 'Top' }));
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+  });
+
+  it('shows and prunes category measurements while retaining total length', async () => {
+    const user = await openDetails();
+    await chooseCategory(user, 'Top');
+    for (const label of ['Total length', 'Chest', 'Shoulder', 'Sleeve'])
+      expect(screen.getByRole('textbox', { name: `${label} (in)` })).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: 'Total length (in)' }), '28');
+    await user.type(screen.getByRole('textbox', { name: 'Chest (in)' }), '21');
+    await chooseCategory(user, 'Bottom');
+    expect(screen.queryByRole('textbox', { name: 'Chest (in)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Total length (in)' })).toHaveValue('28');
+    for (const label of ['Waist', 'Hem', 'Inseam', 'Thigh'])
+      expect(screen.getByRole('textbox', { name: `${label} (in)` })).toBeVisible();
+    await chooseCategory(user, 'Other');
+    expect(screen.queryByRole('textbox', { name: /\(in\)/ })).not.toBeInTheDocument();
+    expect(screen.getByText('No measurements needed for this category.')).toBeVisible();
+    await chooseCategory(user, 'Top');
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).toHaveValue('');
+  });
+
+  it('submits a trimmed request in photo order, disables actions while pending, and replaces the route', async () => {
+    const user = await openDetails();
+    let resolve!: (value: { id: string }) => void;
+    mocks.registerClothing.mockImplementation(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+    );
+    await user.type(screen.getByRole('textbox', { name: /title/i }), ' Jacket ');
+    await user.type(screen.getByRole('textbox', { name: /description/i }), ' Green jacket ');
+    await chooseCategory(user, 'Top');
+    await user.type(screen.getByRole('textbox', { name: 'Chest (in)' }), '21.5');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    await waitFor(() =>
+      expect(mocks.registerClothing).toHaveBeenCalledExactlyOnceWith('e1', {
+        photoIds: ['ph1', 'ph2'],
+        category: 'top',
+        title: 'Jacket',
+        description: 'Green jacket',
+        measurements: { chest: 21.5 },
+      }),
+    );
+    expect(screen.getByRole('button', { name: /Registering/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
+    await act(async () => resolve({ id: 'c1' }));
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/events/e1?registered=1'),
+    );
+  });
+
+  it('retains the draft after Back and Next', async () => {
+    const user = await openDetails();
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Jacket');
+    await user.type(screen.getByRole('textbox', { name: /description/i }), 'Green');
+    await chooseCategory(user, 'Top');
+    await user.type(screen.getByRole('textbox', { name: 'Chest (in)' }), '21');
     await user.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByText('3 / 10 photos')).toBeVisible();
-    expect(uploadCalls()).toHaveLength(3);
+    expect(screen.getByText('2 / 10 photos')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Jacket');
+    expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).toHaveValue('21');
+  });
+});
+
+describe('US5 errors', () => {
+  let restoreMatchMedia: () => void;
+  beforeEach(() => {
+    restoreMatchMedia = installMatchMedia();
+    localStorage.clear();
+    saveEventSession('e1', { participantToken: 't', participantId: 'p2' });
+    mocks.apiFetch.mockReset();
+    mocks.compressPhoto.mockReset();
+    mocks.registerClothing.mockReset();
+    mocks.push.mockReset();
+    mocks.replace.mockReset();
+    mocks.apiFetch.mockImplementation((_id: string, path: string) =>
+      Promise.resolve(path === '/events/e1' ? event : photo),
+    );
+    vi.stubGlobal(
+      'URL',
+      Object.assign(URL, {
+        createObjectURL: vi.fn(() => 'blob:preview'),
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+  });
+  afterEach(() => {
+    restoreMatchMedia();
+    localStorage.clear();
+  });
+
+  async function openDetails(onClient?: (client: QueryClient) => void) {
+    const user = userEvent.setup();
+    const { queryClient } = renderWithClient(<PhotoUploadScreen eventId="e1" />);
+    onClient?.(queryClient);
+    await user.upload(
+      await screen.findByLabelText('Clothing photos'),
+      new File(['one'], 'one.jpg', { type: 'image/jpeg' }),
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    return user;
+  }
+  async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Jacket');
+    await user.type(screen.getByRole('textbox', { name: /description/i }), 'Green jacket');
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Top' }));
+    await user.type(screen.getByRole('textbox', { name: 'Chest (in)' }), '21');
+  }
+  function expectDraft() {
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Jacket');
+    expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green jacket');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).toHaveValue('21');
+  }
+  it('shows required errors and focuses Title without submitting', async () => {
+    const user = await openDetails();
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(mocks.registerClothing).not.toHaveBeenCalled();
+    for (const message of ['Enter a title.', 'Enter a description.', 'Choose a category.'])
+      expect(screen.getByText(message)).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveFocus();
+  });
+  it('rejects an invalid chest measurement without submitting', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    const chest = screen.getByRole('textbox', { name: 'Chest (in)' });
+    await user.clear(chest);
+    await user.type(chest, '0');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(mocks.registerClothing).not.toHaveBeenCalled();
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    expect(chest).toHaveValue('0');
+    expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Jacket');
+    expect(screen.getByRole('textbox', { name: /description/i })).toHaveValue('Green jacket');
+    expect(screen.getByRole('combobox', { name: /category/i })).toHaveTextContent('Top');
+  });
+  it('maps server validation errors and keeps the draft', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', {
+        fields: [
+          { field: 'title', reason: 'too_long' },
+          { field: 'measurements.chest', reason: 'invalid' },
+        ],
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Use 100 characters or fewer.')).toBeVisible();
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    expectDraft();
+  });
+  it('returns to photos after an attached-photo error and keeps the draft', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('Some photos can no longer be used. Add your photos again.'),
+    ).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Back to photos' }));
+    expect(screen.getByText('1 / 10 photos')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expectDraft();
+  });
+  it('offers photos and event home when the event or photos are unavailable', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(404, 'NOT_FOUND', 'Not found.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('This event or some photos are no longer available.'),
+    ).toBeVisible();
+    expectDraft();
+    expect(screen.getByRole('button', { name: 'Back to photos' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Go to event home' }));
+    expect(mocks.push).toHaveBeenCalledWith('/events/e1');
+  });
+  it('retries the same body and warns when the first response may have been lost', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing
+      .mockRejectedValueOnce(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.'))
+      .mockRejectedValueOnce(new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Network unavailable.')).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText('Your clothing may already be registered, so it was not sent again.'),
+    ).toBeVisible();
+    expect(mocks.registerClothing).toHaveBeenCalledTimes(2);
+    expect(mocks.registerClothing.mock.calls[1]).toEqual(mocks.registerClothing.mock.calls[0]);
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Go to event home' }));
+    expect(mocks.push).toHaveBeenCalledWith('/events/e1');
+  });
+  it('treats an attached photo as a photo problem on a fresh registration after a network error', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing
+      .mockRejectedValueOnce(new ApiError(0, 'NETWORK_ERROR', 'Network unavailable.'))
+      .mockRejectedValueOnce(new ApiError(409, 'PHOTO_ALREADY_ATTACHED', 'Attached.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Network unavailable.')).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Back' }));
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(
+      await screen.findByText('Some photos can no longer be used. Add your photos again.'),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Back to photos' })).toBeVisible();
+    expect(
+      screen.queryByText('Your clothing may already be registered, so it was not sent again.'),
+    ).not.toBeInTheDocument();
+  });
+  it('invalidates the event query when registration finds the event closed', async () => {
+    let client!: QueryClient;
+    const user = await openDetails((value) => {
+      client = value;
+    });
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(409, 'EVENT_CLOSED', 'Event closed.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    await screen.findByLabelText('Clothing photos');
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.event('e1'), exact: true });
+  });
+  it('retries the same body after an unexpected error', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new Error('boom'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Something went wrong. Please try again.')).toBeVisible();
+    expectDraft();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(mocks.registerClothing).toHaveBeenCalledTimes(2));
+    expect(mocks.registerClothing.mock.calls[1]).toEqual(mocks.registerClothing.mock.calls[0]);
+  });
+  it('clears a hidden measurement error when category changes', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    const chest = screen.getByRole('textbox', { name: 'Chest (in)' });
+    await user.clear(chest);
+    await user.type(chest, '0');
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Other' }));
+    expect(screen.queryByRole('textbox', { name: 'Chest (in)' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: /category/i }));
+    await user.click(await screen.findByRole('option', { name: 'Top' }));
+    expect(screen.getByRole('textbox', { name: 'Chest (in)' })).not.toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+  });
+  it('clears an unmapped server validation message when a field is edited', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(
+      new ApiError(422, 'VALIDATION_ERROR', 'Invalid.', {
+        fields: [{ field: 'unknown', reason: 'invalid' }],
+      }),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(await screen.findByText('Check your entries and try again.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: /title/i }), '!');
+    expect(screen.queryByText('Check your entries and try again.')).not.toBeInTheDocument();
+  });
+  it.each([
+    [409, 'EVENT_CLOSED'],
+    [401, 'UNAUTHENTICATED'],
+  ])('uses existing handling for %s %s', async (status, code) => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockRejectedValue(new ApiError(status, code, 'Event unavailable.'));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    if (code === 'EVENT_CLOSED') {
+      expect(await screen.findByLabelText('Clothing photos')).toBeDisabled();
+      expect(screen.getByText('1 / 10 photos')).toBeVisible();
+    } else
+      expect(
+        await screen.findByText("You haven't joined this event on this device."),
+      ).toBeVisible();
+  });
+  it('guards against two synchronous Register clicks', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockImplementation(() => new Promise(() => {}));
+    const register = screen.getByRole('button', { name: 'Register' });
+    act(() => {
+      fireEvent.click(register);
+      fireEvent.click(register);
+    });
+    await waitFor(() => expect(mocks.registerClothing).toHaveBeenCalledTimes(1));
+  });
+  it('marks Register as busy while the request is pending', async () => {
+    const user = await openDetails();
+    await fillDetails(user);
+    mocks.registerClothing.mockImplementation(() => new Promise(() => {}));
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByRole('button', { name: /Registering/ })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+  });
+  it('clears only the edited field error', async () => {
+    const user = await openDetails();
+    await user.click(screen.getByRole('button', { name: 'Register' }));
+    expect(screen.getByText('Enter a title.')).toBeVisible();
+    expect(screen.getByText('Enter a description.')).toBeVisible();
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Jacket');
+    expect(screen.queryByText('Enter a title.')).not.toBeInTheDocument();
+    expect(screen.getByText('Enter a description.')).toBeVisible();
   });
 });
