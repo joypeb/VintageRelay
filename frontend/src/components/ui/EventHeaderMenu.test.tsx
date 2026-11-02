@@ -36,7 +36,7 @@ describe('event header menu', () => {
     renderWithClient(<EventHeaderMenu event={event} />);
 
     await user.click(screen.getByRole('button', { name: /more|menu/i }));
-    expect(screen.getByRole('link', { name: 'Manage event' })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Manage event' })).toHaveAttribute(
       'href',
       '/events/e1/manage',
     );
@@ -49,7 +49,7 @@ describe('event header menu', () => {
       />,
     );
 
-    expect(screen.queryByRole('link', { name: 'Manage event' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Manage event' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /more|menu/i })).not.toBeInTheDocument();
   });
 
@@ -58,7 +58,7 @@ describe('event header menu', () => {
       <EventHeaderMenu event={{ ...event, status: 'closed', closedAt: '2026-10-29T00:00:00Z' }} />,
     );
 
-    expect(screen.queryByRole('link', { name: 'Manage event' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('menuitem', { name: 'Manage event' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /more|menu/i })).not.toBeInTheDocument();
   });
 });

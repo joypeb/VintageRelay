@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from 'react';
 
-import { Link } from '@astryxdesign/core/Link';
 import { MoreMenu } from '@astryxdesign/core/MoreMenu';
 
 import { getEventShellVisibility } from '@/components/ui/ClosedEventGuards';
@@ -21,7 +20,7 @@ export function EventHeaderMenu({ event }: { event: Event }) {
       presentation="adaptive"
       alignment="end"
       variant="ghost"
-      items={[{ label: <Link href={routes.manageEvent(event.id)}>Manage event</Link> }]}
+      items={[{ label: 'Manage event', href: routes.manageEvent(event.id) }]}
     />
   );
 }
