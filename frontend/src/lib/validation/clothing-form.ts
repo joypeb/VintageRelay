@@ -41,6 +41,24 @@ export type RegisterClothingBody = {
 const TOP_FIELDS: MeasurementField[] = ['totalLength', 'chest', 'shoulder', 'sleeve'];
 const BOTTOM_FIELDS: MeasurementField[] = ['totalLength', 'waist', 'hem', 'inseam', 'thigh'];
 
+export const MEASUREMENT_LABELS: Record<MeasurementField, string> = {
+  totalLength: 'Total length',
+  chest: 'Chest',
+  shoulder: 'Shoulder',
+  sleeve: 'Sleeve',
+  waist: 'Waist',
+  hem: 'Hem',
+  inseam: 'Inseam',
+  thigh: 'Thigh',
+};
+
+export const CATEGORY_OPTIONS = [
+  { value: 'top', label: 'Top' },
+  { value: 'outer', label: 'Outer' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'other', label: 'Other' },
+];
+
 const MEASUREMENT_PATTERN = /^\d{1,3}(\.\d)?$/;
 
 /** Counts Unicode code points, the same way the server counts characters. */

@@ -45,14 +45,14 @@ description: "Task list for 016 Home grid and item detail"
 
 - [x] T002 [P] Red: response parsing tests in frontend/src/lib/validation/clothing-response.test.ts (new file: full `Clothing` with all 8 measurement fields and nulls, list `{items, nextCursor: null}`, withdrawn passthrough, malformed body → `ApiError` 200 `UNKNOWN_ERROR`; register `parseClothing` cases keep passing)
 - [x] T003 [P] Red: fetcher and hook tests in frontend/src/lib/api/clothing.test.ts (extend existing file: `listClothing` calls `/events/<encoded>/clothing?ownership=others&status=available`, `getClothing` calls `/clothing/<encoded>`, both select session via `eventId`, rethrow `ApiError` unchanged, mount fires one request and `refetch()` fires another with no timer-driven requests under fake timers)
-- [ ] T004 [P] Red: route builder tests in frontend/src/lib/routes.test.ts (extend existing file: `itemDetail(eventId, clothingId)` builds `/events/<encoded>/items/<encoded>`)
+- [x] T004 [P] Red: route builder tests in frontend/src/lib/routes.test.ts (extend existing file: `itemDetail(eventId, clothingId)` builds `/events/<encoded>/items/<encoded>`)
 
 ### Implementation for Foundation
 
 - [x] T005 Full-`Clothing` zod schemas plus `parseClothingItem`/`parseClothingList` in frontend/src/lib/validation/clothing-response.ts and response types in frontend/src/types/clothing.ts (new file; `RegisteredClothing`/`parseClothing` untouched; depends on T002)
 - [x] T006 Query key factories `clothingList`/`clothing` in frontend/src/lib/api/query-keys.ts plus `listClothing`/`getClothing` fetchers and `useClothingListQuery`/`useClothingQuery` hooks in frontend/src/lib/api/clothing.ts (`staleTime: 0` so focus return always re-reads, `refetchOnWindowFocus: true`, no `refetchInterval`; depends on T003 and T005)
-- [ ] T007 `itemDetail` path builder in frontend/src/lib/routes.ts (depends on T004)
-- [ ] T008 [P] Export `MEASUREMENT_LABELS` and category labels from frontend/src/lib/validation/clothing-form.ts (moved from `ClothingDetailsForm.tsx` local constants; identical English text; covered by the US2 detail test, no dedicated test)
+- [x] T007 `itemDetail` path builder in frontend/src/lib/routes.ts (depends on T004)
+- [x] T008 [P] Export `MEASUREMENT_LABELS` and category labels from frontend/src/lib/validation/clothing-form.ts (moved from `ClothingDetailsForm.tsx` local constants; identical English text; covered by the US2 detail test, no dedicated test)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
