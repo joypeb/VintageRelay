@@ -14,7 +14,9 @@ export default async function EventTabsLayout({
 
   return (
     <>
-      <HStack as="header" hAlign="end">
+      {/* Hidden while the menu slot renders nothing, so non-organizers,
+          closed events, and loading states get no empty header landmark. */}
+      <HStack as="header" hAlign="end" className="empty:hidden">
         <EventHeaderMenuSlot eventId={eventId} />
       </HStack>
       {children}

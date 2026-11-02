@@ -31,7 +31,7 @@ export function MyItemsPlaceholderScreen({ eventId }: { eventId: string }) {
   return (
     <EmptyState
       title="No items yet"
-      description="Register your first item to start swapping."
+      description={data?.status === 'closed' ? 'This event is closed.' : 'Register your first item to start swapping.'}
       headingLevel={1}
       actions={
         visibility.registerItem ? (

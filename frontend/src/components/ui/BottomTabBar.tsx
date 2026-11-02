@@ -25,7 +25,13 @@ export function BottomTabBar({ eventId }: { eventId: string }) {
   // Link navigation drives the selected value from the pathname; the manage
   // route matches no tab, so an empty value leaves every tab unhighlighted.
   return (
-    <TabList value={active ?? ''} onChange={() => undefined} layout="fill" size="lg">
+    <TabList
+      value={active ?? ''}
+      onChange={() => undefined}
+      layout="fill"
+      size="lg"
+      className="sticky bottom-0 bg-surface pb-[env(safe-area-inset-bottom)]"
+    >
       <Tab value="home" label="Home" href={routes.eventHome(eventId)} />
       <Tab value="search" label="Search" href={routes.search(eventId)} />
       <Tab value="trades" label="Trades" href={routes.trades(eventId)} />

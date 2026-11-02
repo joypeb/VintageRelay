@@ -43,6 +43,17 @@ describe('YourEventsList', () => {
     vi.mocked(getEvent).mockReset();
   });
 
+  it('shows a loading indicator in the event list while sessions are loading', () => {
+    saveSession('pending', 1);
+    vi.mocked(getEvent).mockReturnValue(new Promise(() => {}));
+
+    renderWithClient(<YourEventsList />);
+
+    const indicator = screen.getByRole('status');
+    expect(indicator).toBeInTheDocument();
+    expect(screen.getByRole('list')).toContainElement(indicator);
+  });
+
   it('shows event names and states in newest-first order with links to their homes', async () => {
     saveSession('older', 1);
     saveSession('newer', 2);

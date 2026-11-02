@@ -5,6 +5,7 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { List, ListItem } from '@astryxdesign/core/List';
+import { Spinner } from '@astryxdesign/core/Spinner';
 import { VStack } from '@astryxdesign/core/VStack';
 import { useQueries } from '@tanstack/react-query';
 
@@ -73,7 +74,21 @@ export function YourEventsList() {
   const hasVisibleRow = results.some(
     (result) => result.data || (result.error && !isRemovedSessionError(result.error)),
   );
-  if (!hasVisibleRow) return null;
+  if (!hasVisibleRow) {
+    // Pending sessions show a loading indicator in the list region instead
+    // of popping the section in after the queries resolve.
+    if (results.some((result) => result.isPending)) {
+      return (
+        <VStack gap={2}>
+          <Heading level={2}>Your events</Heading>
+          <List>
+            <ListItem label={<Spinner label="Loading your events" />} />
+          </List>
+        </VStack>
+      );
+    }
+    return null;
+  }
 
   return (
     <VStack gap={2}>
