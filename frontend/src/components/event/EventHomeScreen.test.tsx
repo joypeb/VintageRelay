@@ -55,11 +55,8 @@ describe('US1 home', () => {
     expect(await screen.findByRole('heading', { name: event.name })).toBeVisible();
     expect(screen.getByText('Active', { exact: true })).toBeVisible();
     expect(screen.getByText('You: Mina (Organizer)', { exact: true })).toBeVisible();
-    expect(screen.getByRole('link', { name: /Manage event/ })).toHaveAttribute(
-      'href',
-      '/events/e1/manage',
-    );
-    expect(screen.getByText('View QR, entry code, and event counts')).toBeVisible();
+    expect(screen.queryByRole('link', { name: /Manage event/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('View QR, entry code, and event counts')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Register my clothes' })).toHaveAttribute(
       'href',
       '/events/e1/my-items/new',

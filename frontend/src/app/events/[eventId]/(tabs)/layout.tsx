@@ -1,4 +1,7 @@
+import { HStack } from '@astryxdesign/core/HStack';
+
 import { BottomTabBar } from '@/components/ui/BottomTabBar';
+import { EventHeaderMenuSlot } from '@/components/ui/EventHeaderMenu';
 
 export default async function EventTabsLayout({
   children,
@@ -11,6 +14,9 @@ export default async function EventTabsLayout({
 
   return (
     <>
+      <HStack as="header" hAlign="end">
+        <EventHeaderMenuSlot eventId={eventId} />
+      </HStack>
       {children}
       <BottomTabBar eventId={eventId} />
     </>

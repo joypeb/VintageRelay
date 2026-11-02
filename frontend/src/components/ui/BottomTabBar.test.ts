@@ -14,4 +14,8 @@ describe('active event tab', () => {
   ])('selects %s as %s', (pathname, activeTab) => {
     expect(getActiveTab(pathname, 'e1')).toBe(activeTab);
   });
+
+  it('does not highlight a tab on the manage route', () => {
+    expect(getActiveTab('/events/e1/manage', 'e1')).toBeUndefined();
+  });
 });
