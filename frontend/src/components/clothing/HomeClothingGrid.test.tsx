@@ -119,4 +119,28 @@ describe('Home clothing grid', () => {
     fireEvent.touchEnd(firstCard);
     expect(refetch).toHaveBeenCalledOnce();
   });
+  it('sorts cards newest first even when the response is oldest first', () => {
+    query({ data: { items: [older, newer, mine], nextCursor: null } });
+    renderWithClient(<HomeClothingGrid eventId="e1" />);
+    const newerLink = screen.getByRole('link', { name: /Blue jacket/i });
+    const olderLink = screen.getByRole('link', { name: new RegExp(longTitle, 'i') });
+    expect(newerLink.compareDocumentPosition(olderLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('does not refresh through a pull gesture when the page is scrolled', () => {
+    const scrollY = Object.getOwnPropertyDescriptor(window, 'scrollY');
+    Object.defineProperty(window, 'scrollY', { value: 200, configurable: true });
+    try {
+      renderWithClient(<HomeClothingGrid eventId="e1" />);
+      const firstCard = screen.getByRole('link', { name: /Blue jacket/i });
+      fireEvent.touchStart(firstCard, { touches: [{ clientX: 0, clientY: 100 }] });
+      fireEvent.touchMove(firstCard, { touches: [{ clientX: 0, clientY: 220 }] });
+      fireEvent.touchEnd(firstCard);
+      expect(refetch).not.toHaveBeenCalled();
+    } finally {
+      if (scrollY) Object.defineProperty(window, 'scrollY', scrollY);
+      else Reflect.deleteProperty(window, 'scrollY');
+    }
+  });
+
 });

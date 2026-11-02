@@ -43,7 +43,10 @@ export function ClothingDetailScreen({
 }) {
   // localStorage is unavailable during SSR, so read the session only after mount.
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
-  const { data, error, isPending, isFetching, refetch } = useClothingQuery(eventId, clothingId);
+  const queryEnabled = isMounted && hasEventSession(eventId);
+  const { data, error, isPending, isFetching, refetch } = useClothingQuery(eventId, clothingId, {
+    enabled: queryEnabled,
+  });
   const [failedPhotoIds, setFailedPhotoIds] = useState<ReadonlySet<string>>(new Set());
 
   if (!isMounted) return null;
@@ -67,7 +70,7 @@ export function ClothingDetailScreen({
     );
   }
 
-  if (code === 'NOT_FOUND' || !data) {
+  if (code === 'NOT_FOUND') {
     return (
       <VStack gap={4} padding={6}>
         <Text type="body">This clothing item could not be found.</Text>
@@ -84,6 +87,15 @@ export function ClothingDetailScreen({
         isLoading={isFetching}
         onRetry={() => void refetch()}
       />
+    );
+  }
+
+  if (!data) {
+    return (
+      <VStack gap={4} padding={6}>
+        <Text type="body">This clothing item could not be found.</Text>
+        <Link href={routes.eventHome(eventId)}>Home</Link>
+      </VStack>
     );
   }
 

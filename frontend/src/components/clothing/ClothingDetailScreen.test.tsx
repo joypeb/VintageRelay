@@ -59,7 +59,7 @@ describe('Clothing detail', () => {
 
   it('shows all photos in order in the carousel and the complete garment details', () => {
     renderDetail();
-    expect(useClothingQuery).toHaveBeenCalledWith('e1', 'c1');
+    expect(useClothingQuery).toHaveBeenCalledWith('e1', 'c1', { enabled: true });
     const carousel = screen.getByRole('region', { name: 'Photo carousel' });
     const frames = within(carousel).getAllByRole('group');
     expect(frames).toHaveLength(3);
@@ -171,4 +171,12 @@ describe('Clothing detail', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(refetch).toHaveBeenCalledOnce();
   });
+  it('shows a retryable error when the first load fails', () => {
+    query({ data: undefined, error: new ApiError(0, 'NETWORK_ERROR', 'Network error') });
+    renderDetail();
+    expect(screen.getByRole('alert')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
+    expect(screen.queryByText(/could not be found/i)).not.toBeInTheDocument();
+  });
+
 });

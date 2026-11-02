@@ -55,7 +55,9 @@ export async function getClothing(eventId: string, clothingId: string): Promise<
 
 export function shouldRetryClothingQuery(failureCount: number, error: Error): boolean {
   if (error instanceof ApiError) {
-    if (error.code === 'UNAUTHENTICATED' || error.code === 'NOT_FOUND') return false;
+    if (error.code === 'NETWORK_ERROR') return failureCount < MAX_CLOTHING_QUERY_RETRIES;
+    if (error.status >= 500 && error.status <= 599) return failureCount < MAX_CLOTHING_QUERY_RETRIES;
+    return false;
   }
   return failureCount < MAX_CLOTHING_QUERY_RETRIES;
 }

@@ -1,6 +1,7 @@
-import { createElement } from 'react';
+import { createElement, type ReactNode } from 'react';
 
-import { act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api/api-error';
@@ -9,6 +10,7 @@ import {
   getClothing,
   listClothing,
   registerClothing,
+  shouldRetryClothingQuery,
   useClothingListQuery,
   useClothingQuery,
 } from '@/lib/api/clothing';
@@ -177,5 +179,35 @@ describe('clothing read hooks', () => {
       unmount();
       vi.useRealTimers();
     }
+  });
+});
+
+
+describe('disabled clothing read hooks', () => {
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) }, children);
+
+  it('does not fetch the list when disabled', () => {
+    renderHook(() => useClothingListQuery('e1', { enabled: false }), { wrapper });
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+
+  it('does not fetch detail when disabled', () => {
+    renderHook(() => useClothingQuery('e1', 'c1', { enabled: false }), { wrapper });
+    expect(apiFetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('shouldRetryClothingQuery', () => {
+  it.each([
+    ['network error', 0, new ApiError(0, 'NETWORK_ERROR', 'Network error'), true],
+    ['server error', 0, new ApiError(500, 'INTERNAL_ERROR', 'Server error'), true],
+    ['unauthenticated', 0, new ApiError(401, 'UNAUTHENTICATED', 'Unauthenticated'), false],
+    ['not found', 0, new ApiError(404, 'NOT_FOUND', 'Not found'), false],
+    ['validation error', 0, new ApiError(422, 'VALIDATION_ERROR', 'Invalid'), false],
+    ['malformed response', 0, new ApiError(200, 'UNKNOWN_ERROR', 'Invalid response'), false],
+    ['retry budget exhausted', 3, new ApiError(0, 'NETWORK_ERROR', 'Network error'), false],
+  ])('handles %s', (_name, failureCount, error, expected) => {
+    expect(shouldRetryClothingQuery(failureCount, error)).toBe(expected);
   });
 });

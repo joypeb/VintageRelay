@@ -48,7 +48,9 @@ function ClothingCard({ eventId, item }: { eventId: string; item: Clothing }) {
 export function HomeClothingGrid({ eventId }: { eventId: string }) {
   // localStorage is unavailable during SSR, so read the session only after mount.
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
-  const { data, error, isPending, isFetching, refetch } = useClothingListQuery(eventId);
+  const { data, error, isPending, isFetching, refetch } = useClothingListQuery(eventId, {
+    enabled: isMounted && hasEventSession(eventId),
+  });
   const scrollerRef = useRef<HTMLElement | null>(null);
   const startYRef = useRef<number | null>(null);
   const pulledRef = useRef(false);
@@ -95,8 +97,10 @@ export function HomeClothingGrid({ eventId }: { eventId: string }) {
     );
   }
 
-  // Server order is newest-first; keep it and show only others' garments.
-  const items = (data?.items ?? []).filter((item) => !item.isMine);
+  // Show newest first regardless of server order, and only others' garments.
+  const items = [...(data?.items ?? [])]
+    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+    .filter((item) => !item.isMine);
 
   if (items.length === 0) {
     return (
@@ -125,6 +129,7 @@ export function HomeClothingGrid({ eventId }: { eventId: string }) {
         if (currentY === undefined) return;
         const scroller = scrollerRef.current;
         if (scroller && scroller.scrollTop !== 0) return;
+        if (window.scrollY !== 0) return;
         if (currentY - startYRef.current >= PULL_TO_REFRESH_PX) {
           pulledRef.current = true;
           void refetch();
