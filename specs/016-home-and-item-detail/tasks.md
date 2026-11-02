@@ -90,12 +90,12 @@ description: "Task list for 016 Home grid and item detail"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T013 [P] [US2] Red: detail tests in frontend/src/components/clothing/ClothingDetailScreen.test.tsx (new file: all photos render in order through the carousel; category label, full title, full description; all non-null response measurement fields shown labelled in inches including legacy fields outside the current category, and no measurements section when `measurements` is null; owner name with organizer badge only when `owner.isOrganizer`; withdrawn status shows the withdrawn badge alongside the disabled coming-soon button; 404 shows item not-found copy with a way back Home; `UNAUTHENTICATED` renders no-access; `NETWORK_ERROR` shows the error state and [Try again] refires the request)
+- [x] T013 [P] [US2] Red: detail tests in frontend/src/components/clothing/ClothingDetailScreen.test.tsx (new file: all photos render in order through the carousel; category label, full title, full description; all non-null response measurement fields shown labelled in inches including legacy fields outside the current category, and no measurements section when `measurements` is null; owner name with organizer badge only when `owner.isOrganizer`; withdrawn status shows the withdrawn badge alongside the disabled coming-soon button; 404 shows item not-found copy with a way back Home; `UNAUTHENTICATED` renders no-access; `NETWORK_ERROR` shows the error state and [Try again] refires the request)
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implement `ClothingDetailScreen` in frontend/src/components/clothing/ClothingDetailScreen.tsx (reused `PhotoCarousel` with `{ key: photo.id }` items, `onError` image fallback with no overlay for failed images, shared measurement labels, owner flag from `owner.isOrganizer`, no AI estimates; depends on T013)
-- [ ] T015 [P] [US2] Add routing-only server page in frontend/src/app/events/[eventId]/(tabs)/items/[itemId]/page.tsx awaiting Next.js 16 `params` and rendering `ClothingDetailScreen` with `{ eventId, itemId }` (depends on T013)
+- [x] T014 [US2] Implement `ClothingDetailScreen` in frontend/src/components/clothing/ClothingDetailScreen.tsx (reused `PhotoCarousel` with `{ key: photo.id }` items, `onError` image fallback with no overlay for failed images, shared measurement labels, owner flag from `owner.isOrganizer`, no AI estimates; depends on T013)
+- [x] T015 [P] [US2] Add routing-only server page in frontend/src/app/events/[eventId]/(tabs)/items/[itemId]/page.tsx awaiting Next.js 16 `params` and rendering `ClothingDetailScreen` with `{ eventId, itemId }` (depends on T013)
 
 **Checkpoint**: US1 + US2 together form the deployable MVP: grid to detail end to end
 
