@@ -6,6 +6,8 @@ import {
   getSessionHeaders,
   hasEventSession,
   isStorageAvailable,
+  listAllEventSessions,
+  removeEventSession,
   saveEventSession,
 } from '@/lib/session';
 
@@ -24,8 +26,8 @@ describe('event session storage', () => {
 
   it('stores and reads the session and share under the event key', () => {
     saveEventSession('e1', record);
-    expect(localStorage.getItem('vr:event:e1')).toBe(JSON.stringify(record));
-    expect(getEventSession('e1')).toEqual(record);
+    expect(JSON.parse(localStorage.getItem('vr:event:e1') ?? 'null')).toMatchObject(record);
+    expect(getEventSession('e1')).toMatchObject(record);
     expect(getEventShare('e1')).toEqual(record.share);
   });
 
@@ -34,7 +36,44 @@ describe('event session storage', () => {
     const original = localStorage.getItem('vr:event:e1');
     saveEventSession('e2', { participantToken: 't2', participantId: 'p2' });
     expect(localStorage.getItem('vr:event:e1')).toBe(original);
-    expect(getEventSession('e2')).toEqual({ participantToken: 't2', participantId: 'p2' });
+    expect(getEventSession('e2')).toMatchObject({ participantToken: 't2', participantId: 'p2' });
+  });
+
+  it('records the current time on every save', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(1000);
+    saveEventSession('e1', record);
+    expect(getEventSession('e1')).toMatchObject({ savedAt: 1000 });
+
+    now.mockReturnValue(2000);
+    saveEventSession('e1', record);
+    expect(getEventSession('e1')).toMatchObject({ savedAt: 2000 });
+  });
+
+  it('lists saved sessions newest first and legacy sessions last in their original order', () => {
+    localStorage.setItem('vr:event:legacy1', JSON.stringify(record));
+    localStorage.setItem('vr:event:older', JSON.stringify({ ...record, savedAt: 1000 }));
+    localStorage.setItem('vr:event:legacy2', JSON.stringify(record));
+    localStorage.setItem('vr:event:newer', JSON.stringify({ ...record, savedAt: 2000 }));
+
+    expect(listAllEventSessions()).toEqual([
+      expect.objectContaining({ eventId: 'newer' }),
+      expect.objectContaining({ eventId: 'older' }),
+      expect.objectContaining({ eventId: 'legacy1' }),
+      expect.objectContaining({ eventId: 'legacy2' }),
+    ]);
+  });
+
+  it('removes only the specified event session', () => {
+    saveEventSession('e1', record);
+    saveEventSession('e2', record);
+    localStorage.setItem('other', 'value');
+    const remaining = localStorage.getItem('vr:event:e2');
+
+    removeEventSession('e1');
+
+    expect(localStorage.getItem('vr:event:e1')).toBeNull();
+    expect(localStorage.getItem('vr:event:e2')).toBe(remaining);
+    expect(localStorage.getItem('other')).toBe('value');
   });
 
   it.each([

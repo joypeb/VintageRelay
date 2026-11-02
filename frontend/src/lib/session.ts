@@ -10,19 +10,21 @@ const eventSessionSchema = z.object({
   participantToken: z.string().min(1),
   participantId: z.string().min(1),
   share: shareSchema.optional(),
+  savedAt: z.number().optional(),
 });
 
 export type EventShare = z.infer<typeof shareSchema>;
 export type EventSessionRecord = z.infer<typeof eventSessionSchema>;
 
 const PROBE_KEY = 'vr:probe';
+const PREFIX = 'vr:event:';
 
 function keyFor(eventId: string): string {
-  return `vr:event:${eventId}`;
+  return `${PREFIX}${eventId}`;
 }
 
 export function saveEventSession(eventId: string, record: EventSessionRecord): void {
-  localStorage.setItem(keyFor(eventId), JSON.stringify(record));
+  localStorage.setItem(keyFor(eventId), JSON.stringify({ ...record, savedAt: Date.now() }));
 }
 
 export function getEventSession(eventId: string): EventSessionRecord | null {
@@ -38,6 +40,23 @@ export function getEventSession(eventId: string): EventSessionRecord | null {
 
 export function hasEventSession(eventId: string): boolean {
   return getEventSession(eventId) !== null;
+}
+
+export function listAllEventSessions(): Array<{ eventId: string; record: EventSessionRecord }> {
+  const items: Array<{ eventId: string; record: EventSessionRecord }> = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key === null || !key.startsWith(PREFIX)) continue;
+    const eventId = key.slice(PREFIX.length);
+    const record = getEventSession(eventId);
+    if (record !== null) items.push({ eventId, record });
+  }
+  items.sort((a, b) => (b.record.savedAt ?? -Infinity) - (a.record.savedAt ?? -Infinity));
+  return items;
+}
+
+export function removeEventSession(eventId: string): void {
+  localStorage.removeItem(keyFor(eventId));
 }
 
 export function getEventShare(eventId: string): EventShare | null {
