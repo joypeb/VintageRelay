@@ -5,7 +5,7 @@
 - See [PROJECT.md](PROJECT.md) for the overview and `docs/` for details.
   - **Planning and domain knowledge (`docs/domain/`):** background and rationale, including [idea.md](docs/domain/idea.md).
   - **Business and exchange rules (`docs/rules/`):** core exchange rules and detailed policies.
-  - **Development plans and design (`docs/plans/`):** [initial development plan](docs/plans/vintage-relay-plan-v1.md), [database design](docs/plans/database-design-v1.md), [per-function API specifications](docs/plans/api/README.md), and [AI features](docs/plans/ai-features-v1.md).
+  - **Development plans and design (`docs/plans/`):** [initial development plan](docs/plans/vintage-relay-plan-v1.md), [database design](docs/plans/database-design-v1.md), [per-function API specifications](docs/plans/api/README.md), [per-feature development plans](docs/plans/features/README.md), and [AI features](docs/plans/ai-features-v1.md).
   - **Screens and interactions (`docs/flows/`):** [screen flow specification](docs/flows/screen-flow-v1.md) and [interactive mockup](docs/flows/mockup-flow-v1.html).
   - **Development rules (`docs/rules/dev/`):** code style, error handling, logging, and Git rules.
 - If early ideas conflict with later decisions, prioritize the latest user decisions and the initial development plan.

@@ -106,6 +106,8 @@ Changes to the earlier plan: an intent is visible to the owner of the wanted gar
 | 020 | Exchange requests: intents with visibility/decline, accept → 2-person proposal, 3-person cycle detection, consent, confirmation (APIs 09, 11, 12) | BE + FE (request sheet, Trades, received requests on item) | 016, 017 |
 | 021 | Cancel confirmed exchange + confirmed/handover view (APIs 13, 14) | BE + FE | 020 |
 
+Per-feature plans with references and `/speckit-specify` input: [`docs/plans/features/`](../../plans/features/README.md).
+
 Order rationale (user decision: AI search before exchanges): browsing and managing items first (cheap, needed by everything), then AI analysis and search (search depends on analysis colors), then the exchange core, then cancellation. Until 020 ships, the Trades tab and [Request exchange] show an empty/coming-soon state.
 
 ## 7. Documents to Update Before 015
