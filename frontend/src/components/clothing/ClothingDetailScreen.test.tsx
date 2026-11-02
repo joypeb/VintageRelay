@@ -11,6 +11,9 @@ import { renderWithClient } from '@/test/render';
 import type { Clothing } from '@/types/clothing';
 
 vi.mock('@/lib/api/clothing', () => ({ useClothingQuery: vi.fn() }));
+const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), push: vi.fn(), replace: vi.fn() }));
+vi.mock('@/lib/api/client', () => ({ apiFetch: mocks.apiFetch }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
 
 const refetch = vi.fn();
 const clothing: Clothing = {
@@ -112,6 +115,26 @@ describe('Clothing detail', () => {
     expect(screen.getByText(/withdrawn/i)).toBeVisible();
     expect(screen.getByRole('button', { name: /request exchange/i })).toBeDisabled();
     expect(screen.getByText(/coming soon/i)).toBeVisible();
+  });
+
+  it('does not request an exchange or navigate when the disabled action is clicked', async () => {
+    mocks.apiFetch.mockClear();
+    mocks.push.mockClear();
+    mocks.replace.mockClear();
+    renderDetail();
+    const location = window.location.href;
+    const button = screen.getByRole('button', { name: /request exchange/i });
+    expect(button).toBeVisible();
+    expect(button).toBeDisabled();
+    expect(screen.getByText(/coming soon/i)).toBeVisible();
+
+    await userEvent.click(button);
+
+    expect(mocks.apiFetch).not.toHaveBeenCalled();
+    expect(mocks.push).not.toHaveBeenCalled();
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(window.location.href).toBe(location);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('shows item not-found copy and a link home', () => {

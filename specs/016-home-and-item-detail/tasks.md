@@ -111,11 +111,11 @@ description: "Task list for 016 Home grid and item detail"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T016 [US3] Red: disabled-request tests in frontend/src/components/clothing/ClothingDetailScreen.test.tsx (extend the US2 file after T013: [Request exchange] is visible, disabled, with the "Coming soon" note; clicking it calls no fetcher and triggers no navigation)
+- [x] T016 [US3] Red: disabled-request tests in frontend/src/components/clothing/ClothingDetailScreen.test.tsx (extend the US2 file after T013: [Request exchange] is visible, disabled, with the "Coming soon" note; clicking it calls no fetcher and triggers no navigation)
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Implement the disabled [Request exchange] button with the "Coming soon" note in frontend/src/components/clothing/ClothingDetailScreen.tsx (depends on T014 and T016; same file as T014, run sequentially)
+- [x] T017 [US3] Disabled [Request exchange] already implemented in T014 and verified by T016 (no production change needed; depends on T014 and T016)
 
 **Checkpoint**: All P1-P2 stories should now be independently functional
 
