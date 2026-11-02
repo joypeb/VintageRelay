@@ -68,11 +68,11 @@ description: "Task list for 016 Home grid and item detail"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T009 [P] [US1] Red: grid tests in frontend/src/components/clothing/HomeClothingGrid.test.tsx (new file: each card shows `photos[0]` with the title below in newest-first order and links to `routes.itemDetail`; title-only cards with no owner name; single-photo item renders one frame; card image error shows the fallback; long titles do not break the two-column layout; empty state inviting registration; error state with [Try again] calling `refetch`; loading skeletons; `isMine === true` items excluded; no session renders no-access with no grid; `UNAUTHENTICATED` error renders no-access taking precedence over cached items; pull action calls the list query `refetch`)
+- [x] T009 [P] [US1] Red: grid tests in frontend/src/components/clothing/HomeClothingGrid.test.tsx (new file: each card shows `photos[0]` with the title below in newest-first order and links to `routes.itemDetail`; title-only cards with no owner name; single-photo item renders one frame; card image error shows the fallback; long titles do not break the two-column layout; empty state inviting registration; error state with [Try again] calling `refetch`; loading skeletons; `isMine === true` items excluded; no session renders no-access with no grid; `UNAUTHENTICATED` error renders no-access taking precedence over cached items; pull action calls the list query `refetch`)
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Implement `HomeClothingGrid` in frontend/src/components/clothing/HomeClothingGrid.tsx (scaffolded from the Astryx `product-gallery` template: `Grid columns={2}`, `ClickableCard`, `EmptyState`, `Skeleton`; pull-to-refresh gesture wired to the list query `refetch`; depends on T009)
+- [x] T010 [US1] Implement `HomeClothingGrid` in frontend/src/components/clothing/HomeClothingGrid.tsx (scaffolded from the Astryx `product-gallery` template: `Grid columns={2}`, `ClickableCard`, `EmptyState`, `Skeleton`; pull-to-refresh gesture wired to the list query `refetch`; depends on T009)
 - [ ] T011 [P] [US4] Red: regression test in frontend/src/components/event/EventHomeScreen.test.tsx (extend existing file: with a populated others-garments list, the event header and "Clothing registered." confirmation still render above the grid; same Red → Green cycle as T012)
 - [ ] T012 [US1] Wire the grid into frontend/src/components/event/EventHomeScreen.tsx below the [Register my clothes] button, keeping the event header and "Clothing registered." status untouched (Green for T009 and T011; depends on T010 and T011)
 
@@ -137,7 +137,7 @@ No implementation task: this story requires no code change (T012 places the grid
 
 **Purpose**: Design review first, then final verification against reviewed content
 
-- [ ] T018 Run `/impeccable critique` on the Home grid and the item detail and resolve findings in frontend/src/components/clothing/
+- [ ] T018 Run `/impeccable critique` on the Home grid and the item detail and resolve findings in frontend/src/components/clothing/ (must-fix input from the cycle-4 review: card photos lack the 3:4 frame — wrap in `aspect-[3/4]` + `object-cover` per `PhotoCarousel.tsx:161` — plus `Skeleton` aspect match)
 - [ ] T019 Run the full frontend gate in frontend/ (`pnpm lint && pnpm typecheck && pnpm test`) on the critiqued content and fix all findings in frontend/src/
 - [ ] T020 [P] Run the backend safety suite in backend/ (`uv run pytest`) to confirm no backend behavior changed
 - [ ] T021 Validate specs/016-home-and-item-detail/quickstart.md scenarios 1-4 manually at 360–430 px widths (including pull-to-refresh, 1-photo/10-photo carousel, long titles, overlay focus return, reduced motion) and capture PR screenshots (depends on T019)
