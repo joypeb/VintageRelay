@@ -55,10 +55,9 @@ Because closure and final consent use the same serialized write lock, a consent 
 
 ### Effects After Closure
 
-- **New state changes** return `409 EVENT_CLOSED`: join, photo upload, clothing register/edit/withdraw, preference changes, AI analysis/interpretation, intent registration/withdrawal, alternative acceptance, consent/rejection, and cancellation.
-- **AI recommendations** also return `409 EVENT_CLOSED`. They do not change state, but they are only useful for new exchanges.
+- **New state changes** return `409 EVENT_CLOSED`: join, photo upload, clothing register/edit/withdraw, intent registration/acceptance/decline/withdrawal, consent/rejection, and cancellation. A background analysis already running may still save its result.
+- **Search** (interpretation and ranked search) stays available because it only reads.
 - **Replays** of an action that already reached its target state still return their normal success response ([check order](README.md#check-order)): e.g. withdrawing an already withdrawn garment or intent (`204`), or cancelling an already cancelled exchange (`200`).
-- **Local-only actions** that store nothing, such as rejecting an alternative suggestion, return `204`.
 - All other `GET` endpoints remain available (**proposed**; post-closure access duration and retention are open decisions).
 
 ### Errors

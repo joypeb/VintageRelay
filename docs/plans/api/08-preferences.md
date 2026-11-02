@@ -1,8 +1,10 @@
 # Preferences API
 
-Saves the participant's desired styles and exclusions, and the conditions they reviewed after AI interpretation. Each participant has **one current preference** (database design 3.6). Screens: R1, R2. AI interpretation is specified in [AI features](../ai-features-v1.md#4-preference-interpretation). Common rules: [README](README.md).
+> **Dropped (2026-11-02).** Replaced by natural-language search ([15](15-search.md), [AI features](../ai-features-v1.md#4-search-interpretation)) in the [app flow redesign](../../superpowers/specs/2026-11-02-app-flow-redesign-design.md). Kept for history only; do not implement.
 
-Flow: R1 saves `originalText` → AI interpretation fills `interpretedConditions` → R2 saves the reviewed `confirmedConditions`.
+Saves the participant's desired styles and exclusions, and the conditions they reviewed after AI interpretation. Each participant has **one current preference** (database design 3.6). Screens: R1, R2. AI interpretation is specified in [AI features](../ai-features-v1.md). Common rules: [README](README.md).
+
+Historical flow: R1 saved `originalText` → AI interpretation filled `interpretedConditions` → R2 saved the reviewed `confirmedConditions`.
 
 ## `Preference` Schema
 
@@ -11,7 +13,7 @@ Flow: R1 saves `originalText` → AI interpretation fills `interpretedConditions
 | `participantId` | string | Owner |
 | `originalText` | string | Free-text styles and exclusions; `""` if never saved |
 | `version` | integer | Increments **only when `originalText` changes**; `0` if never saved |
-| `interpretedConditions` | `PreferenceInterpretation` \| null | AI output for the current `version`; schema in [AI features](../ai-features-v1.md#23-preferenceinterpretation-and-condition) |
+| `interpretedConditions` | `PreferenceInterpretation` \| null | AI output for the current `version`; schema in [AI features](../ai-features-v1.md) |
 | `confirmedConditions` | `Condition[]` \| null | Participant-reviewed conditions for the current `version` |
 | `updatedAt` | string \| null | Last change time |
 

@@ -1,14 +1,13 @@
 # Read Proposals API
 
-Proposals are two-/three-person exchange cycles calculated from active intents. The server **creates** them internally; clients only read them. Screens: P2 badges, T1, T2, C4. Common rules: [README](README.md).
+Proposals are two-/three-person exchange cycles calculated from active intents. The server **creates** them internally; clients only read them. Screens: Trades tab badge, T1 (Exchanges), T2, C4. Common rules: [README](README.md).
 
 ## Proposal Generation
 
 There is no client endpoint for creating proposals. The server recalculates affected cycles inside the **same transaction** as:
 
-- intent registration/withdrawal ([09](09-intents.md)),
+- intent registration, acceptance, decline, and withdrawal ([09](09-intents.md)),
 - clothing edit/withdrawal ([07](07-edit-withdraw-clothing.md)),
-- alternative acceptance ([10](10-alternative-suggestions.md)),
 - exchange cancellation ([13](13-cancel-exchange.md)).
 
 Rules:
@@ -56,8 +55,8 @@ Rules:
 | Value | Status | Cause |
 |---|---|---|
 | `participant_rejected` | `rejected` | A participant rejected |
-| `intent_changed` | `invalidated` | An intent was withdrawn or its offered garment changed |
-| `clothing_changed` | `invalidated` | A garment's photo/description changed |
+| `intent_changed` | `invalidated` | An intent was withdrawn, declined, or invalidated |
+| `clothing_changed` | `invalidated` | A garment's photos, category, title, description, or measurements changed |
 | `clothing_withdrawn` | `invalidated` | A garment was withdrawn |
 | `clothing_confirmed_elsewhere` | `invalidated` | A garment was confirmed in another proposal |
 | `event_closed` | `invalidated` | Event closed while pending |
@@ -75,7 +74,7 @@ Lists proposals **in which the caller participates**.
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `status` | enum, repeatable | all | T1 segments: Active `?status=pending`, Confirmed `?status=confirmed`, History `?status=rejected&status=invalidated&status=cancelled` |
+| `status` | enum, repeatable | all | T1 Exchanges: awaiting consent and 3-person found `?status=pending`, confirmed `?status=confirmed`, history `?status=rejected&status=invalidated&status=cancelled` |
 | `clothingId` | string | none | Only proposals containing this garment (C4) |
 
 ### Response — `200 OK`
@@ -112,8 +111,8 @@ Returns one proposal (T2, T3).
     {
       "participant": { "participantId": "5b8f...", "displayName": "Joon", "isOrganizer": false },
       "isMe": true,
-      "offeredClothing": { "id": "bb22...", "owner": { "participantId": "5b8f...", "displayName": "Joon", "isOrganizer": false }, "photoUrl": "https://...", "description": "Black jacket.", "status": "available", "contentVersion": 2 },
-      "receivedClothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false }, "photoUrl": "https://...", "description": "Green jacket.", "status": "available", "contentVersion": 1 },
+      "offeredClothing": { "id": "bb22...", "owner": { "participantId": "5b8f...", "displayName": "Joon", "isOrganizer": false }, "photoUrl": "https://...", "category": "outer", "title": "Black jacket", "description": "Black jacket.", "status": "available", "contentVersion": 2 },
+      "receivedClothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false }, "photoUrl": "https://...", "category": "outer", "title": "Green jacket", "description": "Green jacket.", "status": "available", "contentVersion": 1 },
       "response": "pending",
       "respondedAt": null
     }

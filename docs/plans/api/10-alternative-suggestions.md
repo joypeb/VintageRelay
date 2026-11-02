@@ -1,6 +1,8 @@
 # Alternative Suggestions API
 
-Finds two-/three-person cycles that would close if the caller offered **another of their available garments** for an existing intent, and lets the caller accept or reject. Regular code computes suggestions; AI is not involved. Acceptance changes the intent but is **not** final consent. Screens: P2 card, T1 (Active), A1. Common rules: [README](README.md).
+> **Deferred (2026-11-02).** Not part of the current roadmap ([app flow redesign](../../superpowers/specs/2026-11-02-app-flow-redesign-design.md)). Exchange requests ([09](09-intents.md)) and automatic cycle detection ([11](11-proposals.md)) ship first.
+
+Finds two-/three-person cycles that would close if the caller offered **another of their available garments** for an existing intent, and lets the caller accept or reject. Regular code computes suggestions; AI is not involved. Acceptance changes the intent but is **not** final consent. Pre-redesign screens (deferred): P2 card, T1 (Active), A1. Common rules: [README](README.md).
 
 Suggestions are computed on read and not stored (database design 6). Their IDs are opaque and derived deterministically by the server. Do not generate a suggestion when the caller already has another `active` intent with the same (suggested garment, wanted garment) pair.
 
@@ -32,9 +34,9 @@ Returns suggestions for the caller.
     {
       "id": "alt_6Jq2...",
       "intentId": "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e",
-      "wantedClothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "B", "isOrganizer": false }, "photoUrl": "https://...", "description": "Green jacket.", "status": "available", "contentVersion": 1 },
-      "currentOfferedClothing": { "id": "aa11...", "owner": { "participantId": "5b8f...", "displayName": "Me", "isOrganizer": false }, "photoUrl": "https://...", "description": "White pants.", "status": "available", "contentVersion": 1 },
-      "suggestedOfferedClothing": { "id": "bb22...", "owner": { "participantId": "5b8f...", "displayName": "Me", "isOrganizer": false }, "photoUrl": "https://...", "description": "Black jacket.", "status": "available", "contentVersion": 2 },
+      "wantedClothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "B", "isOrganizer": false }, "photoUrl": "https://...", "category": "outer", "title": "Green jacket", "description": "Green jacket.", "status": "available", "contentVersion": 1 },
+      "currentOfferedClothing": { "id": "aa11...", "owner": { "participantId": "5b8f...", "displayName": "Me", "isOrganizer": false }, "photoUrl": "https://...", "category": "bottom", "title": "White pants", "description": "White pants.", "status": "available", "contentVersion": 1 },
+      "suggestedOfferedClothing": { "id": "bb22...", "owner": { "participantId": "5b8f...", "displayName": "Me", "isOrganizer": false }, "photoUrl": "https://...", "category": "outer", "title": "Black jacket", "description": "Black jacket.", "status": "available", "contentVersion": 2 },
       "cycleSize": 3,
       "cycle": [
         { "participant": { "participantId": "5b8f...", "displayName": "Me", "isOrganizer": false }, "offeredClothing": { "id": "bb22...", "...": "..." }, "receivedClothing": { "id": "3f1c...", "...": "..." } },

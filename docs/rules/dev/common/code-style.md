@@ -16,10 +16,10 @@ Language-specific formatter/linter details belong in `backend/` and `frontend/`.
 | Participant | `participant` |
 | Entry code | `entry_code` / `entryCode` |
 | Clothing | `clothing` (same singular/plural; `clothing_item` allowed for an individual item) |
-| Preference | `preference` |
-| Exchange intent | `intent` |
+| Search conditions | `search_conditions` / `searchConditions` |
+| Exchange intent (exchange request in the UI) | `intent` |
 | Exchange proposal | `proposal` |
-| Alternative garment suggestion | `alternative_suggestion` |
+| Alternative garment suggestion (deferred) | `alternative_suggestion` |
 | Consent | `consent` |
 | Confirm / cancel / close | `confirm` / `cancel` / `close` |
 

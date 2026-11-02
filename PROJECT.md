@@ -2,18 +2,18 @@
 
 ## Project Overview
 
-Vintage Relay is a **mobile web app for a clothing exchange corner** at neighborhood events or small flea markets. Participants register garments they can offer and garments they want. AI helps find candidates matching their preferences, and the app connects participant choices into two-person swaps or three-person exchanges.
+Vintage Relay is a **mobile web app for a clothing exchange corner** at neighborhood events or small flea markets. Participants register garments they can offer and garments they want. AI analyzes garment photos and turns natural-language searches into filters, participants send exchange requests, and the app connects participant choices into two-person swaps or three-person exchanges.
 
-The goal is to connect multiple people's intents when finding a direct exchange partner is difficult. The app assists with recommendations and proposals, but **participants choose what to give and receive and consent to exchanges**.
+The goal is to connect multiple people's intents when finding a direct exchange partner is difficult. The app assists with search and proposals, but **participants choose what to give and receive and consent to exchanges**.
 
-The project is currently at the pre-implementation stage. This document describes the agreed direction and initial design; per-function API specs are drafted in [docs/plans/api/](docs/plans/api/README.md) (items marked proposed still need agreement), and screen layouts will be decided later. See [idea.md](docs/domain/idea.md) for early ideas and validation background, and [vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md) for draft APIs and development order. Where their scopes differ, prioritize this document and the initial plan, which reflect later discussions.
+Implementation is in progress (features 001–014: events, join, photo upload, clothing registration). This document describes the agreed direction, revised by the [2026-11-02 app flow redesign](docs/superpowers/specs/2026-11-02-app-flow-redesign-design.md); per-function API specs are drafted in [docs/plans/api/](docs/plans/api/README.md) (items marked proposed still need agreement), and screens are in the [screen flow](docs/flows/screen-flow-v1.md). See [idea.md](docs/domain/idea.md) for early ideas and validation background, and [vintage-relay-plan-v1.md](docs/plans/vintage-relay-plan-v1.md) for draft APIs and development order. Where their scopes differ, prioritize this document and the initial plan, which reflect later discussions.
 
 The application interface, user-facing API messages, and AI-generated application copy are in English. Agent replies to the user remain in Korean.
 
 ## Users
 
 - **Organizers:** create events, share QR or entry codes, and close events when finished.
-- **Participants:** join before or during events, register clothing/preferences, and participate in exchanges.
+- **Participants:** join before or during events, register clothing, browse and search others' clothing, send and answer exchange requests, and participate in exchanges.
 
 The first version focuses on **a clothing exchange corner within an event**, rather than managing an entire event or facilitating sales.
 
@@ -39,17 +39,15 @@ Creating an event registers the organizer as a participant and stores their part
 
 An entry code only grants entry to an event. Permissions to manage one's clothing/consent and the organizer's permission to close the event must be separate. Requests authenticate with a per-event bearer `participantToken` ([API contract](docs/rules/dev/common/api-contract.md#authentication-decided)); only session recovery on another device remains undecided.
 
-### 2. Clothing and Preference Registration
+### 2. Clothing Registration
 
-Participants upload photos and descriptions of garments to exchange, then enter desired styles and exclusions. Each participant can register multiple garments.
+Participants upload 1–10 photos of each garment and enter a category, title, description, and optional measurements. Each participant can register multiple garments. Right after saving, the backend asks AI to estimate colors and visible features, labeled as estimates.
 
-For example: “I want a cropped green jacket without a large logo, and I don't want heavy stains.” AI structures photo/description features and preference conditions for participants to review and correct.
+### 3. Discovery and Exchange Requests
 
-### 3. Candidate Discovery and Exchange Intents
+Home lists other participants' available garments, newest first. Search takes natural language, such as “green jacket, chest around 21 inches”; AI turns it into category, color, and measurement conditions, and regular code ranks matching garments first. Manual filters remain available if AI fails.
 
-AI shows available clothing in the same event that matches a participant's preferences, along with reasons and points to check. Participants can also browse the list manually.
-
-The initial design asks participants selecting a desired garment to **also specify which of their own garments they would offer**. For example: “I want to give my white pants for B's green jacket.” This is an exchange intent, not final consent.
+A participant requesting a garment **also specifies which of their own garments they would offer**. For example: “I want to give my white pants for B's green jacket.” This exchange request (intent) is visible to the garment's owner, who can accept or decline it. Neither the request nor the acceptance is final consent.
 
 ### 4. Two-Person Swaps and Three-Person Cycles
 
@@ -67,7 +65,9 @@ A **three-person exchange** occurs when each desired garment's owner wants the n
 
 If all three register these intents, the server connects them into one proposal. If C does not want my pants, this exchange cannot happen. The app finds another option or reports no exchange found. AI estimates alone never create participant intents.
 
-### 5. Alternative Garment Suggestions
+### 5. Alternative Garment Suggestions (Deferred)
+
+Deferred by the 2026-11-02 redesign; the description below is kept for later.
 
 When the current garments do not complete a cycle but offering **another registered garment** would, the app suggests that alternative to its owner.
 
@@ -97,13 +97,13 @@ No exchange actions are allowed after the organizer closes the event. The initia
 
 | Role | Responsibility |
 |---|---|
-| **AI** | Summarize clothing photo/description features, interpret natural-language preferences/exclusions, and suggest candidates with reasons and checks. |
-| **Regular server code** | Manage events/permissions, calculate two-/three-person exchanges, detect alternative garments, and handle consent, versions, duplicates, cancellation, and closure. |
-| **Participants** | Review/correct clothing and preferences, select offered/desired garments, accept/decline alternatives, give final consent, and inspect physical garments. |
+| **AI** | Estimate clothing colors and visible features from photos, and turn natural-language searches into conditions. |
+| **Regular server code** | Manage events/permissions, rank search results, calculate two-/three-person exchanges, and handle requests, consent, versions, duplicates, cancellation, and closure. |
+| **Participants** | Register clothing, send/accept/decline exchange requests with offered garments, give final consent, and inspect physical garments. |
 
-AI helps discovery by connecting preferences and garments. It never creates participant intents or final consent on their behalf. It must not state unseen defects, exact fit, authenticity, or prices as facts. Manual candidate selection must remain available if AI fails.
+AI helps discovery by structuring garments and searches. It never creates participant requests or final consent on their behalf. It must not state unseen defects, exact fit, authenticity, or prices as facts. Manual filters must remain available if AI fails.
 
-Meta Model API's `muse-spark-1.3` is the first candidate. Actual access, image input, structured output, and English recommendation quality must be validated early. Alternative garment detection and exchange cycle calculation use regular code.
+Meta Model API's `muse-spark-1.3` is the first candidate. Actual access, image input, structured output, and search interpretation quality must be validated early. Search ranking and exchange cycle calculation use regular code.
 
 ## First-Version Technical Direction and Exclusions
 
@@ -111,4 +111,4 @@ Meta Model API's `muse-spark-1.3` is the first candidate. Actual access, image i
 - **Excluded:** cycles of four or more, bundles, payments, shipping, cash adjustments, live chat, nationwide event search, price/authenticity appraisal, virtual fitting, and native apps.
 - **Open decisions:** session recovery on another device, photo retention/deletion, physical handover records and subsequent cancellation, post-event record retention, event size limits, and proposal ordering.
 
-Exchange demand and the value of AI recommendations remain unvalidated. Early development should compare actual model API integration and recommendations with manual selection, and verify two-/three-person exchanges, cancellation, and duplicate confirmation prevention.
+Exchange demand and the value of AI search remain unvalidated. Early development should compare actual model API integration and AI search with manual filters, and verify two-/three-person exchanges, cancellation, and duplicate confirmation prevention.

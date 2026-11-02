@@ -1,6 +1,6 @@
 # Vintage Relay API Specification (Draft v1)
 
-This directory splits section 4 of the [initial development plan](../vintage-relay-plan-v1.md) into one document per API function. AI features (clothing analysis, preference interpretation, recommendations) are specified separately in [ai-features-v1.md](../ai-features-v1.md).
+This directory splits section 4 of the [initial development plan](../vintage-relay-plan-v1.md) into one document per API function. AI features (background clothing analysis, search interpretation) are specified separately in [ai-features-v1.md](../ai-features-v1.md). The [2026-11-02 app flow redesign](../../superpowers/specs/2026-11-02-app-flow-redesign-design.md) dropped preferences and recommendations, deferred alternative suggestions, and added exchange request accept/decline and search.
 
 These documents follow the [API contract](../../rules/dev/common/api-contract.md), which remains the sole source of truth for shared HTTP formats, authentication, and error codes. Path structure, bearer-token authentication, feature error codes, the 403/404 authorization policy, and the [proposal suppression rule](11-proposals.md#proposal-generation) are decided (see `AGENTS.md` Open Decisions). Items still marked **proposed** (limits, formats, timeouts) need agreement before implementation.
 
@@ -15,16 +15,17 @@ These documents follow the [API contract](../../rules/dev/common/api-contract.md
 | 05 | [Upload photo](05-upload-photo.md) | `POST /api/v1/events/{event_id}/photos` |
 | 06 | [Register/read clothing](06-register-read-clothing.md) | `POST /api/v1/events/{event_id}/clothing`, `GET /api/v1/events/{event_id}/clothing`, `GET /api/v1/clothing/{clothing_id}` |
 | 07 | [Edit/withdraw clothing](07-edit-withdraw-clothing.md) | `PATCH /api/v1/clothing/{clothing_id}`, `DELETE /api/v1/clothing/{clothing_id}` |
-| 08 | [Preferences](08-preferences.md) | `GET /api/v1/participants/{participant_id}/preferences`, `PATCH /api/v1/participants/{participant_id}/preferences` |
-| 09 | [Select/withdraw intent](09-intents.md) | `POST /api/v1/events/{event_id}/intents`, `GET /api/v1/events/{event_id}/intents`, `DELETE /api/v1/intents/{intent_id}` |
-| 10 | [Alternative suggestions](10-alternative-suggestions.md) | `GET /api/v1/events/{event_id}/alternative-suggestions`, `POST /api/v1/alternative-suggestions/{suggestion_id}/accept`, `POST /api/v1/alternative-suggestions/{suggestion_id}/reject` |
+| 08 | [Preferences](08-preferences.md) (**dropped**) | — |
+| 09 | [Exchange requests (intents)](09-intents.md) | `POST /api/v1/events/{event_id}/intents`, `GET /api/v1/events/{event_id}/intents`, `DELETE /api/v1/intents/{intent_id}`, `POST /api/v1/intents/{intent_id}/accept`, `POST /api/v1/intents/{intent_id}/decline` |
+| 10 | [Alternative suggestions](10-alternative-suggestions.md) (**deferred**) | `GET /api/v1/events/{event_id}/alternative-suggestions`, `POST /api/v1/alternative-suggestions/{suggestion_id}/accept`, `POST /api/v1/alternative-suggestions/{suggestion_id}/reject` |
 | 11 | [Read proposals](11-proposals.md) | `GET /api/v1/events/{event_id}/proposals`, `GET /api/v1/proposals/{proposal_id}` |
 | 12 | [Consent/reject proposal](12-consent-reject-proposal.md) | `POST /api/v1/proposals/{proposal_id}/consents`, `POST /api/v1/proposals/{proposal_id}/reject` |
 | 13 | [Cancel confirmed exchange](13-cancel-exchange.md) | `POST /api/v1/proposals/{proposal_id}/cancel` |
 | 14 | [Read confirmation/handover](14-confirmed-exchanges.md) | Confirmed views of document 11 endpoints |
-| AI | [AI features](../ai-features-v1.md) | `POST/PATCH /api/v1/clothing/{clothing_id}/analysis`, `POST /api/v1/participants/{participant_id}/preferences/interpretation`, `GET /api/v1/events/{event_id}/recommendations` |
+| 15 | [Ranked search](15-search.md) | `GET /api/v1/events/{event_id}/clothing/search` |
+| AI | [AI features](../ai-features-v1.md) | `POST /api/v1/events/{event_id}/search/interpretation`; clothing analysis runs in the backend with no endpoint |
 
-Proposals are never created by a client request. The server creates them inside the same transaction as intent, clothing, alternative-acceptance, and cancellation changes (see [11-proposals.md](11-proposals.md)).
+Proposals are never created by a client request. The server creates them inside the same transaction as intent (register, accept, decline, withdraw), clothing, and cancellation changes (see [11-proposals.md](11-proposals.md)).
 
 ## 2. Path Conventions (Decided)
 
@@ -52,7 +53,7 @@ Authorization failures:
 | Missing, malformed, or unknown token | 401 | `UNAUTHENTICATED` |
 | Token belongs to a different event than the requested resource | 404 | `NOT_FOUND` |
 | Same event, but the action requires another role or ownership | 403 | `FORBIDDEN` |
-| Same event, but the resource is private to other participants (a proposal the caller is not in, a photo another participant uploaded, another participant's intent or preference) | 404 | `NOT_FOUND` (existence hidden) |
+| Same event, but the resource is private to other participants (a proposal the caller is not in, a photo another participant uploaded, an intent the caller neither sent nor received) | 404 | `NOT_FOUND` (existence hidden) |
 
 Use `404` instead of `403` **only** to hide that a private resource exists. Resources visible to everyone in the event, such as garments and the event itself, return `403` for role or ownership failures.
 
@@ -100,15 +101,17 @@ Defined in the [API contract](../../rules/dev/common/api-contract.md#7-error-res
 |---|---|
 | `DISPLAY_NAME_TAKEN` | 04 |
 | `PHOTO_ALREADY_ATTACHED` | 06, 07 |
-| `CLOTHING_NOT_AVAILABLE` | 07, 09, 10, 12, AI |
-| `INTENT_NOT_ACTIVE` | 10, 12 |
-| `ALTERNATIVE_NO_LONGER_VALID` | 10 |
+| `CLOTHING_NOT_AVAILABLE` | 07, 09, 12 |
+| `INTENT_NOT_ACTIVE` | 09, 12 |
+| `ALTERNATIVE_NO_LONGER_VALID` | 10 (deferred) |
 | `PROPOSAL_NOT_CONFIRMED` | 13 |
-| `CONTENT_VERSION_MISMATCH` | 08, AI |
-| `ANALYSIS_NOT_READY` | AI |
-| `PREFERENCE_REQUIRED` | AI |
+| `CONTENT_VERSION_MISMATCH` | Unused since the redesign (reserved) |
+| `ANALYSIS_NOT_READY` | Unused since the redesign (reserved) |
+| `PREFERENCE_REQUIRED` | Unused since the redesign (reserved) |
 
 ### Proposal State Transitions
+
+Accepting a request ([09](09-intents.md#4-post-apiv1intentsintent_idaccept)) creates or reuses a `pending` proposal and records the accepter's consent; it is not a transition by itself.
 
 Every proposal transition sets the fields below in the same transaction. `endedAt` drives the [suppression rule](11-proposals.md#proposal-generation).
 
@@ -120,7 +123,7 @@ Every proposal transition sets the fields below in the same transaction. `endedA
 | Another proposal confirms a shared garment | [12](12-consent-reject-proposal.md) | `invalidated` | `clothing_confirmed_elsewhere` | `endedAt` |
 | Garment edited | [07](07-edit-withdraw-clothing.md) | `invalidated` | `clothing_changed` | `endedAt` |
 | Garment withdrawn | [07](07-edit-withdraw-clothing.md) | `invalidated` | `clothing_withdrawn` | `endedAt` |
-| Intent withdrawn or offered garment changed | [09](09-intents.md), [10](10-alternative-suggestions.md) | `invalidated` | `intent_changed` | `endedAt` |
+| Request withdrawn or declined | [09](09-intents.md) | `invalidated` | `intent_changed` | `endedAt` |
 | Event closed while pending (**proposed**) | [03](03-close-event.md) | `invalidated` | `event_closed` | `endedAt` |
 | Confirmed exchange cancelled | [13](13-cancel-exchange.md) | `cancelled` | `participant_cancelled` | `cancelledAt`, `endedAt` |
 
@@ -137,9 +140,15 @@ Every proposal transition sets the fields below in the same transaction. `endedA
 |---|---|
 | Event name | 1–60 characters after trimming |
 | Display name | 1–30 characters after trimming; unique per event, case-insensitive |
-| Clothing description | 1–1,000 characters |
-| Preference text | 1–1,000 characters |
-| Photo | 10 MB; `image/jpeg`, `image/png`, `image/webp` |
+| Clothing title | 1–100 characters after trimming; no control characters or newlines |
+| Clothing description | 1–1,000 characters after trimming |
+| Clothing category | `top`, `outer`, `bottom`, `other` |
+| Clothing measurements | Optional, inches, each `> 0` and `<= 120`; allowed fields depend on category ([06](06-register-read-clothing.md#measurements-schema)) |
+| Search text | 1–200 characters after trimming |
+| Photo | 10 MB; `image/jpeg` (`.jpg`/`.jpeg`), `image/png`, `image/webp`. The frontend compresses larger photos on the device before upload |
+| Photos per garment | 1–10, ordered; the first is the main photo |
+
+Character limits count Unicode code points, on both the server and the frontend counters.
 
 Participant and garment counts per event remain an open decision; no limits are enforced in this draft.
 

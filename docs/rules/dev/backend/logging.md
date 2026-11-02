@@ -78,7 +78,7 @@ async def request_context(request: Request, call_next: RequestResponseEndpoint) 
 - Session tokens/cookies, `Authorization` headers, Meta API keys.
 - Entry codes (`entry_code`): mask all but the first two characters because they grant event entry.
 - Photo bytes/base64, complete AI prompts and responses.
-- Participant free text (preferences, clothing descriptions): log lengths only.
+- Participant free text (search text, clothing titles and descriptions): log lengths only.
 
 ```python
 SENSITIVE_KEYS = {"authorization", "cookie", "token", "session", "api_key", "entry_code", "image"}

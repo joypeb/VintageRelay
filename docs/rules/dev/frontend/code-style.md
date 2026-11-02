@@ -43,7 +43,7 @@ function statusLabel(status: TradeStatus): string {
 | Types | PascalCase, no `I`/`T` prefix | `Trade`, `ClothingItem` |
 | Handler props / implementation | `onXxx` / `handleXxx` | `onConfirm`, `handleConfirm` |
 
-- **MUST:** use consistent domain names throughout code: `event`, `participant`, `item` (clothing), `intent`, `trade` (proposal), `suggestion` (alternative), `consent`, `preference`.
+- **MUST:** use consistent domain names throughout code: `event`, `participant`, `item` (clothing), `intent` (exchange request), `trade` (proposal), `consent`, `search`; `suggestion` (alternative) is deferred.
 - **MUST NOT:** use meaningless abbreviations (`tr`, `itm`, `data2`).
 
 ## 3. Components

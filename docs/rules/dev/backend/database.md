@@ -131,7 +131,7 @@ __table_args__ = (
 
 Duplicate pending proposals for the same cycle confuse participants and split their consent, preventing confirmation.
 
-- **MUST:** recalculate proposals in the **same `db.write()` transaction** as the triggering change: intent registration/withdrawal/change, clothing edit/withdrawal, alternative acceptance, or confirmed exchange cancellation. **Do not** defer to a background task or later request (serialization would break).
+- **MUST:** recalculate proposals in the **same `db.write()` transaction** as the triggering change: intent registration/acceptance/decline/withdrawal, clothing edit/withdrawal, or confirmed exchange cancellation. **Do not** defer to a background task or later request (serialization would break).
 - **MUST:** store `trade_proposals.cycle_key` as concatenated `participant:offered:received` entries sorted by `participant_id`. The same three-person cycle yields the same key regardless of the starting participant.
 - **MUST:** enforce one pending proposal per cycle with a partial unique index. Skip creation if a pending proposal with the same `cycle_key` exists. The index is the last safeguard.
 
