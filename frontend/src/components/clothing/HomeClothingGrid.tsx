@@ -2,6 +2,7 @@
 
 import { useRef, useState, useSyncExternalStore } from 'react';
 
+import { AspectRatio } from '@astryxdesign/core/AspectRatio';
 import { Button } from '@astryxdesign/core/Button';
 import { Card } from '@astryxdesign/core/Card';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -28,18 +29,17 @@ function ClothingCard({ eventId, item }: { eventId: string; item: Clothing }) {
   const photo = item.photos[0];
   return (
     <Card>
-      <Link href={routes.itemDetail(eventId, item.id)} display="block" isStandalone>
-        {photo && !photoFailed ? (
-          <img
-            src={photo.url}
-            alt={item.title}
-            className="block w-full"
-            onError={() => setPhotoFailed(true)}
-          />
-        ) : (
-          <Text type="body">Photo unavailable</Text>
-        )}
-        <Text type="body">{item.title}</Text>
+      <Link href={routes.itemDetail(eventId, item.id)} display="block" isStandalone className="w-full [&>span]:w-full">
+        <AspectRatio ratio={3 / 4} fit="cover">
+          {photo && !photoFailed ? (
+            <img src={photo.url} alt={item.title} onError={() => setPhotoFailed(true)} />
+          ) : (
+            <Text type="body">Photo unavailable</Text>
+          )}
+        </AspectRatio>
+        <Text type="body" maxLines={2}>
+          {item.title}
+        </Text>
       </Link>
     </Card>
   );
@@ -66,10 +66,18 @@ export function HomeClothingGrid({ eventId }: { eventId: string }) {
       <section aria-label="Loading clothing" aria-busy="true">
         <VStack gap={4}>
           <Grid columns={2} gap={4}>
-            <Skeleton height={160} />
-            <Skeleton height={160} />
-            <Skeleton height={160} />
-            <Skeleton height={160} />
+            <AspectRatio ratio={3 / 4}>
+              <Skeleton height="100%" />
+            </AspectRatio>
+            <AspectRatio ratio={3 / 4}>
+              <Skeleton height="100%" />
+            </AspectRatio>
+            <AspectRatio ratio={3 / 4}>
+              <Skeleton height="100%" />
+            </AspectRatio>
+            <AspectRatio ratio={3 / 4}>
+              <Skeleton height="100%" />
+            </AspectRatio>
           </Grid>
         </VStack>
       </section>

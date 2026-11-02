@@ -46,6 +46,17 @@ describe('Clothing detail', () => {
   });
   afterEach(() => localStorage.clear());
 
+  it('renders a back link to the home grid', () => {
+    renderDetail();
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', routes.eventHome('e1'));
+  });
+
+  it('labels the owner attribution', () => {
+    renderDetail();
+    expect(screen.getByText('Offered by')).toBeVisible();
+    expect(screen.getByText(clothing.owner.displayName, { exact: true })).toBeVisible();
+  });
+
   it('shows all photos in order in the carousel and the complete garment details', () => {
     renderDetail();
     expect(useClothingQuery).toHaveBeenCalledWith('e1', 'c1');

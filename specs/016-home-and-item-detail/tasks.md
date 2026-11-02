@@ -137,9 +137,9 @@ No implementation task: this story requires no code change (T012 places the grid
 
 **Purpose**: Design review first, then final verification against reviewed content
 
-- [ ] T018 Run `/impeccable critique` on the Home grid and the item detail and resolve findings in frontend/src/components/clothing/ (must-fix input from the cycle-4 review: card photos lack the 3:4 frame — wrap in `aspect-[3/4]` + `object-cover` per `PhotoCarousel.tsx:161` — plus `Skeleton` aspect match)
+- [x] T018 Run `/impeccable critique` on the Home grid and the item detail and resolve findings in frontend/src/components/clothing/ (critique A+B done; fixed: card 3:4 frames + 2-line titles + full-width card links, detail Back link, category badge, "Offered by", 2-col measurements; declined: card metadata per title-only decision, shared-carousel changes, sticky disabled CTA until 020)
 - [ ] T019 Run the full frontend gate in frontend/ (`pnpm lint && pnpm typecheck && pnpm test`) on the critiqued content and fix all findings in frontend/src/
-- [ ] T020 [P] Run the backend safety suite in backend/ (`uv run pytest`) to confirm no backend behavior changed
+- [x] T020 [P] Run the backend safety suite in backend/ (`uv run pytest`) to confirm no backend behavior changed (409 passed)
 - [ ] T021 Validate specs/016-home-and-item-detail/quickstart.md scenarios 1-4 manually at 360–430 px widths (including pull-to-refresh, 1-photo/10-photo carousel, long titles, overlay focus return, reduced motion) and capture PR screenshots (depends on T019)
 - [ ] T022 Mark the 016 row done in docs/plans/features/README.md (Status table) after checking the implementation deviates nowhere from docs/plans/api/06-register-read-clothing.md (depends on T021)
 

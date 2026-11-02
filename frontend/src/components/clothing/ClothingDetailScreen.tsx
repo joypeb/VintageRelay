@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
+import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Link } from '@astryxdesign/core/Link';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
@@ -101,6 +102,13 @@ export function ClothingDetailScreen({
 
   return (
     <VStack gap={6} padding={6}>
+      <Link
+        href={routes.eventHome(eventId)}
+        isStandalone
+        className="inline-flex min-h-11 min-w-11 items-center"
+      >
+        Back
+      </Link>
       <PhotoCarousel
         items={items}
         renderMedia={(item, index) =>
@@ -121,21 +129,24 @@ export function ClothingDetailScreen({
         }
       />
       <VStack gap={2}>
-        <Text type="body">{categoryLabel}</Text>
+        <Badge label={categoryLabel} variant="neutral" />
         <Heading level={1}>{clothing.title}</Heading>
         {clothing.status === 'withdrawn' ? <Badge label="Withdrawn" variant="neutral" /> : null}
         <Text type="body">{clothing.description}</Text>
+        <Text type="body">Offered by</Text>
         <Text type="body">{clothing.owner.displayName}</Text>
         {clothing.owner.isOrganizer ? <Badge label="Organizer" variant="neutral" /> : null}
         {measurements.length > 0 ? (
           <VStack gap={2}>
             <Heading level={2}>Measurements</Heading>
-            {measurements.map((field) => (
-              <VStack key={field} gap={1}>
-                <Text type="body">{`${MEASUREMENT_LABELS[field]} (in)`}</Text>
-                <Text type="body">{String(clothing.measurements?.[field])}</Text>
-              </VStack>
-            ))}
+            <Grid columns={2} gap={2}>
+              {measurements.map((field) => (
+                <VStack key={field} gap={1}>
+                  <Text type="body">{`${MEASUREMENT_LABELS[field]} (in)`}</Text>
+                  <Text type="body">{String(clothing.measurements?.[field])}</Text>
+                </VStack>
+              ))}
+            </Grid>
           </VStack>
         ) : null}
         <Button label="Request exchange" size="lg" width="100%" isDisabled />
