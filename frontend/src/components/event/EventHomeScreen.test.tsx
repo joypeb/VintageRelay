@@ -4,13 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EventHomeScreen } from '@/components/event/EventHomeScreen';
 import { ApiError } from '@/lib/api/api-error';
+import { routes } from '@/lib/routes';
 import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
 import type { Event } from '@/types/event';
 
 const useEventQuery = vi.hoisted(() => vi.fn());
+const useClothingListQuery = vi.hoisted(() => vi.fn());
 const useSearchParams = vi.hoisted(() => vi.fn(() => new URLSearchParams()));
 vi.mock('@/lib/api/events', () => ({ useEventQuery }));
+vi.mock('@/lib/api/clothing', () => ({ useClothingListQuery }));
 vi.mock('next/navigation', () => ({ useSearchParams }));
 
 const token = 'secret-token-xyz';
@@ -36,6 +39,16 @@ function setQuery(data: Event | undefined, isPending = false) {
     refetch: vi.fn(),
   });
 }
+
+beforeEach(() => {
+  useClothingListQuery.mockReturnValue({
+    data: { items: [], nextCursor: null },
+    error: null,
+    isPending: false,
+    isFetching: false,
+    refetch: vi.fn(),
+  });
+});
 
 describe('US1 home', () => {
   beforeEach(() => {
@@ -196,6 +209,30 @@ describe('registration confirmation', () => {
     useSearchParams.mockReturnValue(new URLSearchParams('registered=1'));
     renderWithClient(<EventHomeScreen eventId="e1" />);
     expect(screen.getByText('Clothing registered.')).toHaveAttribute('role', 'status');
+  });
+  it('keeps the event header and registration confirmation above populated clothing', () => {
+    const garment = {
+      id: 'c1', eventId: 'e1', owner: { participantId: 'p1', displayName: 'Alex', isOrganizer: false },
+      isMine: false, photos: [{ id: 'photo1', url: '/photo.jpg' }], category: 'outer',
+      title: 'Green jacket', description: 'A warm jacket', measurements: null, status: 'available',
+      contentVersion: 1, analysis: null, createdAt: '2026-11-02T05:30:00Z', updatedAt: '2026-11-02T06:00:00Z',
+    };
+    useClothingListQuery.mockReturnValue({
+      data: { items: [garment, { ...garment, id: 'c2', title: 'Blue shirt' }], nextCursor: null },
+      error: null, isPending: false, isFetching: false, refetch: vi.fn(),
+    });
+    useSearchParams.mockReturnValue(new URLSearchParams('registered=1'));
+    renderWithClient(<EventHomeScreen eventId="e1" />);
+
+    const heading = screen.getByRole('heading', { name: event.name });
+    const confirmation = screen.getByText('Clothing registered.');
+    expect(heading).toBeVisible();
+    expect(confirmation).toBeVisible();
+    const card = screen.getByRole('link', { name: /Green jacket/i });
+    expect(card).toBeVisible();
+    expect(card).toHaveAttribute('href', routes.itemDetail('e1', garment.id));
+    expect(heading.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(confirmation.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
   it.each(['registered=0', ''])('does not show a registration status for %s', (params) => {
     useSearchParams.mockReturnValue(new URLSearchParams(params));

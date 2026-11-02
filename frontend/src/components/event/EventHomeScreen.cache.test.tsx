@@ -53,10 +53,15 @@ describe('shared event cache regression guard', () => {
   });
 
   it('shows closure and hides registration as soon as the shared cache changes', async () => {
-    let reads = 0;
+    let eventReads = 0;
+    let clothingReads = 0;
     apiFetch.mockImplementation((_id: string, _path: string, init?: RequestInit) => {
+      if (_path.includes('/clothing')) {
+        clothingReads++;
+        return Promise.resolve({ items: [], nextCursor: null });
+      }
       if (init?.method === 'POST') return Promise.resolve(closedEvent);
-      return ++reads === 1 ? Promise.resolve(activeEvent) : new Promise(() => {});
+      return ++eventReads === 1 ? Promise.resolve(activeEvent) : new Promise(() => {});
     });
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -70,6 +75,7 @@ describe('shared event cache regression guard', () => {
     });
     expect(await screen.findByText('Closed', { exact: true })).toBeVisible();
     expect(screen.queryByRole('link', { name: 'Register my clothes' })).not.toBeInTheDocument();
-    expect(reads).toBe(2);
+    expect(eventReads).toBe(2);
+    expect(clothingReads).toBe(1);
   });
 });

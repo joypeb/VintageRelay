@@ -10,6 +10,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { HomeClothingGrid } from '@/components/clothing/HomeClothingGrid';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { useEventQuery } from '@/lib/api/events';
 import { getEventScreenState, isClosed, isOrganizer } from '@/lib/event';
@@ -101,6 +102,7 @@ export function EventHomeScreen({ eventId }: { eventId: string }) {
           href={routes.newItem(eventId)}
         />
       )}
+      <HomeClothingGrid eventId={eventId} />
     </VStack>
   );
 }

@@ -73,8 +73,8 @@ description: "Task list for 016 Home grid and item detail"
 ### Implementation for User Story 1
 
 - [x] T010 [US1] Implement `HomeClothingGrid` in frontend/src/components/clothing/HomeClothingGrid.tsx (scaffolded from the Astryx `product-gallery` template: `Grid columns={2}`, `ClickableCard`, `EmptyState`, `Skeleton`; pull-to-refresh gesture wired to the list query `refetch`; depends on T009)
-- [ ] T011 [P] [US4] Red: regression test in frontend/src/components/event/EventHomeScreen.test.tsx (extend existing file: with a populated others-garments list, the event header and "Clothing registered." confirmation still render above the grid; same Red → Green cycle as T012)
-- [ ] T012 [US1] Wire the grid into frontend/src/components/event/EventHomeScreen.tsx below the [Register my clothes] button, keeping the event header and "Clothing registered." status untouched (Green for T009 and T011; depends on T010 and T011)
+- [x] T011 [P] [US4] Red: regression test in frontend/src/components/event/EventHomeScreen.test.tsx (extend existing file: with a populated others-garments list, the event header and "Clothing registered." confirmation still render above the grid; same Red → Green cycle as T012)
+- [x] T012 [US1] Wire the grid into frontend/src/components/event/EventHomeScreen.tsx below the [Register my clothes] button, keeping the event header and "Clothing registered." status untouched (Green for T009 and T011; depends on T010 and T011)
 
 **Checkpoint**: Grid renders with all states; full card tap-through verified once US2 lands
 
