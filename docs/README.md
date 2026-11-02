@@ -12,6 +12,7 @@ Planning, domain knowledge, business rules, development design, and user flow do
   - [`vintage-relay-plan-v1.md`](plans/vintage-relay-plan-v1.md): initial development plan, core flows, and draft technical specifications.
   - [`database-design-v1.md`](plans/database-design-v1.md): draft database table design.
   - [`api/`](plans/api/README.md): draft API specifications, one document per API function.
+  - [`features/`](plans/features/README.md): one plan per roadmap feature (015–021) with references and `/speckit-specify` input.
   - [`ai-features-v1.md`](plans/ai-features-v1.md): draft AI feature specification (model integration, AI APIs, guardrails).
 - **`flows/`**: screen flows and UI/UX interactions.
   - [`screen-flow-v1.md`](flows/screen-flow-v1.md): draft mobile screen flow specification.
