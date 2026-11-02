@@ -1,5 +1,8 @@
 export const queryKeys = {
   event: (eventId: string) => ['events', eventId] as const,
+  clothingList: (eventId: string) => ['events', eventId, 'clothing', 'list'] as const,
+  clothing: (eventId: string, clothingId: string) =>
+    ['events', eventId, 'clothing', clothingId] as const,
   entryCodePreview: (code: string) => ['entry-codes', code] as const,
   entryCodePreviews: () => ['entry-codes'] as const,
 };

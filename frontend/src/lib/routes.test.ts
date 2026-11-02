@@ -35,4 +35,9 @@ describe('routes', () => {
     expect(routes.myItems('e1')).toBe('/events/e1/my-items');
     expect(routes.myItems('a/b')).toBe('/events/a%2Fb/my-items');
   });
+
+  it('builds and encodes the item detail path', () => {
+    expect(routes.itemDetail('e1', 'c1')).toBe('/events/e1/items/c1');
+    expect(routes.itemDetail('a/b', 'blue shirt')).toBe('/events/a%2Fb/items/blue%20shirt');
+  });
 });

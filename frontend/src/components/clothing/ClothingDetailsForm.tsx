@@ -16,29 +16,13 @@ import type {
   MeasurementField,
 } from '@/lib/validation/clothing-form';
 import {
+  CATEGORY_OPTIONS,
+  MEASUREMENT_LABELS,
   codePointLength,
   measurementFieldsFor,
   pruneMeasurements,
   validateClothingDraft,
 } from '@/lib/validation/clothing-form';
-
-const MEASUREMENT_LABELS: Record<MeasurementField, string> = {
-  totalLength: 'Total length',
-  chest: 'Chest',
-  shoulder: 'Shoulder',
-  sleeve: 'Sleeve',
-  waist: 'Waist',
-  hem: 'Hem',
-  inseam: 'Inseam',
-  thigh: 'Thigh',
-};
-
-const CATEGORY_OPTIONS = [
-  { value: 'top', label: 'Top' },
-  { value: 'outer', label: 'Outer' },
-  { value: 'bottom', label: 'Bottom' },
-  { value: 'other', label: 'Other' },
-];
 
 export type RegisterOutcome =
   | 'idle'
