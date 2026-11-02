@@ -88,8 +88,10 @@ Repeated taps and network retransmissions may duplicate requests on mobile. Resp
 | Reject proposal | Already rejected: 200 + current proposal | Already confirmed/invalidated/cancelled: 409 `EVENT_CLOSED` if the event is closed, otherwise 409 `PROPOSAL_VERSION_MISMATCH` |
 | Cancel confirmed exchange | Already cancelled (including by another party): **200 + cancelled proposal** | Event closed: 409 `EVENT_CLOSED` |
 | Close event | Already closed: 200 + event | - |
-| Accept alternative suggestion | Intent already offers the suggested garment **and** a proposal for the suggested cycle exists (any state): 200 + current intent and that proposal | Otherwise fall through to state checks: 409 `EVENT_CLOSED`, `INTENT_NOT_ACTIVE`, `CLOTHING_*`, or `ALTERNATIVE_NO_LONGER_VALID` |
+| Accept alternative suggestion (deferred) | Intent already offers the suggested garment **and** a proposal for the suggested cycle exists (any state): 200 + current intent and that proposal | Otherwise fall through to state checks: 409 `EVENT_CLOSED`, `INTENT_NOT_ACTIVE`, `CLOTHING_*`, or `ALTERNATIVE_NO_LONGER_VALID` |
 | Register intent | Same active (offered garment, desired garment) intent exists: 200 + existing intent; do not create another | Garment confirmed elsewhere: 409 `CLOTHING_ALREADY_CONFIRMED`; withdrawn: 409 `CLOTHING_NOT_AVAILABLE` |
+| Accept request (intent) | Already accepted and its proposal is `pending` or `confirmed`: 200 + that proposal | 409 `EVENT_CLOSED`, `INTENT_NOT_ACTIVE`, or `CLOTHING_*` |
+| Decline request (intent) | Already declined: 200 + current intent | Event closed: 409 `EVENT_CLOSED`; withdrawn/invalidated: 409 `INTENT_NOT_ACTIVE` |
 
 - **MUST:** make these requests idempotent: repetition has the same result as one request. **No** duplicate rows, duplicate logs, or double state changes.
 - **MUST:** return the **current state** after processing. The frontend updates from the response and must not assume a 200 means its request changed state.
@@ -136,7 +138,7 @@ Common error codes (add feature-specific codes as needed):
 | `UNAUTHENTICATED` | 401 | Participant token missing, unknown, or invalid |
 | `FORBIDDEN` | 403 | Permission denied, e.g. editing another's clothing or closing as a non-organizer |
 | `NOT_FOUND` | 404 | Missing resource, another event's resource, or a private resource whose existence is hidden |
-| `EVENT_CLOSED` | 409 | Action not allowed in a closed event (mutations and AI recommendations) |
+| `EVENT_CLOSED` | 409 | Action not allowed in a closed event (mutations; search stays available) |
 | `PROPOSAL_VERSION_MISMATCH` | 409 | Consent or rejection attempted on an ended proposal or a different version |
 | `CLOTHING_ALREADY_CONFIRMED` | 409 | Garment already confirmed elsewhere |
 | `FILE_TOO_LARGE` | 413 | Uploaded photo exceeds size limit |
@@ -151,12 +153,12 @@ Feature-specific error codes:
 | `DISPLAY_NAME_TAKEN` | 409 | Display name already used in this event |
 | `PHOTO_ALREADY_ATTACHED` | 409 | Photo is already attached to another garment |
 | `CLOTHING_NOT_AVAILABLE` | 409 | Garment is withdrawn or otherwise unavailable (not confirmed) |
-| `INTENT_NOT_ACTIVE` | 409 | Intent was withdrawn or invalidated, including when found during proposal confirmation |
-| `ALTERNATIVE_NO_LONGER_VALID` | 409 | Alternative suggestion no longer completes a cycle |
+| `INTENT_NOT_ACTIVE` | 409 | Intent was withdrawn, declined, or invalidated, including when found during proposal confirmation |
+| `ALTERNATIVE_NO_LONGER_VALID` | 409 | Alternative suggestion no longer completes a cycle (feature deferred) |
 | `PROPOSAL_NOT_CONFIRMED` | 409 | Cancellation attempted on a proposal that is not confirmed |
-| `CONTENT_VERSION_MISMATCH` | 409 | Clothing/preference changed since the client loaded it |
-| `ANALYSIS_NOT_READY` | 409 | No completed AI analysis exists for the current clothing version |
-| `PREFERENCE_REQUIRED` | 409 | Recommendations or interpretation requested without preference text |
+| `CONTENT_VERSION_MISMATCH` | 409 | Clothing changed since the client loaded it (unused since the 2026-11-02 redesign; reserved) |
+| `ANALYSIS_NOT_READY` | 409 | No completed AI analysis exists for the current clothing version (unused since the 2026-11-02 redesign; reserved) |
+| `PREFERENCE_REQUIRED` | 409 | Recommendations or interpretation requested without preference text (feature dropped; reserved) |
 
 ## 8. HTTP Status Codes
 
@@ -191,7 +193,7 @@ Feature-specific error codes:
 - **MUST NOT:** treat entry codes or QR links as authentication. They grant entry only.
 - **MUST:** require the header on every endpoint except event creation, entry-code lookup, and join.
 - **MUST:** respond `401 UNAUTHENTICATED` for a missing/unknown token, `404 NOT_FOUND` when the token belongs to a different event than the resource, and `403 FORBIDDEN` when the role or ownership is insufficient.
-- **MUST:** use `404 NOT_FOUND` instead of `403` only to hide that a private resource exists, such as a proposal the caller does not participate in, a photo uploaded by another participant, or another participant's intent or preference. Resources visible to the whole event, such as garments, return `403` for role or ownership failures.
+- **MUST:** use `404 NOT_FOUND` instead of `403` only to hide that a private resource exists, such as a proposal the caller does not participate in, a photo uploaded by another participant, or an intent the caller neither sent nor received (the wanted garment's owner can see it). Resources visible to the whole event, such as garments, return `403` for role or ownership failures.
 - **MUST:** allow the `Authorization` and `X-Request-ID` request headers in CORS and expose `X-Request-ID`.
 - The frontend keeps one token per event. Session recovery on another device remains undecided.
 

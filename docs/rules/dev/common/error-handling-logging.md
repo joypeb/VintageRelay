@@ -38,7 +38,7 @@ These principles are language-independent; see backend/frontend rules for middle
 - API keys, tokens, session values, cookies, or `Authorization` headers.
 - Raw entry codes (mask them if needed, e.g. retain only the first two characters).
 - Uploaded photo bytes or base64 images.
-- Full participant free text (preferences/descriptions); log lengths or IDs instead.
+- Full participant free text (search text, titles, descriptions); log lengths or IDs instead.
 - Full model API requests/responses (summaries only at `DEBUG`).
 
 - **SHOULD:** log IDs (`eventId`, `participantId`, `proposalId`) rather than personal information.

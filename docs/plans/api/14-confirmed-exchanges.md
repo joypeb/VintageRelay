@@ -1,6 +1,6 @@
 # Read Confirmation/Handover API
 
-Shows who gives and receives which garment in confirmed exchanges, and keeps confirmation distinct from physical handover. Screens: T1 (Confirmed), T3. Common rules: [README](README.md).
+Shows who gives and receives which garment in confirmed exchanges, and keeps confirmation distinct from physical handover. Screens: T1 (Exchanges, confirmed), T3. Common rules: [README](README.md).
 
 This function reuses the proposal read endpoints in [11-proposals.md](11-proposals.md); no separate resource is introduced in v1.
 
@@ -8,7 +8,7 @@ This function reuses the proposal read endpoints in [11-proposals.md](11-proposa
 
 | Use | Request |
 |---|---|
-| T1 Confirmed segment | `GET /api/v1/events/{event_id}/proposals?status=confirmed` |
+| T1 Exchanges, confirmed | `GET /api/v1/events/{event_id}/proposals?status=confirmed` |
 | T3 detail | `GET /api/v1/proposals/{proposal_id}` |
 | C4 confirmed garment link | `GET /api/v1/events/{event_id}/proposals?status=confirmed&clothingId={clothing_id}` |
 
@@ -23,7 +23,7 @@ This function reuses the proposal read endpoints in [11-proposals.md](11-proposa
 | Field | Use |
 |---|---|
 | `participants[].participant.displayName` | Whom to meet on site |
-| `participants[].offeredClothing` / `receivedClothing` | What each person gives and receives, including photos for inspection |
+| `participants[].offeredClothing` / `receivedClothing` | What each person gives and receives (title, category, main photo); open [`GET /clothing/{clothing_id}`](06-register-read-clothing.md#3-get-apiv1clothingclothing_id) for all photos and measurements during inspection |
 | `participants[].isMe` | Highlight the caller's give/receive pair |
 | `confirmedAt` | Confirmation time |
 | `canCancel` | Show [Cancel exchange] only while the event is active |

@@ -41,7 +41,7 @@ class EventClosedError(ConflictError):
 | `ForbiddenError` | 403 | Permission denied |
 | `NotFoundError` | 404 | Missing resource |
 | `ConflictError` | 409 | Base class for state conflicts |
-| └ `EventClosedError` | 409 | Action not allowed in a closed event (writes, AI recommendations) |
+| └ `EventClosedError` | 409 | Action not allowed in a closed event (writes; search stays available) |
 | └ `StaleProposalError` | 409 | Version mismatch on a pending proposal (`PROPOSAL_VERSION_MISMATCH`) |
 | └ `ProposalInvalidatedError` | 409 | Respond to a rejected/invalidated/cancelled proposal, or a proposal confirmed without the caller's consent (`PROPOSAL_VERSION_MISMATCH`) |
 | └ `ClothingUnavailableError` | 409 | Already confirmed garment (`CLOTHING_ALREADY_CONFIRMED`) |
@@ -100,8 +100,8 @@ def register_error_handlers(app: FastAPI) -> None:
 | Invalid schema shape | FastAPI automatic validation | 422 |
 | Missing/unknown/invalid token | `UnauthenticatedError` | 401 |
 | Edit another's garment, non-organizer | `ForbiddenError` | 403 |
-| Missing resource, resource in another event, or private resource (proposal the actor is not in, photo uploaded by another participant, another participant's intent or preference) | `NotFoundError` | 404 |
-| Write or AI recommendation in closed event | `EventClosedError` | 409 |
+| Missing resource, resource in another event, or private resource (proposal the actor is not in, photo uploaded by another participant, an intent the actor neither sent nor received) | `NotFoundError` | 404 |
+| Write in closed event | `EventClosedError` | 409 |
 | Consent version differs from current | `StaleProposalError` | 409 |
 | Consent/reject on a proposal that is not `pending`, or confirmed without the caller's consent | `ProposalInvalidatedError` | 409 |
 | Garment already confirmed elsewhere | `ClothingUnavailableError` | 409 |

@@ -29,6 +29,14 @@ Latest stable versions checked against npm and Node.js releases on 2026-10-27. P
 | Zod | 4.x (4.6.7 when checked) | Form validation |
 | Vitest | 5.x (5.0.5 when checked) + Testing Library React 16.x | Playwright 1.6x if needed |
 
+## Design Skill (Impeccable)
+
+The [Impeccable](https://github.com/pbakaus/impeccable) design skill (v4.8.0, Apache 2.0) is vendored for Claude Code (`.claude/skills/`), Codex (`.agents/skills/`), Antigravity (`.agent/skills/`), and OpenCode (`.opencode/skills/`, `/impeccable` command).
+
+- **SHOULD:** run `impeccable critique` or `audit` on new or changed screens before review, and `polish` for refinement.
+- **MUST:** treat it as refinement of the existing Astryx UI, not a redesign. `frontend/AGENTS.md` (Astryx workflow and rules), [styling.md](styling.md), and the [screen flow](../../../flows/screen-flow-v1.md) win over its suggestions.
+- Installed by copying the skill folders, so the edit hook and subagents are not installed. Its launcher downloads a checksum-verified engine binary to `~/.impeccable/` on first use.
+
 ## Contents
 
 | Document | Contents |

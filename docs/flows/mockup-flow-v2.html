@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vintage Relay — App Flow Mockup v2</title>
+<style>body{font-family:system-ui,sans-serif;margin:24px;color:#222}.subtitle{color:#666}.label{font-size:10px;text-transform:uppercase;color:#888;letter-spacing:.05em}</style>
+</head>
+<body>
+<style>
+.phones{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.ph{width:240px;border:2px solid #555;border-radius:22px;overflow:hidden;background:#fff;color:#222;font-size:12px;display:flex;flex-direction:column;height:470px}
+.ph .top{padding:10px 12px;font-weight:700;border-bottom:1px solid #ddd;background:#faf7f2}
+.ph .body{flex:1;padding:10px;overflow:hidden}
+.ph .tabs{display:flex;border-top:1px solid #ddd;background:#faf7f2}
+.ph .tabs div{flex:1;text-align:center;padding:8px 0;font-size:11px;color:#888}
+.ph .tabs .on{color:#7a4a1e;font-weight:700}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.it .img{aspect-ratio:3/4;background:#d9cbb8;border-radius:6px}
+.it .t{margin-top:3px;font-size:11px}
+.btn{display:block;text-align:center;padding:8px;border-radius:8px;border:1px solid #7a4a1e;margin:6px 0;color:#7a4a1e}
+.btn.p{background:#7a4a1e;color:#fff}
+.row{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid #eee}
+.th{width:38px;height:50px;background:#d9cbb8;border-radius:4px;flex:none}
+.chip{display:inline-block;padding:2px 8px;border-radius:12px;background:#efe3d3;margin:2px;font-size:11px}
+.seg{display:flex;border:1px solid #ccc;border-radius:8px;overflow:hidden;margin-bottom:8px}
+.seg div{flex:1;text-align:center;padding:5px 0;font-size:11px}
+.seg .on{background:#7a4a1e;color:#fff}
+.inp{border:1px solid #ccc;border-radius:8px;padding:7px;color:#999;margin-bottom:6px}
+.sm{font-size:10px;color:#888}
+.cap{width:240px;margin-top:6px;font-size:13px;line-height:1.4}
+.badge{font-size:10px;padding:1px 6px;border-radius:8px;background:#e7f0e3;color:#3d6b2f}
+.badge.w{background:#fbeede;color:#9a5a12}
+</style>
+
+<h2>Vintage Relay — App Flow Mockup v2</h2>
+<p class="subtitle">Approved 2026-11-02. See the <a href="../superpowers/specs/2026-11-02-app-flow-redesign-design.md">app flow redesign</a> and <a href="screen-flow-v1.md">screen flow</a>. Wireframe only.</p>
+
+<div class="phones">
+
+<div>
+<div class="ph"><div class="top">Vintage Relay</div><div class="body">
+<div class="label">Your events</div>
+<div class="row"><div><b>Sunday Flea Swap</b><div class="sm">Joined as Sora · Active</div></div></div>
+<div class="row"><div><b>Office Closet Day</b><div class="sm">Organizer · Closed</div></div></div>
+<div style="height:14px"></div>
+<span class="btn p">Create event</span>
+<span class="btn">Join with code or QR</span>
+</div></div>
+<div class="cap"><b>1. Landing (S0)</b><br>Events joined on this device are listed first (from saved sessions), then Create and Join.</div>
+</div>
+
+<div>
+<div class="ph"><div class="top">Sunday Flea Swap</div><div class="body">
+<div class="grid">
+<div class="it"><div class="img"></div><div class="t">Green denim jacket</div></div>
+<div class="it"><div class="img"></div><div class="t">White wide pants</div></div>
+<div class="it"><div class="img"></div><div class="t">Striped knit</div></div>
+<div class="it"><div class="img"></div><div class="t">Black coat</div></div>
+</div></div>
+<div class="tabs"><div class="on">Home</div><div>Search</div><div>Trades</div><div>My items</div></div></div>
+<div class="cap"><b>2. Home (P2)</b><br>Other participants' available items only, newest first, 2 per row, 3:4 photo then title.</div>
+</div>
+
+<div>
+<div class="ph"><div class="top">Green denim jacket</div><div class="body">
+<div class="it"><div class="img" style="aspect-ratio:4/3"></div></div>
+<div style="margin:6px 0"><span class="chip">Outer</span><span class="chip">Green · AI</span></div>
+<div class="sm">Chest 21 in · Length 22.5 in</div>
+<div style="margin:6px 0">Cropped, size M. Worn a few times.</div>
+<span class="btn p">Request exchange</span>
+<div class="sm">Pick one of your items to offer →</div>
+</div>
+<div class="tabs"><div class="on">Home</div><div>Search</div><div>Trades</div><div>My items</div></div></div>
+<div class="cap"><b>3. Another participant's item (B3)</b><br>Photo carousel, category, AI-estimated color, measurements, description. [Request exchange] opens the offer sheet (I1).</div>
+</div>
+
+<div>
+<div class="ph"><div class="top">Search</div><div class="body">
+<div class="inp">"green outer, chest 20–22 inch"</div>
+<div><span class="chip">Outer ✕</span><span class="chip">Green ✕</span><span class="chip">Chest 20–22 in ✕</span></div>
+<div class="sm" style="margin:4px 0">Best matches first · Edit filters</div>
+<div class="grid">
+<div class="it"><div class="img"></div><div class="t">Green denim jacket</div><div class="sm">3/3 match</div></div>
+<div class="it"><div class="img"></div><div class="t">Green parka</div><div class="sm">2/3 · no measurements</div></div>
+</div></div>
+<div class="tabs"><div>Home</div><div class="on">Search</div><div>Trades</div><div>My items</div></div></div>
+<div class="cap"><b>4. Search (S1)</b><br>AI conditions shown as removable chips. Other categories are excluded; more matched conditions rank first; items without the requested measurements rank lower. On AI failure, [Edit filters] opens manual filters (S2).</div>
+</div>
+
+<div>
+<div class="ph"><div class="top">Trades</div><div class="body">
+<div class="seg"><div class="on">Received</div><div>Sent</div><div>Exchanges</div></div>
+<div class="row"><div class="th"></div><div style="flex:1"><b>Joon</b> offers White pants<div class="sm">for your Green jacket</div><span class="chip">Accept</span><span class="chip">Decline</span></div></div>
+<div class="row"><div class="th"></div><div style="flex:1"><b>Mina</b> offers Black coat<div class="sm">for your Striped knit</div><span class="chip">Accept</span><span class="chip">Decline</span></div></div>
+<div class="label" style="margin-top:8px">Exchanges tab shows</div>
+<div class="sm">· Waiting for your confirmation<br>· 3-person exchange found<br>· Confirmed (who gives what)</div>
+</div>
+<div class="tabs"><div>Home</div><div>Search</div><div class="on">Trades</div><div>My items</div></div></div>
+<div class="cap"><b>5. Trades (T1)</b><br>Received, Sent, and Exchanges (awaiting confirmation, 3-person found, confirmed).</div>
+</div>
+
+<div>
+<div class="ph"><div class="top">My items</div><div class="body">
+<span class="btn p">+ Register item</span>
+<div class="row"><div class="th"></div><div style="flex:1"><b>Green denim jacket</b><div><span class="badge">Available</span> <span class="sm">2 requests</span></div></div><div class="sm">Edit · Delete</div></div>
+<div class="row"><div class="th"></div><div style="flex:1"><b>Striped knit</b><div><span class="badge w">AI analyzing…</span></div></div><div class="sm">Edit · Delete</div></div>
+<div class="row"><div class="th"></div><div style="flex:1"><b>Black coat</b><div><span class="badge">Confirmed</span></div></div><div class="sm">Locked</div></div>
+</div>
+<div class="tabs"><div>Home</div><div>Search</div><div>Trades</div><div class="on">My items</div></div></div>
+<div class="cap"><b>6. My items (C1)</b><br>Register, edit, delete. Registration reuses the two-step form. Tapping an item shows requests received for it (C4). Confirmed items are locked.</div>
+</div>
+
+</div>
+
+</body>
+</html>

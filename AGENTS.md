@@ -75,20 +75,20 @@ Before writing code, read and follow only the rules for the area being changed.
 
 - Participants can register multiple garments and take part in multiple exchanges using different garments. Each participant gives one garment and receives one garment per exchange; bundles are excluded.
 - The first version finds two-person swaps and three-person cycles based on explicit participant intents. A garment cannot be confirmed in multiple exchanges.
-- Suggest an alternative garment when offering another garment owned by the participant would complete an exchange. Never change an intent without acceptance; acceptance is not final consent.
+- Participants send exchange requests (intents) that the wanted garment's owner can accept or decline; accepting is not final consent from the requester. Alternative garment suggestions are deferred ([2026-11-02 redesign](docs/superpowers/specs/2026-11-02-app-flow-redesign-design.md)). Never change an intent without the participant's action.
 - Confirmation requires all participants to give final consent to the same proposal version. Do not reuse consent from proposals invalidated by clothing/intent changes or conflicts.
 - Before the event closes, a party may cancel an entire confirmed exchange. Related garments that have not been physically handed over become available again. Confirmation and physical handover are separate.
 - Once the organizer closes the event, no further exchange actions are allowed. Canceling unconfirmed proposals and retaining confirmed records for viewing at closure is a proposal in the initial plan.
 
 ## AI and System Responsibilities
 
-- AI interprets clothing photos/descriptions and natural-language preferences, then suggests candidates, reasons, and points to check. Users can also select candidates manually.
-- Regular code handles cycle detection and alternative garment suggestions. The server and database also enforce permissions, proposal versions, event state, and prevention of duplicate garment confirmation.
+- AI analyzes clothing photos in the background and turns natural-language search text into conditions. Regular code ranks search results; users can also pick filters manually.
+- Regular code handles search ranking and cycle detection. The server and database also enforce permissions, proposal versions, event state, and prevention of duplicate garment confirmation.
 - AI must not automatically change intents or provide final consent on a participant's behalf. It must not state facts that cannot be verified from photos.
 
 ## Open Decisions
 
-Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. Specifying an offered garment when recording an intent is an initial design proposal. API path structure, bearer-token authentication, the 403/404 authorization policy (404 only to hide private resources), and feature error codes are decided in `docs/rules/dev/common/api-contract.md`. The proposal re-proposal suppression rule is decided in `docs/plans/api/11-proposals.md`; per-function request/response details are drafted in `docs/plans/api/` and `docs/plans/ai-features-v1.md`, where items marked proposed still need agreement. Do not treat open decisions as settled rules.
+Cancellation after partial physical handover, handover completion records, session recovery, photo/event record retention, participant/garment limits, and proposal ordering remain undecided. An exchange request (intent) must specify the offered garment (decided in the 2026-11-02 redesign). API path structure, bearer-token authentication, the 403/404 authorization policy (404 only to hide private resources), and feature error codes are decided in `docs/rules/dev/common/api-contract.md`. The proposal re-proposal suppression rule is decided in `docs/plans/api/11-proposals.md`; per-function request/response details are drafted in `docs/plans/api/` and `docs/plans/ai-features-v1.md`, where items marked proposed still need agreement. Do not treat open decisions as settled rules.
 
 <API_TASKS>
 Before responding to any non-trivial API engineering task — designing, implementing, mocking, testing, monitoring, documenting, or deploying an API or Postman Flow — read `postman/skills/api-engineer/SKILL.md` and follow it. It is the default entry point for API work in this repository. Pure questions and trivial one-line edits do not need it.

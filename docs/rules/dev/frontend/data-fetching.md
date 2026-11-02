@@ -7,7 +7,7 @@ The backend is a separate API server. Integrate only through the [shared API con
 - **MUST:** route all HTTP calls through `apiFetch` in `src/lib/api/client.ts`. **No** direct `fetch` in components/hooks.
 - **MUST:** let `apiFetch` handle base URL, headers, session attachment (`lib/session.ts`, selecting the token by `eventId` because a device may hold tokens for several events and some paths such as `/proposals/{id}` do not contain the event ID), JSON parsing, and `ApiError` conversion per [error-handling.md](error-handling.md).
 - **MUST:** follow shared JSON casing/dates. If casing conversion is needed, centralize it in `apiFetch`, never individually elsewhere.
-- **MUST:** put domain requests in `lib/api/<domain>.ts` (`events.ts`, `items.ts`, `preferences.ts`, `intents.ts`, `proposals.ts`, `suggestions.ts`).
+- **MUST:** put domain requests in `lib/api/<domain>.ts` (`events.ts`, `photos.ts`, `clothing.ts`, `search.ts`, `intents.ts`, `proposals.ts`).
 
 ```ts
 // src/lib/api/client.ts
@@ -103,7 +103,8 @@ Live chat/push is out of scope. Reflect other participants' consent, invalidatio
 | Target | Screen | Interval |
 |---|---|---|
 | Proposal detail (pending consent) | T2 | 5 seconds |
-| Home tasks/badges, exchange list | P2, T1 | 15 seconds |
+| Trades badge, request and exchange lists | Tab bar, T1, C4 | 15 seconds |
+| Clothing with `analysis.status = pending` | C1, C4 | 5 seconds until not `pending` |
 | Event state (closure) | Entire event layout | 30 seconds |
 | Confirmed/closed/invalidated proposals | T3, history | No polling |
 

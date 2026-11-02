@@ -1,23 +1,26 @@
 # Vintage Relay AI Features (Draft v1)
 
-Specifies the AI features from section 5 of the [initial development plan](vintage-relay-plan-v1.md): model integration, structured input/output, the AI-related APIs, guardrails, and failure handling. General API rules (authentication, headers, error format, feature error codes) are in the [API specification README](api/README.md); the [API contract](../rules/dev/common/api-contract.md) remains the source of truth.
+Specifies the AI features from section 5 of the [initial development plan](vintage-relay-plan-v1.md) as revised by the [2026-11-02 app flow redesign](../superpowers/specs/2026-11-02-app-flow-redesign-design.md): model integration, structured input/output, the AI-related API, guardrails, and failure handling. General API rules (authentication, headers, error format, feature error codes) are in the [API specification README](api/README.md); the [API contract](../rules/dev/common/api-contract.md) remains the source of truth.
 
 This is a **draft proposal**. The model integration has not been implemented or validated; timeouts, limits, and schemas below are proposals to verify on day one.
 
 ## 1. Scope and Principles
 
-| AI task | Input | Output | API |
-|---|---|---|---|
-| Clothing analysis | Photo and owner's description | Estimated type, color, visible features, points to check | `POST/PATCH /api/v1/clothing/{clothing_id}/analysis` |
-| Preference interpretation | Desired styles and exclusions (free text) | Structured include/exclude conditions, ambiguous expressions | `POST /api/v1/participants/{participant_id}/preferences/interpretation` |
-| Recommendations | Preferences and same-event available clothing | Candidates with reasons and points to check | `GET /api/v1/events/{event_id}/recommendations` |
+| AI task | Trigger | Input | Output | API |
+|---|---|---|---|---|
+| Clothing analysis | Backend, asynchronously after each registration or content edit | First 3 photos and the owner's category, title, description, and measurements | Colors, pattern, material estimate, style tags, visible details, points to check | None; result appears in `Clothing.analysis` ([06](api/06-register-read-clothing.md#clothing-schema)) |
+| Search interpretation | Participant submits a search (S1) | Natural-language search text | Category, colors, measurement ranges, unrecognized phrases | `POST /api/v1/events/{event_id}/search/interpretation` |
+
+Ranking search results is regular code, not AI ([15-search.md](api/15-search.md)).
+
+Dropped by the redesign: preference interpretation, AI recommendations, the analysis review screen (C3) with its `PATCH /analysis`, and client-triggered `POST /analysis`.
 
 Principles:
 
-- **AI assists; people decide.** AI output never creates, changes, or withdraws intents, and never consents or rejects on anyone's behalf. Alternative suggestions and cycle detection are regular code ([10](api/10-alternative-suggestions.md), [11](api/11-proposals.md)).
-- **Estimates, not facts.** All AI features are labeled as estimates in the UI. Never present unseen defects, exact fit, authenticity, brand genuineness, or price/value as verified facts. "Not visible" never means "absent".
-- **Reviewable.** Participants review and correct clothing features (C3) and preference conditions (R2). Owner descriptions and participant text are stored separately from AI output.
-- **Optional.** Every flow works without AI: C3 can be skipped, and B2 offers manual browsing when recommendations fail.
+- **AI assists; people decide.** AI output never creates, changes, or withdraws intents, and never accepts, declines, consents, or rejects on anyone's behalf. Cycle detection is regular code ([11](api/11-proposals.md)).
+- **Estimates, not facts.** AI output is labeled as an estimate in the UI. Never present unseen defects, exact fit, authenticity, brand genuineness, or price/value as verified facts. "Not visible" never means "absent".
+- **Owner fields are facts.** Category, title, description, and measurements come from the owner and are stored separately from AI output. AI never overwrites them.
+- **Optional.** Every flow works without AI: a failed analysis only hides AI estimates and color matches, and search offers manual filters when interpretation fails.
 - **English output.** All AI-generated text shown in the app is English.
 
 ## 2. Model Integration
@@ -25,51 +28,55 @@ Principles:
 | Item | Decision |
 |---|---|
 | Model | **Muse Spark 1.3 (`muse-spark-1.3`)** via Meta Model API only. [Model documentation](https://dev.meta.ai/docs/models) |
-| Capabilities used | Image understanding (clothing analysis), structured JSON output (all tasks) |
+| Capabilities used | Image understanding (clothing analysis), structured JSON output (both tasks) |
 | Caller | Backend only. The frontend never calls the model or sees the key |
 | Key | `META_API_KEY` backend environment variable; startup fails if missing |
 | Not used in v1 | Fine-tuning, vector DBs, image generation, speech, agent tool calling |
 
-**Day-one verification:** account access, an actual image call, structured output compliance, English preference interpretation quality, recommendation quality vs. manual selection, and latency. Also confirm how images are passed (public photo URL vs. inline base64) and the model's size/type limits.
+**Day-one verification:** account access, an actual image call, structured output compliance, search interpretation quality on sample queries, and latency. Also confirm how images are passed (public photo URL vs. inline base64) and the model's size/type limits.
 
 ### Call Policy (Proposed)
 
-| Setting | Analysis | Interpretation | Recommendations |
-|---|---|---|---|
-| Timeout | 20 s | 15 s | 20 s |
-| Retries | 1, only on timeout/5xx/429 | 1 | 1 |
-| Temperature | Low (e.g. 0.2) | Low | Low |
+| Setting | Analysis | Interpretation |
+|---|---|---|
+| Timeout | 30 s (background) | 10 s (participant waits) |
+| Retries | 1, only on timeout/5xx/429/invalid output | 1 |
+| Temperature | Low (e.g. 0.2) | Low |
 
 - Call the model **outside** database transactions.
-- Validate every response against the task's JSON schema with Pydantic. Invalid or truncated output counts as a failure (one retry, then `AI_UNAVAILABLE`).
-- Define constants (`MODEL_ID`, timeouts, limits) once in the backend; do not hardcode them at call sites.
+- Validate every response against the task's JSON schema with Pydantic. Invalid or truncated output counts as a failure (one retry, then failure).
+- Define constants (`MODEL_ID`, timeouts, limits, color vocabulary) once in the backend; do not hardcode them at call sites.
 
-### 2.1 `ClothingAnalysis`
+### 2.1 Color Vocabulary
 
-API representation of `clothing_analyses`, embedded in `Clothing.analysis`.
+Analysis output and search conditions use the same fixed list so they can match:
+
+`black`, `white`, `gray`, `beige`, `brown`, `red`, `orange`, `yellow`, `green`, `blue`, `navy`, `purple`, `pink`, `multicolor`
+
+### 2.2 `ClothingAnalysis`
+
+API representation of `clothing_analyses`, embedded in `Clothing.analysis` (`null` if no analysis was ever started).
 
 | Field | Type | Description |
 |---|---|---|
-| `clothingId` | string | Analyzed garment |
 | `contentVersion` | integer | Clothing version analyzed |
 | `status` | enum | `pending`, `done`, `failed`, `stale` (`stale` when the clothing `contentVersion` is newer) |
 | `features` | `ClothingFeatures` \| null | AI estimates; `null` unless `done` |
 | `uncertainties` | `Uncertainty[]` | Points to check that photos/descriptions cannot verify; `[]` if none |
-| `confirmedFeatures` | `ClothingFeatures` \| null | Owner-reviewed features; `null` until the owner confirms |
-| `createdAt` | string | Analysis time |
+| `updatedAt` | string | Last status change |
 
-### 2.2 `ClothingFeatures` and `Uncertainty`
+### 2.3 `ClothingFeatures` and `Uncertainty`
 
 | Field | Type | Description |
 |---|---|---|
-| `category` | enum | `outerwear`, `top`, `bottom`, `dress`, `shoes`, `bag`, `accessory`, `other` |
-| `subcategory` | string \| null | Free text, e.g. `"denim jacket"` |
-| `colors` | string[] | Main colors, most dominant first |
+| `colors` | string[] | 1–3 main colors from the [vocabulary](#21-color-vocabulary), most dominant first |
 | `pattern` | enum \| null | `solid`, `striped`, `checked`, `floral`, `graphic`, `other` |
 | `materialEstimate` | string \| null | Visually estimated material, e.g. `"denim"` |
 | `styleTags` | string[] | e.g. `"cropped"`, `"oversized"`, `"vintage"` (max 8) |
 | `visibleDetails` | string[] | e.g. `"front zip"`, `"small chest logo"` (max 8) |
-| `sizeLabel` | string \| null | **Only** if stated in the owner's description or readable on a visible tag; never inferred |
+| `sizeLabel` | string \| null | **Only** if stated in the owner's text or readable on a visible tag; never inferred |
+
+There is no AI category: the owner's `category` is the source of truth.
 
 `Uncertainty`:
 
@@ -80,218 +87,70 @@ API representation of `clothing_analyses`, embedded in `Clothing.analysis`.
 
 The schema intentionally has no fields for price, authenticity, or fit verdicts.
 
-### 2.3 `PreferenceInterpretation` and `Condition`
-
-`PreferenceInterpretation`:
+### 2.4 `SearchConditions`
 
 | Field | Type | Description |
 |---|---|---|
-| `conditions` | `Condition[]` | Structured conditions (max 30) |
-
-`Condition`:
-
-| Field | Type | Description |
-|---|---|---|
-| `type` | enum | `include`, `exclude` |
-| `attribute` | enum | `category`, `color`, `pattern`, `material`, `style`, `details`, `size`, `condition`, `other` |
-| `value` | string | Short English value, e.g. `"green"`, `"large logo"` |
-| `isAmbiguous` | boolean | Whether the original wording is unclear |
-| `ambiguityNote` | string \| null | Question for the participant when ambiguous, e.g. "How large is too large?" |
-| `source` | enum | `ai` (from interpretation, possibly edited) or `participant` (added in R2) |
+| `category` | enum \| null | `top`, `outer`, `bottom`, `other`; `null` if the text names no garment type |
+| `colors` | string[] | Colors from the [vocabulary](#21-color-vocabulary); `[]` if none |
+| `measurements` | object | Map of measurement name ([`Measurements`](api/06-register-read-clothing.md#measurements-schema) fields) to `{ "min": number, "max": number }` in inches; `{}` if none |
+| `unrecognized` | string[] | Phrases the model could not map to a condition, e.g. `"size M"`, `"55 cm"`; shown as a "Not understood" note |
 
 ## 3. Clothing Analysis
 
-### 3.1 `POST /api/v1/clothing/{clothing_id}/analysis`
+Runs in the backend after the garment is saved; registration and edit responses never wait for it.
 
-Runs (or returns) analysis for the garment's **current** `contentVersion`. Synchronous. Called by the frontend after registration/edit (C2 → C3).
+**Trigger:**
 
-**Headers:** `Authorization: Bearer <participantToken>` of the owner (required), `X-Request-ID` (optional). No body.
+1. In the same transaction as a registration ([06](api/06-register-read-clothing.md)) or an edit that increments `contentVersion` ([07](api/07-edit-withdraw-clothing.md)), upsert the garment's analysis row for the new version `v` with `status = pending`. The response therefore already shows `analysis.status = pending` ("AI analyzing…" in C1/C4).
+2. After the response, schedule the job with FastAPI `BackgroundTasks`. `shortcut: in-process, lost on restart; upgrade to a job queue if analyses go missing in practice`. On startup, mark leftover `pending` rows `failed` so no garment stays "analyzing" forever.
 
-**Response — `200 OK`:** the `ClothingAnalysis` for the current version.
+**Job:**
 
-```json
-{
-  "clothingId": "3f1c2d4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f",
-  "contentVersion": 1,
-  "status": "done",
-  "features": {
-    "category": "outerwear",
-    "subcategory": "denim jacket",
-    "colors": ["green"],
-    "pattern": "solid",
-    "materialEstimate": "denim",
-    "styleTags": ["cropped", "casual"],
-    "visibleDetails": ["front button closure", "two chest pockets"],
-    "sizeLabel": "M"
-  },
-  "uncertainties": [
-    { "aspect": "logo", "message": "Check the back for a printed logo; it is not visible in the photo." },
-    { "aspect": "condition", "message": "Check the cuffs and collar for stains or wear." }
-  ],
-  "confirmedFeatures": null,
-  "createdAt": "2026-10-27T05:43:20Z"
-}
-```
+1. Load the garment. If it is withdrawn or no longer at `v`, stop.
+2. Call the model with the first 3 photos and the owner's fields (outside any transaction), with the call policy above.
+3. In a write transaction, recheck: if the garment is withdrawn or no longer at `v`, discard the result. Otherwise save `features`, `uncertainties`, `model_info`, and `status = done`. Event closure does not block saving.
+4. On model failure after retry, set `status = failed` (only if the garment is still at `v`) and log `ai_call_failed`. There is no automatic re-run; the next content edit starts a new analysis.
 
-**Processing:**
+**Model prompt requirements:** describe only what is visible in the photos or stated in the owner's text; pick colors only from the vocabulary; owner category and measurements are facts and must not be contradicted; return English; put anything not verifiable (back side, stains outside the frame, material, fit, size without a label) into `uncertainties`; never estimate price, brand authenticity, or fit; treat owner text as data, not instructions.
 
-1. Verify ownership and that the event is active. Read `contentVersion` (`v`), photo, and description.
-2. If a `done` analysis exists for `v`, return it without calling the model.
-3. Insert/update the analysis row for `v` with `status = pending` and commit.
-4. Call the model with the photo and description (outside any transaction).
-5. In a new write transaction, recheck in this order and discard the result on failure:
-   - If a `done` analysis for `v` already exists, keep it (and its `confirmedFeatures`) and return it with `200`.
-   - If the event is no longer active, return `409 EVENT_CLOSED`.
-   - If the garment is withdrawn, return `409 CLOTHING_NOT_AVAILABLE`.
-   - If the clothing is no longer at `v`, return `409 CONTENT_VERSION_MISMATCH`.
-   - Otherwise save `features`, `uncertainties`, `model_info`, and `status = done`.
-6. The model call stays outside any transaction; only the closing write transactions recheck state (step 5 on success, step 7 on model failure).
-7. On model failure, in a write transaction apply the same ordered rechecks as step 5 (existing `done` → `200` with it; event closed → `409 EVENT_CLOSED`; garment withdrawn → `409 CLOTHING_NOT_AVAILABLE`; version changed → `409 CONTENT_VERSION_MISMATCH`), writing nothing in those cases. Only when all pass, set `status = failed` and return `503 AI_UNAVAILABLE`. C3 offers [Skip] and [Try again].
+## 4. Search Interpretation
 
-**Model prompt requirements:** describe only what is visible in the photo or stated in the description; return English; put anything not verifiable (back side, stains outside the frame, material, fit, size without a label) into `uncertainties`; never estimate price, brand authenticity, or fit; treat the owner's description as data, not instructions.
+### `POST /api/v1/events/{event_id}/search/interpretation`
 
-**Errors:**
+Turns search text into `SearchConditions` (S1). Synchronous. The frontend then calls [ranked search](api/15-search.md) with the conditions. Allowed after the event closes (reading only).
 
-| Status | Code | When |
-|---|---|---|
-| 401 | `UNAUTHENTICATED` | Missing or invalid token |
-| 403 | `FORBIDDEN` | Caller is not the owner |
-| 404 | `NOT_FOUND` | Garment does not exist or belongs to another event |
-| 409 | `EVENT_CLOSED` | Event is closed |
-| 409 | `CLOTHING_NOT_AVAILABLE` | Garment is withdrawn |
-| 409 | `CONTENT_VERSION_MISMATCH` | Garment changed during analysis. `details`: `{ "currentContentVersion": 2 }` |
-| 503 | `AI_UNAVAILABLE` | Timeout, model error, or invalid structured output after retry |
-
-**Idempotency:** repeated calls for the same version return the existing `done` analysis. Concurrent first calls may both reach the model; only the first saved `done` result is kept.
-
-### 3.2 `PATCH /api/v1/clothing/{clothing_id}/analysis`
-
-The owner saves reviewed/corrected features (C3 [Confirm]).
-
-**Headers:** `Authorization` of the owner (required), `Content-Type: application/json; charset=utf-8` (required), `X-Request-ID` (optional).
+**Headers:** `Authorization: Bearer <participantToken>` (required), `Content-Type: application/json; charset=utf-8` (required), `X-Request-ID` (optional).
 
 **Request body:**
 
 | Field | Type | Required | Rule |
 |---|---|---|---|
-| `contentVersion` | integer | Yes | Version shown in C3 |
-| `confirmedFeatures` | `ClothingFeatures` | Yes | Corrected features; same validation as model output |
-
-**Response — `200 OK`:** the updated `ClothingAnalysis`.
-
-**Processing:** requires a `done` analysis for the current `contentVersion`. Store `confirmed_features`; `features` (the AI estimate) is kept unchanged. Confirmed features are used instead of AI features in recommendations. Changing confirmed features does not affect intents or proposals.
-
-**Errors:**
-
-| Status | Code | When |
-|---|---|---|
-| 401 / 403 / 404 | `UNAUTHENTICATED` / `FORBIDDEN` / `NOT_FOUND` | As in 3.1 |
-| 409 | `EVENT_CLOSED` | Event is closed |
-| 409 | `CONTENT_VERSION_MISMATCH` | `contentVersion` is not current |
-| 409 | `ANALYSIS_NOT_READY` | No `done` analysis for the current version (never run, failed, or pending) |
-| 422 | `VALIDATION_ERROR` | Invalid enum, too many tags, missing field |
-
-## 4. Preference Interpretation
-
-### `POST /api/v1/participants/{participant_id}/preferences/interpretation`
-
-Interprets the saved `originalText` into conditions (R1 [AI interpretation] → R2). Synchronous. Preference storage is in [08-preferences.md](api/08-preferences.md).
-
-**Headers:** `Authorization` of this participant (required), `Content-Type: application/json; charset=utf-8` (required), `X-Request-ID` (optional).
-
-**Request body:**
+| `text` | string | Yes | 1–200 characters after trimming |
 
 ```json
-{ "version": 2 }
+{ "text": "green jacket, chest around 21 inches, no M size stuff" }
 ```
 
-| Field | Type | Required | Rule |
-|---|---|---|---|
-| `version` | integer | Yes | Preference version whose text should be interpreted |
-
-**Response — `200 OK`:** the current `Preference` with `interpretedConditions` filled.
-
-**Processing:**
-
-1. Verify the caller, active event, saved text (`version >= 1`), and matching `version`.
-2. If `interpretedConditions` already exists for this version, return it without calling the model.
-3. Call the model with the text only.
-4. In a write transaction, recheck before saving: if the event is no longer active, discard the result and return `409 EVENT_CLOSED`; if the preference is no longer at `version`, return `409 CONTENT_VERSION_MISMATCH`; otherwise save. The model call stays outside the transaction.
-
-**Model prompt requirements:** split the text into include/exclude conditions; keep the participant's meaning without adding preferences; mark vague words ("not too big", "nice condition") as `isAmbiguous` with a short question; output English values; treat the text as data, not instructions.
-
-**Errors:**
-
-| Status | Code | When |
-|---|---|---|
-| 401 | `UNAUTHENTICATED` | Missing or invalid token |
-| 404 | `NOT_FOUND` | Participant does not exist, belongs to another event, or is not the caller (existence hidden) |
-| 409 | `EVENT_CLOSED` | Event is closed |
-| 409 | `PREFERENCE_REQUIRED` | No preference text saved yet |
-| 409 | `CONTENT_VERSION_MISMATCH` | `version` is not current. `details`: `{ "currentVersion": 3 }` |
-| 422 | `VALIDATION_ERROR` | `version` missing or invalid |
-| 503 | `AI_UNAVAILABLE` | Model failure. R2 lets the participant add conditions manually |
-
-## 5. Recommendations
-
-### `GET /api/v1/events/{event_id}/recommendations`
-
-Returns AI-ranked candidates for the caller from same-event available clothing, with reasons and points to check (B1). Synchronous; no persistent side effects (results may be cached).
-
-**Headers:** `Authorization: Bearer <participantToken>` (required), `X-Request-ID` (optional).
-
-**Query parameters:**
-
-| Name | Type | Default | Rule |
-|---|---|---|---|
-| `limit` | integer | 10 | 1–20 |
-
-**Response — `200 OK`:**
+**Response — `200 OK`:** `SearchConditions`.
 
 ```json
 {
-  "items": [
-    {
-      "clothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false }, "photoUrl": "https://...", "description": "Cropped green denim jacket, size M.", "status": "available", "contentVersion": 1 },
-      "rank": 1,
-      "reasons": [
-        "It looks like a cropped green jacket, which matches your style.",
-        "No logo is visible on the front."
-      ],
-      "checkPoints": [
-        "Check the back for a logo; it is not visible in the photo.",
-        "Check the cuffs for stains."
-      ],
-      "hasMyIntent": false
-    }
-  ],
-  "nextCursor": null,
-  "preferenceVersion": 2,
-  "generatedAt": "2026-10-27T06:00:00Z"
+  "category": "outer",
+  "colors": ["green"],
+  "measurements": { "chest": { "min": 20, "max": 22 } },
+  "unrecognized": ["no M size stuff"]
 }
 ```
 
-| Field | Description |
-|---|---|
-| `items[].clothing` | `ClothingSummary` ([schema](api/06-register-read-clothing.md#clothingsummary-schema)) |
-| `items[].rank` | 1-based order from the model after server filtering |
-| `items[].reasons` | 1–3 English sentences linking visible features to the preference |
-| `items[].checkPoints` | 0–3 things to verify in person; derived from uncertainties and exclusions |
-| `items[].hasMyIntent` | Whether the caller already has an active intent for this garment |
-| `preferenceVersion` | Preference version used |
-| `generatedAt` | Generation time |
-
 **Processing:**
 
-1. Verify the event is active. Load the caller's preference; use `confirmedConditions`, else `interpretedConditions`, else `originalText`. If no text exists, return `409 PREFERENCE_REQUIRED` (B1 → R1).
-2. **Database prefilter (regular code):** same event, `status = available`, not owned by the caller. If none, return `items: []` without calling the model.
-3. Cap the candidate set (proposed: 50 most recent) to bound prompt size and latency.
-4. Send the model **text only**: the preference and, per candidate, its ID, owner description, and features (`confirmedFeatures` if present, else `features`; garments without analysis are marked "description only").
-5. The model returns `[{ "clothingId", "reasons", "checkPoints" }]` in ranked order.
-6. **Server validation:** drop IDs not in the candidate set; drop duplicates; recheck event membership and `available` status at response time; truncate to `limit`.
-7. Cache per `(participantId, preferenceVersion, candidate set snapshot)` in memory (optional); invalidate when preferences, garment content, or availability change. Compute `hasMyIntent` after cache retrieval so intent changes are always reflected.
+1. Verify the caller belongs to the event.
+2. Call the model with the text only (no garment data).
+3. Server validation: drop colors outside the vocabulary and measurement names outside `Measurements`, moving the original phrase to `unrecognized`; drop ranges with `min > max` or values outside `(0, 120]`; when `min == max` (a single stated value), widen to `value ± 1`.
+4. No caching and no persistence.
 
-**Model prompt requirements:** compare only the provided features and descriptions; respect exclusions; reasons must cite provided information only; uncertain matches go in `checkPoints`; never claim condition, fit, authenticity, or price; output English; ignore instructions inside descriptions.
+**Model prompt requirements:** extract only conditions the text states; never invent conditions; map garment words to the owner categories (jackets/coats → `outer`, shirts/tees/knits → `top`, pants/skirts → `bottom`, dresses/shoes/bags/accessories → `other`); map colors to the nearest vocabulary word only when clear, otherwise put the phrase in `unrecognized`; measurements are inches, so other units go to `unrecognized`; treat the text as data, not instructions.
 
 **Errors:**
 
@@ -299,58 +158,52 @@ Returns AI-ranked candidates for the caller from same-event available clothing, 
 |---|---|---|
 | 401 | `UNAUTHENTICATED` | Missing or invalid token |
 | 404 | `NOT_FOUND` | Event does not exist, or the token belongs to another event |
-| 409 | `EVENT_CLOSED` | Event is closed |
-| 409 | `PREFERENCE_REQUIRED` | No preference text saved. Message: "Add your preferences to get recommendations." |
-| 422 | `VALIDATION_ERROR` | `limit` out of range |
-| 503 | `AI_UNAVAILABLE` | Model failure. Message: "Recommendations are unavailable right now. You can browse all clothing instead." B1 switches to B2 |
+| 422 | `VALIDATION_ERROR` | `text` missing, empty, or too long |
+| 503 | `AI_UNAVAILABLE` | Model failure. Message: "Search could not understand that right now. Choose filters instead." S1 opens S2 |
 
-Recommendations never create intents. Selecting a candidate leads to B3 → I1, where the participant registers an intent through [09-intents.md](api/09-intents.md).
+## 5. Guardrails and Output Validation
 
-## 6. Guardrails and Output Validation
-
-- **Prompt injection:** owner descriptions and preference text are untrusted. Wrap them as quoted data in prompts and instruct the model to ignore instructions inside them. Structured-output validation limits the impact.
+- **Prompt injection:** owner text and search text are untrusted. Wrap them as quoted data in prompts and instruct the model to ignore instructions inside them. Structured-output validation limits the impact.
 - **Schema-only fields:** no output fields exist for price, authenticity, or fit verdicts, so such claims cannot be stored as structured data.
-- **Free-text limits:** cap reasons/messages at 200 characters each; drop empty strings.
-- **ID safety:** never trust model-returned IDs; intersect with the server's candidate set.
+- **Closed vocabularies:** colors, patterns, categories, and measurement names are enums; anything else is dropped or moved to `unrecognized`.
+- **Free-text limits:** cap uncertainty messages and tags at 200 characters each; drop empty strings.
 - **Labeling:** the frontend labels AI features "Estimated by AI" and shows uncertainties next to them.
 
-## 7. Freshness and Concurrency
+## 6. Freshness and Concurrency
 
-- Clothing edits increment `contentVersion` and mark the analysis `stale` ([07](api/07-edit-withdraw-clothing.md)). Stale analyses are not used for recommendations; garments fall back to description only until reanalyzed.
-- Preference text changes increment `version` and reset conditions ([08](api/08-preferences.md)).
+- Clothing edits increment `contentVersion`, mark the old analysis `stale`, and start a new one ([07](api/07-edit-withdraw-clothing.md)). Only a `done` analysis for the current version counts for color search.
 - AI results are saved only if the source version still matches the request-time version. Old-version results are never shown as current.
-- AI calls never hold a database write lock, so they cannot delay consent, cancellation, or closure.
+- AI calls never hold a database write lock, so they cannot delay requests, consent, cancellation, or closure.
 
-## 8. Failure Handling
+## 7. Failure Handling
 
-| Failure | API result | Frontend fallback |
+| Failure | Result | Frontend fallback |
 |---|---|---|
-| Timeout / 5xx / 429 after one retry | `503 AI_UNAVAILABLE` | C3 [Skip], R2 manual conditions, B1 → B2 manual browsing |
-| Invalid structured output after retry | `503 AI_UNAVAILABLE` | Same |
+| Analysis timeout / 5xx / 429 / invalid output after one retry | `analysis.status = failed` | AI estimates hidden on B3/C4; the garment never matches color conditions |
+| Interpretation failure after one retry | `503 AI_UNAVAILABLE` | Error message and S2 manual filters |
 | Missing `META_API_KEY` | Startup fails | — |
 
 Log handled model failures at `WARNING` (event `ai_call_failed` with `extra`: `task`, `reason`, `latency_ms`). Do not convert model errors into `500`.
 
-## 9. Logging and Privacy
+## 8. Logging and Privacy
 
-- Log task, model ID, latency, retry count, input/output token counts if available, candidate count, and outcome.
-- Never log API keys, photo bytes/base64, full descriptions or preference text, or full model requests/responses. Request/response summaries are allowed only at `DEBUG`.
-- Photos are sent to the Meta Model API; the event creation or upload screen should state that photos are analyzed by AI (proposed).
+- Log task, model ID, latency, retry count, input/output token counts if available, and outcome.
+- Never log API keys, photo bytes/base64, full owner text or search text, or full model requests/responses. Log lengths instead. Request/response summaries are allowed only at `DEBUG`.
+- Photos are sent to the Meta Model API; the registration screen should state that photos are analyzed by AI (proposed).
 
-## 10. Evaluation
+## 9. Evaluation
 
-Prepare before day one, as required by the plan:
+Prepare before day one:
 
-- A small fixed set of clothing photos and preference texts with expected conditions.
-- Measure, with real users where possible: candidate review time, missed conditions, and correction burden in C3/R2, compared with manual browsing (B2).
-- Track prohibited-claim violations (price, authenticity, fit, unseen defects) in sampled outputs.
+- A small fixed set of clothing photos with expected colors, and search queries with expected `SearchConditions`.
+- Measure interpretation accuracy (exact category, colors, ranges) and how often participants fall back to manual filters.
+- Track prohibited-claim violations (price, authenticity, fit, unseen defects) in sampled analysis outputs.
 
 Finding cycles for fictional participants validates exchange logic only, not AI value.
 
-## 11. Open Decisions
+## 10. Open Decisions
 
 - Image transport to the model (URL vs. base64) and whether photos are resized first.
-- Whether analysis runs automatically after registration instead of by a client call.
-- Persisting recommendation results for revisiting/analysis (database design 8).
-- Final timeout and candidate cap values after day-one latency measurements.
+- Final timeout values after day-one latency measurements.
+- Whether owners can re-run a failed analysis without editing the garment.
 - Photo retention, including copies retained by the model provider.

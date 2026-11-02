@@ -47,7 +47,7 @@ export const logger = {
 **Never log**:
 
 - Session tokens, auth headers, cookie values, or entry codes.
-- Participant display names, raw preferences/exclusions, or clothing descriptions.
+- Participant display names, raw search text, or clothing descriptions.
 - Photo contents, `File` objects, or full image URLs (may include signed queries).
 - Full request/response bodies.
 

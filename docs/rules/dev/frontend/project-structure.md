@@ -10,7 +10,7 @@ frontend/
 │   ├── app/              # Routing only (page, layout, error, not-found, loading)
 │   ├── components/
 │   │   ├── ui/           # Domain-neutral UI composed from Astryx (e.g. BottomTabBar)
-│   │   └── <domain>/     # Domain components (event, item, preference, trade, suggestion)
+│   │   └── <domain>/     # Domain components (event, clothing, search, trade)
 │   ├── hooks/            # Shared hooks (useEventId, useDisclosure), not query hooks
 │   ├── lib/
 │   │   ├── api/          # Client, error types, domain requests/query hooks
@@ -41,26 +41,22 @@ src/app/
     ├── layout.tsx                             Event context, closed banner
     ├── created/page.tsx                       H2 Created/share (no bottom tabs)
     └── (tabs)/
-        ├── layout.tsx                         Bottom tabs: Home | Browse | My clothes | Exchanges
-        ├── page.tsx                           P2 Home
-        ├── manage/page.tsx                    M1 Manage event (H3 is a modal)
-        ├── browse/page.tsx                    B1 AI recommendations / B2 All (?view=all)
-        ├── browse/[itemId]/page.tsx           B3 Clothing detail (I1 is a bottom sheet)
-        ├── preferences/page.tsx               R1 Enter preferences
-        ├── preferences/review/page.tsx        R2 Review interpretation
-        ├── my-items/page.tsx                  C1 My clothes
-        ├── my-items/new/page.tsx              C2 Register clothing
-        ├── my-items/[itemId]/page.tsx         C4 My clothing detail
-        ├── my-items/[itemId]/edit/page.tsx    C2 Edit clothing
-        ├── my-items/[itemId]/analysis/page.tsx C3 Review AI analysis
-        ├── trades/page.tsx                    T1 Exchanges (?tab=intents|active|confirmed|history)
+        ├── layout.tsx                         Bottom tabs: Home | Search | Trades | My items
+        ├── page.tsx                           P2 Home (other participants' items, 2-column grid)
+        ├── manage/page.tsx                    M1 Manage event from the header menu (H3 is a modal)
+        ├── items/[itemId]/page.tsx            B3 Another participant's item (I1 is a bottom sheet)
+        ├── search/page.tsx                    S1 Search (S2 filters is a bottom sheet)
+        ├── trades/page.tsx                    T1 Trades (?tab=received|sent|exchanges)
         ├── trades/[tradeId]/page.tsx          T2 Pending / T3 Confirmed (branch by status)
-        └── suggestions/[suggestionId]/page.tsx A1 Alternative garment suggestion
+        ├── my-items/page.tsx                  C1 My items
+        ├── my-items/new/page.tsx              C2 Register clothing
+        ├── my-items/[itemId]/page.tsx         C4 My item detail (received requests)
+        └── my-items/[itemId]/edit/page.tsx    C2 Edit clothing
 ```
 
-- **MUST:** use query parameters for segments (B1/B2, T1 tabs), not separate paths, for natural back navigation/sharing.
-- **MUST:** open modals/sheets (H3, I1, confirmations) through component state, not routes.
-- **MUST:** show organizer UI (M1 card, closure) only when `participant.id === event.organizerParticipantId`. This is display logic; server enforces authorization. Field casing follows the shared contract.
+- **MUST:** use query parameters for segments (T1 tabs), not separate paths, for natural back navigation/sharing.
+- **MUST:** open modals/sheets (H3, I1, S2, confirmations) through component state, not routes.
+- **MUST:** show organizer UI (M1 header menu item, closure) only when `participant.id === event.organizerParticipantId`. This is display logic; server enforces authorization. Field casing follows the shared contract.
 - **MUST NOT:** create a separate organizer app/route tree.
 - **SHOULD:** centralize path builders in `lib/routes.ts`, e.g. `routes.trade(eventId, tradeId)`, rather than scattering strings.
 

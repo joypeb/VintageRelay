@@ -7,7 +7,7 @@ For this hackathon prototype, automate tests **where failure would be critical**
 Exchange rule violations could send real users' garments to the wrong people. Backend automated tests are **required** for:
 
 - Two-person swap/three-person cycle detection, both positive and negative cases.
-- Alternative garment detection and revalidation on acceptance.
+- Exchange requests: accept creates the two-person proposal with the accepter's consent, decline invalidates dependent pending proposals, and intents are visible only to the sender and the wanted garment's owner.
 - Prevention of duplicate garment confirmation, including concurrent requests.
 - Rejection of consent to an old proposal version.
 - Making related garments reusable after cancellation of a confirmed exchange.
@@ -18,7 +18,7 @@ Exchange rule violations could send real users' garments to the wrong people. Ba
 
 - **SHOULD:** add a few API tests for error formats (`error.code`, etc.) and key response fields.
 - **SHOULD:** unit-test frontend logic only when complex pure logic appears (state transformations, validation); check screens manually.
-- **SHOULD:** manually verify the end-to-end flow on a phone before deployment (create event → join → register clothing → proposal → consent → cancel/close).
+- **SHOULD:** manually verify the end-to-end flow on a phone before deployment (create event → join → register clothing → search → request → accept → consent → cancel/close).
 
 ## 3. Writing Tests
 
@@ -34,4 +34,4 @@ Exchange rule violations could send real users' garments to the wrong people. Ba
 ## 4. Manual Verification
 
 - **MUST:** verify screen changes at mobile widths of 360–430px and attach screenshots to the PR.
-- **SHOULD:** evaluate AI recommendation quality manually against agreed cases and manual selection; record results ([initial plan](../../../plans/vintage-relay-plan-v1.md), section 8).
+- **SHOULD:** evaluate AI analysis and search interpretation quality manually against agreed cases and manual filters; record results ([initial plan](../../../plans/vintage-relay-plan-v1.md), section 8).

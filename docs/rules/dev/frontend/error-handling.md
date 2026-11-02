@@ -58,13 +58,13 @@ Catch `fetch` failures (`TypeError`) in `apiFetch` and throw `new ApiError(0, 'N
 | Mutation failure | Toast or inline message near button |
 | Proposal version conflict/invalidation | "The proposal has changed" modal; refresh on acknowledgment |
 | Rejected due to closure | Closed banner and event query invalidation |
-| Alternative acceptance fails revalidation | Explain, then navigate to exchange list (T1) |
-| AI analysis/recommendation failure | Manual fallback (B1 → B2 all items, C3 → [Skip]) |
+| Request accept/decline/withdraw fails (`INTENT_NOT_ACTIVE`, `CLOTHING_*`) | Explain, then refresh the request lists (T1, C4) |
+| AI search interpretation failure (`AI_UNAVAILABLE`) | Error message and S2 manual filters. A failed background analysis only hides AI estimates |
 | Missing permission/session | Guide to entry screen (P1) |
 
 - **MUST:** show `error.message`, prioritizing code-specific copy/actions above. Centralize mappings in `lib/api/error-messages.ts`.
 - **MUST NOT:** display stacks, raw responses, or raw `details`.
-- **MUST:** always offer manual selection on AI failure; never leave users at a dead end.
+- **MUST:** always offer manual filters on AI failure; never leave users at a dead end.
 - **MUST:** restore buttons after failed mutations so users can retry.
 
 ## 3. error.tsx / not-found.tsx

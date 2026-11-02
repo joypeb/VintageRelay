@@ -13,9 +13,9 @@ Call Meta Model API from the server (`muse-spark-1.3` is the first candidate). M
 
 - **MUST:** explicitly set timeouts, e.g. `httpx.Client(timeout=httpx.Timeout(20.0, connect=5.0))`. Make values configurable.
 - Retry **at most once**, after a short wait (1 second), only for connection failures, 429, or 5xx. Do not retry request errors (4xx).
-- Convert final failure to `AIUnavailableError` (503) and log `WARNING`. Allow switching to manual selection.
+- Convert final failure to `AIUnavailableError` (503) and log `WARNING`. Search falls back to manual filters; a background analysis is marked `failed` instead of raising to a client.
 - **MUST:** cap concurrent AI calls (`threading.BoundedSemaphore`, configurable default 4). Synchronous AI calls occupy FastAPI's thread pool (default 40); without a cap, bursts exhaust threads and **all requests, including polling/consent, stall**.
-- Wait briefly for the semaphore (default 2 seconds); on failure, immediately return `AIUnavailableError` (503) and offer manual selection. **No** long queues.
+- Wait briefly for the semaphore (default 2 seconds); on failure, immediately return `AIUnavailableError` (503) and offer manual filters. **No** long queues. Background analysis jobs use the same cap and mark the analysis `failed` when no slot frees up.
 
 ```python
 _ai_slots = threading.BoundedSemaphore(settings.ai_max_concurrency)
@@ -33,10 +33,10 @@ def call_model(self, req: AiRequest) -> AiResponse:
 
 ## Responsibility for AI Output
 
-- **Do not** create/change `exchange_intents`, proposal consent, or alternative acceptance from AI output. Only explicit participant API requests change these.
-- Save AI analysis only in estimated-value columns (`features`, `interpreted_conditions`); never overwrite participant-confirmed values (`confirmed_*`).
-- **MUST:** recheck that recommended garments belong to the same event and remain available before responding; exclude invalid ones.
-- **MUST:** store results with the request-time `content_version` (`version` for preferences) and compare to the current version inside the save transaction. If photos/descriptions/preferences changed during the AI call, save as `stale` or discard; never mark as current.
+- **Do not** create/change `exchange_intents`, request acceptance/decline, or proposal consent from AI output. Only explicit participant API requests change these.
+- Save AI analysis only in estimated-value columns (`clothing_analyses.features`, `uncertainties`); never overwrite owner-entered fields (category, title, description, measurements).
+- **MUST:** validate search interpretation against closed vocabularies (category, colors, measurement names) and drop anything else. AI never returns or ranks garment IDs; ranking is regular code.
+- **MUST:** store results with the request-time `content_version` and compare to the current version inside the save transaction. If the garment changed during the AI call, save as `stale` or discard; never mark as current.
 
 ```python
 # Before AI call (read transaction): v = clothing.content_version
@@ -45,6 +45,6 @@ current = db.scalar(select(Clothing.content_version).where(Clothing.id == clothi
 status = AnalysisStatus.DONE if current == v else AnalysisStatus.STALE
 ```
 
-- Never overwrite existing `confirmed_*` values with new analysis. For concurrent analyses of the same version, **the first saved `done` result wins**; later results are discarded ([AI features](../../../plans/ai-features-v1.md)). Enforce this in the write transaction (check for an existing `done` row for `(clothing_id, content_version)`).
+- For concurrent analyses of the same version, **the first saved `done` result wins**; later results are discarded ([AI features](../../../plans/ai-features-v1.md)). Enforce this in the write transaction (check for an existing `done` row for `(clothing_id, content_version)`).
 - Include in prompts: "Mark defects, fit, authenticity, and prices not verifiable from photos as requiring confirmation." Never store "unverified" as "absent".
-- `domain/matching.py`, not AI, handles cycle and alternative garment detection.
+- `domain/matching.py`, not AI, handles cycle detection (alternative garment detection is deferred).

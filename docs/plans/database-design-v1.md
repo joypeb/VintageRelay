@@ -2,7 +2,7 @@
 
 ## 1. Purpose and Scope
 
-Describe data for entry, clothing registration, AI recommendations, two-/three-person exchanges, consent, cancellation, and closure. The design uses **nine core tables**, with SQLite planned for the first version.
+Describe data for entry, clothing registration, AI analysis and search, exchange requests, two-/three-person exchanges, consent, cancellation, and closure (revised by the [2026-11-02 app flow redesign](../superpowers/specs/2026-11-02-app-flow-redesign-design.md)). The design uses **eight core tables**, with SQLite planned for the first version.
 
 This is a draft of tables/key data. Actual SQL, types, and indexes will be settled in detailed design. API requests/responses are specified in [api/](api/README.md); authentication follows the [API contract](../rules/dev/common/api-contract.md#authentication-decided). See [PROJECT.md](../../PROJECT.md) for behavior and [vintage-relay-plan-v1.md](vintage-relay-plan-v1.md) for APIs/scope.
 
@@ -15,7 +15,6 @@ This is a draft of tables/key data. Actual SQL, types, and indexes will be settl
 | `clothes` | Registered garments and availability |
 | `photos` | Uploaded photos and their attachment to garments |
 | `clothing_analyses` | AI-extracted features and uncertainties |
-| `preferences` | Raw preferences and interpretations |
 | `exchange_intents` | Offered/desired garment combinations |
 | `trade_proposals` | Two-/three-person proposals and version states |
 | `trade_participants` | Offered/received garments and final responses per proposal participant |
@@ -58,13 +57,15 @@ Events have multiple participants, including the organizer. Each may register mu
 | `id` (PK) | Clothing identifier |
 | `event_id` (FK) | Registration event |
 | `owner_id` (FK) | Registering participant |
-| `photo_id` (FK) | Attached photo, referencing `photos.id` |
+| `title` | Owner-written title, 1–100 characters |
+| `category` | `top`, `outer`, `bottom`, `other` (CHECK constraint) |
 | `description` | Owner-written description |
+| `measure_total_length`, `measure_chest`, `measure_shoulder`, `measure_sleeve`, `measure_waist`, `measure_hem`, `measure_inseam`, `measure_thigh` | Optional measurements in inches (nullable REAL). Allowed columns per category and the `(0, 120]` range are enforced by the application |
 | `status` | `available`, `confirmed`, `withdrawn` |
-| `content_version` | Version of photo/description content |
+| `content_version` | Version of photos/category/title/description/measurements content |
 | `created_at`, `updated_at` | Registration/change timestamps |
 
-Consider `clothing_photos` if multiple photos become necessary. Store participant descriptions separately from AI estimates.
+Photos are linked from `photos` (1–10 per garment), not from a column on `clothes`. Store participant-written fields separately from AI estimates.
 
 ### 3.4 `photos` — Uploaded Photos
 
@@ -76,8 +77,10 @@ Consider `clothing_photos` if multiple photos become necessary. Store participan
 | `storage_location` | Storage key/URL (unguessable) |
 | `content_type`, `size_bytes` | Stored MIME type and size |
 | `created_at` | Upload timestamp |
+| `clothing_id` (FK, nullable) | Garment the photo is attached to; `null` while unattached |
+| `position` (nullable) | 0-based order within the garment; position 0 is the main photo. Unique per `(clothing_id, position)` |
 
-Photos are uploaded before clothing registration and attached through `clothes.photo_id`. A photo can be attached to at most one garment (unique `clothes.photo_id`). Only the uploader can attach it, within the same event. Retention/deletion of replaced or never-attached photos remains undecided.
+Photos are uploaded before clothing registration and attached by setting `photos.clothing_id` and `position`. A photo can be attached to at most one garment (single `clothing_id` column), and a garment has 1–10 photos. Only the uploader can attach it, within the same event. Retention/deletion of replaced or never-attached photos remains undecided.
 
 ### 3.5 `clothing_analyses` — AI Clothing Analysis
 
@@ -85,44 +88,34 @@ Photos are uploaded before clothing registration and attached through `clothes.p
 |---|---|
 | `id` (PK) | Analysis identifier |
 | `clothing_id` (FK) | Analyzed garment |
-| `content_version` | Photo/description version analyzed |
-| `features` | Structured estimated type, color, features, etc. |
+| `content_version` | Clothing content version analyzed |
+| `features` | Estimated colors (fixed vocabulary), pattern, material, style tags, visible details, size label |
 | `uncertainties` | Matters not verifiable from photos/descriptions |
-| `confirmed_features` | Participant-reviewed/corrected features |
-| `status` | Pending, done, failed, stale, etc. |
+| `status` | `pending`, `done`, `failed`, `stale` |
 | `model_info` | Model used |
-| `created_at` | Analysis timestamp |
+| `updated_at` | Last status change |
 
-For example, store “likely a green jacket” in `features` and “check whether a logo is present” in `uncertainties`. **Unverified does not mean absent.** Photo/description changes make old analyses stale and require reanalysis. If the source changes during analysis, never display old-version results as current.
+Planned in feature 018 (not yet implemented; `Clothing.analysis` is always `null` today). One current row per garment. Registration/edit transactions upsert it as `pending`; a backend background job fills it ([AI features](ai-features-v1.md#3-clothing-analysis)). There is no owner-reviewed copy and no AI category; the owner's `clothes.category` is the source of truth. For example, store “green” in `features.colors` and “check whether a logo is present” in `uncertainties`. **Unverified does not mean absent.** Any change to photos, category, title, description, or measurements makes old analyses stale and requires reanalysis. If the source changes during analysis, never display old-version results as current.
 
-### 3.6 `preferences` — Participant Preferences
+### 3.6 `preferences` — Dropped
 
-| Data | Description |
-|---|---|
-| `id` (PK) | Preference identifier |
-| `participant_id` (FK) | Participant who entered preferences |
-| `original_text` | Original preferences/exclusions |
-| `interpreted_conditions` | AI-structured conditions |
-| `confirmed_conditions` | Participant-reviewed/corrected conditions |
-| `version` | Preference change version |
-| `updated_at` | Last change timestamp |
-
-Separate original text and AI interpretation; allow participant review/correction. The first version proposes managing each participant's current preferences.
+Dropped by the 2026-11-02 redesign: natural-language search replaces stored preferences, and search conditions are never persisted.
 
 ### 3.7 `exchange_intents` — Exchange Intents
 
 | Data | Description |
 |---|---|
 | `id` (PK) | Intent identifier |
-| `participant_id` (FK) | Selecting participant |
+| `participant_id` (FK) | Requesting participant |
 | `offered_clothing_id` (FK) | Garment they offer |
 | `wanted_clothing_id` (FK) | Garment they want |
-| `status` | `active`, `withdrawn` (by the participant), `invalidated` (a referenced garment was withdrawn) |
+| `status` | `active`, `withdrawn` (by the requester), `declined` (by the wanted garment's owner), `invalidated` (a referenced garment was withdrawn) |
+| `accepted_proposal_id` (FK, nullable) | Proposal created when the wanted garment's owner accepted |
 | `created_at`, `updated_at` | Selection/change timestamps |
 
 Example: “I want to offer my white pants for B's green jacket.” Offered clothing must belong to the participant; desired clothing must belong to another participant in the same event. Multiple intents are allowed.
 
-An intent is **not final exchange consent**. Accepting an alternative changes the intent according to the participant's choice and recalculates proposals.
+In the UI an intent is an **exchange request**, visible to the requester and the wanted garment's owner. It is **not final exchange consent**. Accepting a request creates the reverse intent, recalculates proposals, and records the accepter's consent ([09](api/09-intents.md)).
 
 ### 3.8 `trade_proposals` — Exchange Proposals
 
@@ -164,8 +157,7 @@ Two-person exchanges have two rows, three-person exchanges three. One row per pa
 events
   ├─ participants
   │    ├─ photos
-  │    ├─ clothes ─ photo, clothing_analyses
-  │    ├─ preferences
+  │    ├─ clothes ─ photos (1–10, ordered), clothing_analyses
   │    └─ exchange_intents ─ offered / desired clothing
   └─ trade_proposals
        └─ trade_participants ─ participant / offered / received clothing
@@ -175,20 +167,21 @@ events
 
 All participants/garments in intents/proposals must belong to **the same event**. Offered clothing belongs to its participant; received clothing is offered by another participant in the same proposal. Each proposal is a closed cycle of two or three distinct participants, each giving/receiving one garment.
 
-## 5. AI Recommendation Data Flow
+## 5. AI Analysis and Search Data Flow
 
-1. Save registered photos/descriptions in `clothes`.
-2. Save AI-estimated features/checks in `clothing_analyses`.
-3. Save original preferences/exclusions and reviewable interpretations in `preferences`.
-4. Query available same-event clothing and send features/preferences to AI.
-5. AI compares natural-language preferences and features, returning candidates/reasons/checks. Before displaying, server rechecks event membership/availability.
-6. Save `exchange_intents` only when participants select desired and owned offered garments.
+Steps 1–2 analysis and 3–4 search are planned (features 018–019); today only registration exists.
 
-DB queries prepare candidates; AI compares their features to preferences. Compare simple DB filtering with AI comparison to validate value. AI output alone never saves exchange intents/final consent.
+1. Save registered garments (category, title, description, measurements) in `clothes`, attach their photos in `photos`, and upsert a `pending` row in `clothing_analyses`, all in one transaction.
+2. A background job sends photos and owner fields to AI and saves estimated colors/features/checks in `clothing_analyses` if the garment is still at the same `content_version`.
+3. Search: AI turns the search text into conditions (category, colors, measurement ranges); nothing is stored.
+4. Regular code ranks same-event available garments of other participants: category is a hard filter, then one point per matched color (from a `done` analysis of the current version) and per matched measurement range ([15](api/15-search.md)).
+5. Save `exchange_intents` only when participants send, accept, or decline requests.
 
-After photos/descriptions/preferences or availability change, check analysis/recommendation freshness. Invalidate/recompute cached recommendations after related changes. Offer manual browsing on AI failure.
+AI output alone never saves exchange intents or consent. On AI failure, search falls back to manual filters and a failed analysis only removes color matches.
 
-## 6. Alternative Garment Suggestions
+## 6. Alternative Garment Suggestions (Deferred)
+
+Deferred by the 2026-11-02 redesign; kept for later.
 
 The first version can compare `exchange_intents` and `clothes` to detect **two-/three-person exchanges enabled by offering another owned garment**. A separate table is optional.
 
@@ -201,11 +194,11 @@ Consider adding `alternative_suggestions` later if acceptance/rejection history 
 - **Duplicate garment confirmation:** no garment in two simultaneous confirmed exchanges. Do not restrict participants from multiple exchanges. Unconfirmed overlaps and reuse after cancellation are allowed, so unconditional garment uniqueness is unsuitable. Use a partial unique index on offered clothing where `trade_participants.is_confirmed` is true, plus conditional `clothes.status` updates from available to confirmed.
 - **Final confirmation:** check active event, unanimous same-version consent, valid intents/clothing, ownership, and availability; update in one transaction. Serialize concurrent requests to prevent duplicates.
 - **Proposal changes:** clothing/intent edits, withdrawal, or another confirmation invalidate affected unconfirmed proposals/consents. Review new proposals as new versions.
-- **Recalculation:** find only affected cycles in the **same transaction** as intent registration/withdrawal/change, clothing edit/withdrawal, alternative acceptance, or exchange cancellation. Reuse existing pending `cycle_key` proposals rather than duplicating.
+- **Recalculation:** find only affected cycles in the **same transaction** as intent registration/acceptance/decline/withdrawal, clothing edit/withdrawal, or exchange cancellation. Reuse existing pending `cycle_key` proposals rather than duplicating.
 - **Re-proposal suppression:** do not recreate a cycle whose latest proposal for the same `cycle_key` was `rejected` or `cancelled` unless, after that proposal's `ended_at`, one of its intents was created or updated, or one of its garments has a `content_version` different from `trade_participants.offered_content_version`.
-- **Duplicate requests:** consent/rejection/cancellation/closure/intent registration produce the same result when repeated, per API idempotency rules.
-- **Alternative acceptance:** suggestions are not stored. In one transaction, check current/new garment ownership/availability and recalculate whether the changed intent closes a cycle now. Failure leaves intents unchanged.
-- **AI persistence:** call AI outside transactions. On save, compare clothing `content_version`/preference `version` with request-time values. Mismatches must not become current results.
+- **Duplicate requests:** consent/rejection/cancellation/closure/intent registration/acceptance/decline produce the same result when repeated, per API idempotency rules.
+- **Alternative acceptance (deferred):** suggestions are not stored. In one transaction, check current/new garment ownership/availability and recalculate whether the changed intent closes a cycle now. Failure leaves intents unchanged.
+- **AI persistence:** call AI outside transactions. On save, compare clothing `content_version` with the request-time value. Mismatches must not become current results.
 - **History:** detailed design must decide how to preserve clothing information/conditions reviewed at confirmation. Referencing mutable descriptions alone may alter apparent past exchange contents.
 - **Cancellation:** before closure, cancellation by a party cancels the entire exchange and restores availability of garments not yet handed over together.
 - **Closure:** server/DB ordering prevents new confirmation after closure even with simultaneous final consent.
@@ -215,9 +208,7 @@ Consider adding `alternative_suggestions` later if acceptance/rejection history 
 
 | Item | When needed |
 |---|---|
-| `clothing_photos` | Multiple photos and per-garment ordering |
 | `alternative_suggestions` | Suggestion history and acceptance/rejection state |
-| Recommendation results | Revisiting or analyzing recommendation history |
 | Session recovery tables | After participant/organizer session recovery is decided |
 | Handover records | After deciding who records completion and how |
 

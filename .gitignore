@@ -1,2 +1,9 @@
 /archive/
 /.idea/
+/.superpowers/
+# Impeccable skill runtime state (engine binaries download to ~/.impeccable)
+**/skills/impeccable/scripts/bin/
+**/.impeccable/hook.*.json
+/.impeccable/live/
+/.impeccable/history/
+/.impeccable/config.local.json

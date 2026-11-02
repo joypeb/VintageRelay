@@ -1,6 +1,6 @@
 # Consent/Reject Proposal API
 
-Each participant gives final consent to, or rejects, a specific proposal version. When every participant consents to the same version, the server confirms the exchange in one transaction. Screen: T2. Common rules: [README](README.md).
+Each participant gives final consent to, or rejects, a specific proposal version. When every participant consents to the same version, the server confirms the exchange in one transaction. [Accepting a request](09-intents.md#4-post-apiv1intentsintent_idaccept) records the accepter's consent with these same rules. Screen: T2. Common rules: [README](README.md).
 
 ## 1. `POST /api/v1/proposals/{proposal_id}/consents`
 
