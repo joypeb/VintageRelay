@@ -175,7 +175,7 @@ In **one transaction**, following the [shared check order](README.md#check-order
 3. **Replay:** if `acceptedProposalId` is set and that proposal is `pending` or `confirmed`, return it with `200`, even after closure.
 4. Verify the event is active.
 5. Verify the intent is `active` (`409 INTENT_NOT_ACTIVE`) and both garments are `available` (`CLOTHING_ALREADY_CONFIRMED` / `CLOTHING_NOT_AVAILABLE`).
-6. Create the reverse intent (caller offers the wanted garment and wants the offered garment) with the [registration](#1-post-apiv1eventsevent_idintents) rules, reusing an existing active reverse intent.
+6. Create the reverse intent (caller offers the wanted garment and wants the offered garment) with the [registration](#1-post-apiv1eventsevent_idintents) rules, reusing an existing active reverse intent. Set `updatedAt = now` on both the accepted and the reverse intent: an explicit accept is a new decision, so it lifts the [suppression rule](11-proposals.md#proposal-generation) for a pair whose earlier proposal was rejected or cancelled.
 7. Generate proposals as for registration ([11](11-proposals.md#proposal-generation)). This yields the two-person proposal for the pair (reused if already pending) and may also complete three-person cycles.
 8. Record the caller's consent to the current version of the two-person proposal with the [consent](12-consent-reject-proposal.md) rules, which confirm it once every participant has consented.
 9. Set `acceptedProposalId` on the accepted intent.

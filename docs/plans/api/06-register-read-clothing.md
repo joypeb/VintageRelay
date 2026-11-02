@@ -178,5 +178,4 @@ A known field outside the category group returns `details.fields` `measurements.
 
 ## Open Decisions
 
-- Whether C4 shows which participants want the garment.
 - Participant/garment limits per event.

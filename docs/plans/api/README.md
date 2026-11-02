@@ -158,4 +158,4 @@ Participant and garment counts per event remain an open decision; no limits are 
 - Photo and event record retention/deletion, including unattached photos.
 - Handover completion records and cancellation after partial handover.
 - Post-closure access duration for confirmed records.
-- Proposal ordering, and whether clothing details show interested participants.
+- Proposal ordering.
