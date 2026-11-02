@@ -5,7 +5,6 @@ import { Suspense, useSyncExternalStore } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
-import { ClickableCard } from '@astryxdesign/core/ClickableCard';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
@@ -93,16 +92,6 @@ export function EventHomeScreen({ eventId }: { eventId: string }) {
           {`You: ${event.me.displayName}${organizer ? ' (Organizer)' : ''}`}
         </Text>
       </VStack>
-      {organizer && (
-        <ClickableCard label="Manage event" href={routes.manageEvent(eventId)}>
-          <VStack gap={1}>
-            <Text type="label">Manage event</Text>
-            <Text type="body" color="secondary">
-              View QR, entry code, and event counts
-            </Text>
-          </VStack>
-        </ClickableCard>
-      )}
       {!closed && (
         <Button
           label="Register my clothes"

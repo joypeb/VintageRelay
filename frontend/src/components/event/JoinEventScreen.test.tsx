@@ -110,6 +110,7 @@ describe('US1 join from link', () => {
     expect(session.getEventSession('e1')).toEqual({
       participantToken: 'SECRET-TOKEN',
       participantId: 'p2',
+      savedAt: expect.any(Number),
     });
     expect(queryClient.getQueryData(queryKeys.event('e1'))).toEqual(joined.event);
     expect(mocks.replace).toHaveBeenCalledWith('/events/e1');

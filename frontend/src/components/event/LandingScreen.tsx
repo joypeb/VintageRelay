@@ -1,8 +1,11 @@
+'use client';
+
 import { Button } from '@astryxdesign/core/Button';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { YourEventsList } from '@/components/event/YourEventsList';
 import { routes } from '@/lib/routes';
 
 export function LandingScreen() {
@@ -15,6 +18,7 @@ export function LandingScreen() {
           Give one garment, receive one garment
         </Text>
       </VStack>
+      <YourEventsList />
       <VStack gap={3}>
         <Button
           label="Create event"

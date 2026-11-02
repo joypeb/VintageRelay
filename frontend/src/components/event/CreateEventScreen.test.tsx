@@ -95,6 +95,7 @@ describe('US1 create', () => {
     expect(JSON.parse(savedAtNavigation ?? 'null')).toEqual({
       participantToken: 't1',
       participantId: 'p1',
+      savedAt: expect.any(Number),
       share: {
         name: session.event.name,
         entryCode: session.event.entryCode,
