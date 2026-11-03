@@ -134,6 +134,141 @@ def _is_valid_measurement(value: Any) -> bool:
     return False
 
 
+class ClothingUpdate(ApiModel):
+    photo_ids: list[str] | None = Field(default=None, min_length=1, max_length=10)
+    category: ClothingCategory | None = None
+    title: str | None = Field(default=None, min_length=1, max_length=100)
+    description: str | None = Field(default=None, min_length=1, max_length=1000)
+    measurements: Measurements | None = None
+
+    @field_validator("photo_ids", "category", "title", "description", mode="after")
+    @classmethod
+    def _reject_explicit_null(cls, value: Any) -> Any:
+        if value is None:
+            raise ValueError("Field is required.")
+        return value
+
+    @field_validator("photo_ids", mode="after")
+    @classmethod
+    def _no_duplicate_photo_ids(cls, value: list[str] | None) -> list[str] | None:
+        if value is not None and len(set(value)) != len(value):
+            raise ValueError("Duplicate photo IDs are not allowed.")
+        return value
+
+    @field_validator("title", mode="after")
+    @classmethod
+    def _reject_title_control_characters(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return reject_control_characters(value)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_empty(cls, data: Any) -> Any:
+        if isinstance(data, dict) and not data:
+            raise ValidationError.from_exception_data(
+                "ClothingUpdate",
+                [InitErrorDetails(type="missing", loc=("title",), input=data)],
+            )
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_measurements(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        if "measurements" not in data:
+            return data
+        measurements = data.get("measurements")
+        if measurements is None:
+            return data
+        if not isinstance(measurements, dict):
+            return data
+        if not measurements:
+            return {**data, "measurements": None}
+        if all(value is None for value in measurements.values()):
+            return {**data, "measurements": None}
+        category = data.get("category")
+        category_valid = category in _VALID_CATEGORIES
+        category_present = "category" in data and category is not None
+        details: list[InitErrorDetails] = []
+        if category_present and category == ClothingCategory.OTHER.value:
+            details.append(
+                _invalid(
+                    "Measurements are not allowed for this category.",
+                    ("measurements",),
+                    measurements,
+                )
+            )
+        elif category_present and category_valid:
+            allowed = (
+                _TOP_MEASUREMENTS
+                if category != ClothingCategory.BOTTOM.value
+                else _BOTTOM_MEASUREMENTS
+            )
+            for key, value in measurements.items():
+                if value is None:
+                    continue
+                field_name = key if key in _MEASUREMENT_FIELDS else _MEASUREMENT_ALIASES.get(key)
+                safe_input = value
+                if field_name is None:
+                    details.append(_unknown_field((f"measurements.{key}",), safe_input))
+                    continue
+                if field_name not in allowed:
+                    details.append(
+                        _invalid(
+                            "Measurement does not belong to this category.",
+                            (f"measurements.{key}",),
+                            safe_input,
+                        )
+                    )
+                    continue
+                if value is not None and _is_valid_measurement(value):
+                    continue
+                details.append(
+                    _invalid(
+                        "Measurement must be a number greater than 0 and at most 120.",
+                        (f"measurements.{key}",),
+                        safe_input,
+                    )
+                )
+        else:
+            # No usable category: validate values and unknown fields only.
+            for key, value in measurements.items():
+                if value is None:
+                    continue
+                field_name = key if key in _MEASUREMENT_FIELDS else _MEASUREMENT_ALIASES.get(key)
+                safe_input = value
+                if field_name is None:
+                    details.append(_unknown_field((f"measurements.{key}",), safe_input))
+                    continue
+                if value is not None and _is_valid_measurement(value):
+                    continue
+                details.append(
+                    _invalid(
+                        "Measurement must be a number greater than 0 and at most 120.",
+                        (f"measurements.{key}",),
+                        safe_input,
+                    )
+                )
+            if category_present and not category_valid:
+                details.append(_invalid("Invalid category.", ("category",), category))
+        if details:
+            raise ValidationError.from_exception_data("ClothingUpdate", details)
+        if all(value is None for value in measurements.values()):
+            return {**data, "measurements": None}
+        return data
+
+    @model_validator(mode="after")
+    def _normalize_fields_set(self) -> ClothingUpdate:
+        # Tests compare model_fields_set to camelCase request keys.
+        fields_set = self.__pydantic_fields_set__
+        if "photo_ids" in fields_set:
+            fields_set.discard("photo_ids")
+            fields_set.add("photoIds")
+        return self
+
+
 class ClothingOwner(ApiModel):
     participant_id: str
     display_name: str

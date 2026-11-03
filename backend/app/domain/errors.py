@@ -52,6 +52,16 @@ class PhotoAlreadyAttachedError(ConflictError):
     message = "This photo is already attached to another garment."
 
 
+class ClothingAlreadyConfirmedError(ConflictError):
+    code = "CLOTHING_ALREADY_CONFIRMED"
+    message = "Cancel the confirmed exchange before editing this garment."
+
+
+class ClothingNotAvailableError(ConflictError):
+    code = "CLOTHING_NOT_AVAILABLE"
+    message = "This garment is no longer available."
+
+
 class PhotoTooLargeError(AppError):
     status_code = 413
     code = "FILE_TOO_LARGE"
