@@ -185,8 +185,8 @@ Frontend unit tests target pure logic + interaction contracts; layout verified m
 
 **Purpose**: Contract sync + verification
 
-- [ ] T035 Update docs/plans/api/09-intents.md, 11-proposals.md open-decision notes + README proposal-ordering if implementation deviates (same PR) and mark README status row for 020
-- [ ] T036 [P] Run full verification: backend checks + frontend checks + quickstart.md E2E (2-person + 3-person + stale-version modal) and record results
+- [x] T035 Update docs/plans/api/09-intents.md, 11-proposals.md open-decision notes + README proposal-ordering if implementation deviates (same PR) and mark README status row for 020
+- [x] T036 [P] Run full verification: backend checks + frontend checks + quickstart.md E2E (2-person + 3-person + stale-version modal) and record results
 - [ ] T037 Pre-PR: `pr-reviewer` review → open PR (Changes/Verification/Notes + "API change", screenshots) → English review comments → CI green → squash merge
 
 ---
