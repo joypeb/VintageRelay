@@ -6,7 +6,7 @@ fake via dependency_overrides.
 
 from app.ai.client import SHARED_SLOTS, HttpxChatCompletionsClient
 from app.ai.protocols import AINotConfiguredError, AnalysisRequest, ClothingAnalyzer
-from app.ai.schemas import AnalysisResult
+from app.ai.schemas import AnalysisResult, SearchInterpretation
 from app.core.config import get_settings
 
 
@@ -18,6 +18,9 @@ class _MissingKeyAnalyzer(ClothingAnalyzer):
     """
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResult:
+        raise AINotConfiguredError("AI_API_KEY is not configured.")
+
+    def interpret_search(self, text: str) -> SearchInterpretation:
         raise AINotConfiguredError("AI_API_KEY is not configured.")
 
 
@@ -33,4 +36,5 @@ def get_analyzer() -> ClothingAnalyzer:
         timeout_seconds=settings.ai_analysis_timeout_seconds,
         slot_wait_seconds=settings.ai_slot_wait_seconds,
         slots=SHARED_SLOTS,
+        search_timeout_seconds=settings.ai_search_timeout_seconds,
     )

@@ -6,6 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from app.ai.deps import get_analyzer
 from app.ai.protocols import ClothingAnalyzer
+from app.ai.schemas import COLOR_VOCABULARY
 from app.api.deps import (
     CurrentParticipant,
     DbDep,
@@ -16,13 +17,20 @@ from app.api.deps import (
     get_current_participant,
 )
 from app.api.errors import ERROR_RESPONSES, error_responses
-from app.domain.enums import ClothingStatus, Ownership
-from app.schemas.clothing import Clothing, ClothingCreate, ClothingList
+from app.domain.enums import ClothingCategory, ClothingStatus, Ownership
+from app.schemas.clothing import Clothing, ClothingCreate, ClothingList, Measurements
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
+from app.schemas.search import (
+    MeasurementRange,
+    SearchConditions,
+    SearchInterpretationRequest,
+    SearchResults,
+)
 from app.services.clothing import ClothingService
 from app.services.clothing_analysis import run_clothing_analysis
 from app.services.photo import PhotoService
+from app.services.search import SearchService
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -171,3 +179,119 @@ def list_clothing(
 ) -> ClothingList:
     participant = get_current_participant(event_id, db, credentials)
     return ClothingService(db, settings).list(event_id, participant, Ownership(ownership), status)
+
+
+_MEASUREMENT_NAMES = [(field.alias or name) for name, field in Measurements.model_fields.items()]
+
+
+def _parse_search_bound(param: str, raw: str) -> float:
+    try:
+        value = float(raw)
+    except (TypeError, ValueError) as err:
+        raise RequestValidationError(
+            [
+                {
+                    "loc": ("query", param),
+                    "msg": "Invalid number.",
+                    "type": "value_error",
+                    "input": raw,
+                }
+            ]
+        ) from err
+    if not 0 < value <= 120:
+        raise RequestValidationError(
+            [
+                {
+                    "loc": ("query", param),
+                    "msg": "Must be greater than 0 and at most 120.",
+                    "type": "value_error",
+                    "input": raw,
+                }
+            ]
+        )
+    return value
+
+
+def parse_search_conditions(
+    request: Request,
+    category: Annotated[ClothingCategory | None, Query()] = None,
+    color: Annotated[list[str] | None, Query()] = None,
+) -> SearchConditions:
+    colors = list(dict.fromkeys(color or []))
+    for value in colors:
+        if value not in COLOR_VOCABULARY:
+            raise RequestValidationError(
+                [
+                    {
+                        "loc": ("query", "color"),
+                        "msg": "Invalid color.",
+                        "type": "value_error",
+                        "input": value,
+                    }
+                ]
+            )
+    measurements: dict[str, MeasurementRange] = {}
+    for name in _MEASUREMENT_NAMES:
+        min_key, max_key = f"{name}Min", f"{name}Max"
+        raw_min = request.query_params.get(min_key)
+        raw_max = request.query_params.get(max_key)
+        if raw_min is None and raw_max is None:
+            continue
+        parsed_min = _parse_search_bound(min_key, raw_min) if raw_min is not None else None
+        parsed_max = _parse_search_bound(max_key, raw_max) if raw_max is not None else None
+        if parsed_min is not None and parsed_max is not None and parsed_min > parsed_max:
+            raise RequestValidationError(
+                [
+                    {
+                        "loc": ("query", min_key),
+                        "msg": "Min must not exceed max.",
+                        "type": "value_error",
+                        "input": raw_min,
+                    }
+                ]
+            )
+        measurements[name] = MeasurementRange(min=parsed_min, max=parsed_max)
+    return SearchConditions(category=category, colors=colors, measurements=measurements)
+
+
+@router.get(
+    "/{event_id}/clothing/search",
+    operation_id="searchClothing",
+    summary="Search garments with manual conditions",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 422, 500),
+    },
+)
+def search_clothing(
+    event_id: str,
+    me: CurrentParticipant,
+    db: DbDep,
+    settings: SettingsDep,
+    conditions: Annotated[SearchConditions, Depends(parse_search_conditions)],
+) -> SearchResults:
+    return SearchService(db, settings).search(event_id, me, conditions)
+
+
+@router.post(
+    "/{event_id}/search/interpretation",
+    operation_id="interpretSearch",
+    summary="Interpret search text",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 422, 503, 500),
+    },
+)
+def interpret_search(
+    event_id: str,
+    body: SearchInterpretationRequest,
+    me: CurrentParticipant,
+    db: DbDep,
+    settings: SettingsDep,
+    analyzer: Annotated[ClothingAnalyzer, Depends(get_analyzer)],
+) -> SearchConditions:
+    return SearchService(db, settings).interpret(event_id, me, body.text, analyzer)

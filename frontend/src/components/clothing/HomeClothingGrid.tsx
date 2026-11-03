@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 
 import { AspectRatio } from '@astryxdesign/core/AspectRatio';
 import { Button } from '@astryxdesign/core/Button';
@@ -24,7 +24,15 @@ const subscribe = () => () => {};
 // A downward drag of at least this far from the top edge refreshes the list.
 const PULL_TO_REFRESH_PX = 80;
 
-function ClothingCard({ eventId, item }: { eventId: string; item: Clothing }) {
+export function ClothingCard({
+  eventId,
+  item,
+  badge,
+}: {
+  eventId: string;
+  item: Clothing;
+  badge?: ReactNode;
+}) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const photo = item.photos[0];
   return (
@@ -40,6 +48,7 @@ function ClothingCard({ eventId, item }: { eventId: string; item: Clothing }) {
         <Text type="body" maxLines={2}>
           {item.title}
         </Text>
+        {badge}
       </Link>
     </Card>
   );

@@ -33,6 +33,16 @@ def get_current(s: Session, clothing_id: str) -> ClothingAnalysis | None:
     return s.scalar(select(ClothingAnalysis).where(ClothingAnalysis.clothing_id == clothing_id))
 
 
+def analyses_for(s: Session, clothing_ids: list[str]) -> dict[str, ClothingAnalysis]:
+    """Return the current analysis row per garment ID in one query."""
+    if not clothing_ids:
+        return {}
+    rows = s.scalars(
+        select(ClothingAnalysis).where(ClothingAnalysis.clothing_id.in_(clothing_ids))
+    ).all()
+    return {row.clothing_id: row for row in rows}
+
+
 def conditional_save(
     s: Session,
     clothing_id: str,

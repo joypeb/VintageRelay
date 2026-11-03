@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     ai_api_base_url: str = "https://api.meta.ai/v1"
     ai_model_id: str = "muse-spark-1.3"
     ai_analysis_timeout_seconds: float = 30.0
+    ai_search_timeout_seconds: float = 20.0
     ai_slot_wait_seconds: float = 2.0
 
     @field_validator("app_base_url")

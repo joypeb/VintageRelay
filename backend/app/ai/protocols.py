@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
-    from app.ai.schemas import AnalysisResult
+    from app.ai.schemas import AnalysisResult, SearchInterpretation
 
 
 class AnalysisRequest(BaseModel):
@@ -32,3 +32,4 @@ class AINotConfiguredError(AIUnavailableError):
 
 class ClothingAnalyzer(Protocol):
     def analyze(self, request: AnalysisRequest) -> AnalysisResult: ...
+    def interpret_search(self, text: str) -> SearchInterpretation: ...

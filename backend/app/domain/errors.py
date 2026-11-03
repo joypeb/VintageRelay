@@ -91,6 +91,12 @@ class UnsupportedPhotoTypeError(AppError):
         )
 
 
+class AIUnavailableAppError(AppError):
+    status_code = 503
+    code = "AI_UNAVAILABLE"
+    message = "Search could not understand that right now. Choose filters instead."
+
+
 class InternalError(AppError):
     status_code = 500
     code = "INTERNAL_ERROR"

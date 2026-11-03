@@ -16,7 +16,7 @@ All optional. Allowed after the event closes (reading only).
 |---|---|---|
 | `category` | enum | `top`, `outer`, `bottom`, `other`. **Hard filter** |
 | `color` | enum, repeatable | Color from the [vocabulary](../ai-features-v1.md#21-color-vocabulary). Example: `?color=green&color=navy` |
-| `<name>Min`, `<name>Max` | number | Inclusive range in inches for a [`Measurements`](06-register-read-clothing.md#measurements-schema) field, e.g. `chestMin=20&chestMax=22`. One side may be omitted |
+| `<name>Min`, `<name>Max` | number | Inclusive range in inches for a [`Measurements`](06-register-read-clothing.md#measurements-schema) field, e.g. `chestMin=20&chestMax=22`. One side may be omitted. Unknown query keys are ignored; a repeated `color` counts once |
 
 ### Response — `200 OK`
 
@@ -24,7 +24,7 @@ All optional. Allowed after the event closes (reading only).
 {
   "items": [
     {
-      "clothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false }, "photoUrl": "https://...", "category": "outer", "title": "Green denim jacket", "description": "Cropped green denim jacket, size M.", "status": "available", "contentVersion": 1 },
+      "clothing": { "id": "3f1c...", "owner": { "participantId": "7d8e...", "displayName": "Sora", "isOrganizer": false }, "photos": [{ "id": "a1b2...", "url": "https://..." }], "category": "outer", "title": "Green denim jacket", "description": "Cropped green denim jacket, size M.", "status": "available", "contentVersion": 1, "...": "remaining Clothing fields (abbreviated)" },
       "matchCount": 2,
       "missingMeasurements": false
     }
@@ -36,7 +36,7 @@ All optional. Allowed after the event closes (reading only).
 
 | Field | Description |
 |---|---|
-| `items[].clothing` | `ClothingSummary` ([schema](06-register-read-clothing.md#clothingsummary-schema)) |
+| `items[].clothing` | The same `Clothing` object the Home list (`GET /events/{event_id}/clothing`) returns, including `photos` and `analysis` (decided in 019 so Home and Search share one card) |
 | `items[].matchCount` | Number of matched non-category conditions |
 | `items[].missingMeasurements` | `true` when measurement conditions exist and the garment has none of the requested measurements |
 | `conditionCount` | Number of non-category conditions (each color and each measurement range counts as 1), for "2/2 match" labels |
