@@ -84,7 +84,7 @@ In **one transaction**:
 2. **Replay:** if already `withdrawn`, return `204` without changes, even after closure.
 3. Verify the event is active.
 4. Reject if `confirmed`.
-5. Set `status = withdrawn`.
+5. Set `status = withdrawn`. If the garment's [clothing analysis](../ai-features-v1.md#3-clothing-analysis) is `pending` for the current `contentVersion`, mark it `failed` (019); `done`/`failed` rows are left unchanged.
 6. Set every `active` intent (exchange request) offering or wanting the garment to `invalidated` (both the owner's and other participants' requests).
 7. Mark every `pending` proposal containing the garment as `invalidated` with `endReason = clothing_withdrawn` and `endedAt = now` ([proposal state transitions](README.md#proposal-state-transitions)).
 

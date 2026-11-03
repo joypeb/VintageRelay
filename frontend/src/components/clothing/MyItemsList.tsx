@@ -2,27 +2,27 @@
 
 import { useSyncExternalStore } from 'react';
 
-import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
-import { Stack } from '@astryxdesign/core/Stack';
+import { Stack, StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 
-import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { useMyItemsQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 
 const subscribe = () => () => {};
 
-function statusVariant(status: string): 'success' | 'info' | 'neutral' {
-  if (status === 'available') return 'success';
-  if (status === 'confirmed') return 'info';
-  return 'neutral';
+function statusTokenColor(status: string): 'green' | 'blue' | 'gray' | 'default' {
+  if (status === 'available') return 'green';
+  if (status === 'confirmed') return 'blue';
+  if (status === 'withdrawn') return 'gray';
+  return 'default';
 }
 
 function statusLabel(status: string): string {
@@ -120,19 +120,29 @@ export function MyItemsList({ eventId }: { eventId: string }) {
             key={item.id}
             href={routes.myItemDetail(eventId, item.id)}
             // The row link wraps the label slot only, so the photo, title,
-            // and badge all live here to stay inside one accessible name.
+            // and status all live here to stay inside one accessible name.
             label={
               <Stack direction="horizontal" gap={3} vAlign="center">
-                {photo ? (
-                  <img src={photo.url} alt={item.title} className="h-12 w-12 object-cover" />
-                ) : (
-                  <Text type="body">Photo unavailable</Text>
-                )}
-                <Text type="body">{item.title}</Text>
-                <Badge label={statusLabel(item.status)} variant={statusVariant(item.status)} />
-                {item.analysis?.status === 'pending' ? (
-                  <EstimatedByAI analysis={item.analysis} />
-                ) : null}
+                <StackItem>
+                  {photo ? (
+                    <img src={photo.url} alt={item.title} className="h-12 w-12 object-cover" />
+                  ) : (
+                    <Text type="body">Photo unavailable</Text>
+                  )}
+                </StackItem>
+                <StackItem size="fill">
+                  <VStack gap={1}>
+                    <Text type="body" maxLines={2}>
+                      {item.title}
+                    </Text>
+                    <Stack direction="horizontal" gap={2} vAlign="center" wrap="wrap">
+                      <Token label={statusLabel(item.status)} color={statusTokenColor(item.status)} />
+                      {item.analysis?.status === 'pending' ? (
+                        <Text type="body">AI analyzing…</Text>
+                      ) : null}
+                    </Stack>
+                  </VStack>
+                </StackItem>
               </Stack>
             }
           />

@@ -426,6 +426,37 @@ describe('clothing analysis polling', () => {
   });
 
   it.each([
+    ['no other pending items', false],
+    ['another pending item', true],
+  ])('updates my items polling after withdrawal with %s', async (_label, otherPending) => {
+    const pendingItem = { ...clothing, analysis: pendingAnalysis };
+    const withdrawnItem = { ...clothing, status: 'withdrawn', analysis: failedAnalysis };
+    const otherItem = { ...clothing, id: 'c2', analysis: pendingAnalysis };
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce({ items: [pendingItem], nextCursor: null })
+      .mockResolvedValue({
+        items: otherPending ? [withdrawnItem, otherItem] : [withdrawnItem],
+        nextCursor: null,
+      });
+    vi.useFakeTimers();
+    const { unmount } = renderWithClient(createElement(() => {
+      useMyItemsQuery('e1');
+      return null;
+    }));
+    try {
+      await act(async () => { await vi.advanceTimersByTimeAsync(1); });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+      expect(apiFetch).toHaveBeenCalledTimes(otherPending ? 3 : 2);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
     ['done', doneAnalysis],
     ['failed', failedAnalysis],
     ['null', null],

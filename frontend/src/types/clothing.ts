@@ -69,9 +69,9 @@ export type ClothingAnalysisUncertainty = {
 
 export type ClothingAnalysisModelInfo = {
   modelId: string;
-  latencyMs?: number;
-  promptTokens?: number;
-  completionTokens?: number;
+  latencyMs?: number | null;
+  promptTokens?: number | null;
+  completionTokens?: number | null;
 };
 
 export type ClothingAnalysis = {

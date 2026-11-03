@@ -138,6 +138,11 @@ async function chooseCategory(user: ReturnType<typeof userEvent.setup>, category
 }
 
 describe('EditClothingForm', () => {
+  it('shows the edit page heading', () => {
+    renderWithClient(<EditClothingForm eventId="e1" clothingId="c1" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Edit item' })).toBeVisible();
+  });
+
   it('prefills existing photos as ready in order plus title, description, category, and measurements', async () => {
     renderWithClient(<EditClothingForm eventId="e1" clothingId="c1" />);
 

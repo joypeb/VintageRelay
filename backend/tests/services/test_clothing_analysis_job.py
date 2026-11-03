@@ -5,6 +5,7 @@ Tests call the service function directly (no TestClient BackgroundTasks).
 """
 
 import logging
+import threading
 
 from sqlalchemy import select, update
 
@@ -130,7 +131,7 @@ def test_withdrawn_garment_result_discarded(client, db, settings, registration_c
 
     row = _current_row(db, clothing_id)
     assert row is not None
-    assert row.status != "done"
+    assert row.status == "failed"
     assert row.features is None
 
 
@@ -268,3 +269,44 @@ def test_job_uses_single_conditional_write_first_wins(
     row = _current_row(db, clothing_id)
     assert row is not None
     assert row.status == "done"
+
+
+def test_inflight_analysis_result_is_discarded_after_withdrawal(
+    client, db, settings, registration_context
+) -> None:
+    event, _participant, token, _, upload = registration_context
+    created, _photo = _register_garment(client, event["event"]["id"], token, upload)
+    gate = threading.Event()
+    entered = threading.Event()
+
+    class SignalingAnalyzer(FakeAnalyzer):
+        def analyze(self, request):
+            entered.set()
+            return super().analyze(request)
+
+    fake = SignalingAnalyzer(result=_done_result(("green",)), gate=gate)
+    thread = threading.Thread(
+        target=run_clothing_analysis,
+        kwargs={
+            "db": db,
+            "settings": settings,
+            "clothing_id": created["id"],
+            "content_version": created["contentVersion"],
+            "analyzer": fake,
+        },
+    )
+    thread.start()
+    try:
+        assert entered.wait(timeout=5), "Analyzer did not start"
+        response = client.delete(
+            f"/api/v1/clothing/{created['id']}", headers={"Authorization": f"Bearer {token}"}
+        )
+        assert response.status_code == 204
+    finally:
+        gate.set()
+        thread.join(timeout=5)
+    assert not thread.is_alive()
+    row = _current_row(db, created["id"])
+    assert row is not None
+    assert row.status == "failed"
+    assert row.features is None

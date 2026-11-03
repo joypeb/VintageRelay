@@ -36,6 +36,15 @@ const clothing: Clothing = {
   createdAt: '2026-11-02T05:30:00Z', updatedAt: '2026-11-02T06:00:00Z',
 };
 
+const doneAnalysis: NonNullable<Clothing['analysis']> = {
+  contentVersion: 1,
+  status: 'done',
+  features: { colors: ['green'], pattern: null, materialEstimate: null, styleTags: [], visibleDetails: [], sizeLabel: null },
+  uncertainties: [],
+  modelInfo: { modelId: 'model' },
+  updatedAt: '2026-11-04T00:01:00Z',
+};
+
 const event: Event = {
   id: 'e1', name: 'Neighborhood swap', status: 'active',
   entryCode: 'K7P3QX', entryUrl: 'http://localhost:3000/join?code=K7P3QX',
@@ -99,6 +108,40 @@ describe('MyItemDetailScreen', () => {
   });
   afterEach(() => localStorage.clear());
 
+  it('shows the available status', () => {
+    renderDetail();
+    expect(screen.getByText('Available', { exact: true })).toBeVisible();
+  });
+
+  it('does not show the owner attribution on an own item', () => {
+    renderDetail();
+    expect(screen.queryByText('Offered by')).not.toBeInTheDocument();
+  });
+
+  it('places edit and delete before the completed AI estimates', () => {
+    query({ data: { ...clothing, analysis: doneAnalysis } });
+    renderDetail();
+    const heading = screen.getByRole('heading', { name: 'Estimated by AI' });
+    expect(screen.getByRole('link', { name: 'Edit' }).compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Delete' }).compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('places the confirmed lock note before the completed AI estimates', () => {
+    query({ data: { ...clothing, status: 'confirmed', analysis: doneAnalysis } });
+    renderDetail();
+    const note = screen.getByText(/This item is locked for an exchange/);
+    const heading = screen.getByRole('heading', { name: 'Estimated by AI' });
+    expect(note.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('does not offer edit or delete for a withdrawn item', () => {
+    query({ data: { ...clothing, status: 'withdrawn' } });
+    renderDetail();
+    expect(screen.queryByRole('link', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  });
+
   it('shows the full detail with enabled Edit and Delete actions', async () => {
     const user = userEvent.setup();
     renderDetail();
@@ -140,7 +183,7 @@ describe('MyItemDetailScreen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Delete' }));
 
-    const dialog = await screen.findByRole('dialog');
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this item?' });
     expect(within(dialog).getByText(/delete/i)).toBeVisible();
     expect(mutate).not.toHaveBeenCalled();
     expect(mutateAsync).not.toHaveBeenCalled();

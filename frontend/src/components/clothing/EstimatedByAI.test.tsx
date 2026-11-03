@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
@@ -58,6 +58,41 @@ describe('EstimatedByAI', () => {
       expect(note).toBeVisible();
     }
     expect(screen.getByText('Check in person for a back logo.')).toBeVisible();
+  });
+
+  it('renders each uncertainty as a list item in the check-in-person area', () => {
+    renderWithClient(<EstimatedByAI analysis={doneAnalysis} />);
+    const firstNote = screen.getByText('Check in person for a back logo.');
+    const list = firstNote.closest<HTMLElement>('ul, ol');
+    expect(list).not.toBeNull();
+    if (!list) throw new Error('Expected a list of uncertainties');
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2);
+    expect(within(list).getByText('Check in person for stains outside the frame.')).toBeVisible();
+    const title = screen.getByText('Check in person', { exact: true });
+    expect(title.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each([
+    ['Colors', 'green', 'navy', 'Style'],
+    ['Style', 'vintage', 'cropped', 'Colors'],
+  ])('groups the individual %s values together', (label, first, second, otherLabel) => {
+    renderWithClient(<EstimatedByAI analysis={doneAnalysis} />);
+    const firstValue = screen.getByText(first, { exact: true });
+    const secondValue = screen.getByText(second, { exact: true });
+    expect(firstValue).not.toBe(secondValue);
+    let group = firstValue.parentElement;
+    while (group && !group.contains(secondValue)) group = group.parentElement;
+    expect(group).not.toBeNull();
+    if (!group) throw new Error(`Expected a group for ${label}`);
+    expect(within(group).queryByText(otherLabel, { exact: true })).not.toBeInTheDocument();
+    expect(screen.getByText(label, { exact: true }).compareDocumentPosition(firstValue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('uses registration-neutral helper text while analysis is pending', () => {
+    renderWithClient(<EstimatedByAI analysis={{ ...failedAnalysis, status: 'pending' }} />);
+
+    expect(screen.getByText('Analysis runs in the background.', { exact: true })).toBeVisible();
+    expect(screen.queryByText(/Registration is complete/i)).not.toBeInTheDocument();
   });
 
   it('renders nothing when analysis failed', () => {

@@ -92,7 +92,7 @@ My items rows and the detail show "AI analyzing…" while `pending` (polling eve
 - What happens when no `AI_API_KEY` is set? Startup fails fast with a clear error; tests use the fake client and never require the key.
 - What happens when the semaphore has no free slot in 2 s? Job marks `failed` immediately (no queue).
 - What happens when the same version already has a `done` row? Later results discarded (first wins, single conditional write).
-- What happens when the garment is withdrawn while analysis is pending? Withdraw does not touch the analysis row synchronously; the row converges via job-discard (withdrawn → discard) or startup cleanup.
+- What happens when the garment is withdrawn while analysis is pending? Amended by 019: withdraw marks a still-`pending` analysis `failed` in the same transaction; a late job result is discarded (withdrawn → discard). Rows withdrawn before 019 converge via startup cleanup.
 - Transport, photo sizing, and timeout values in this slice (base64, first 3 photos unresized, 30 s / 1 retry / semaphore 4 / 2 s wait) are provisional pending day-one latency measurement (T002/T018), not final answers to the §10 open decisions.
 
 ## Requirements *(mandatory)*

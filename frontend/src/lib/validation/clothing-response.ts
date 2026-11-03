@@ -74,9 +74,9 @@ const analysisSchema = z.object({
   modelInfo: z
     .object({
       modelId: z.string().min(1),
-      latencyMs: z.number().nonnegative().optional(),
-      promptTokens: z.number().int().nonnegative().optional(),
-      completionTokens: z.number().int().nonnegative().optional(),
+      latencyMs: z.number().nonnegative().nullish(),
+      promptTokens: z.number().int().nonnegative().nullish(),
+      completionTokens: z.number().int().nonnegative().nullish(),
     })
     .nullable(),
   updatedAt: timestamp,
