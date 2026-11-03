@@ -99,9 +99,9 @@ Pure logic tested (Vitest); screens verified manually at 360–430 px.
 
 ## Phase 6: Polish
 
-- [ ] T022 [P] Update docs/plans/api/15-search.md (`items[].clothing` is the Home `Clothing` object; unknown query keys ignored) and docs/plans/ai-features-v1.md §4 if the implementation deviates; mark 019 done in docs/plans/features/README.md
-- [ ] T023 Run full checks: backend `uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`; frontend `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
-- [ ] T024 Manual quickstart scenario (specs/020-ai-search/quickstart.md) at 360–430 px
+- [X] T022 [P] Update docs/plans/api/15-search.md (`items[].clothing` is the Home `Clothing` object; unknown query keys ignored) and docs/plans/ai-features-v1.md §4 if the implementation deviates; mark 019 done in docs/plans/features/README.md
+- [X] T023 Run full checks: backend `uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`; frontend `pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+- [X] T024 Manual quickstart scenario (specs/020-ai-search/quickstart.md) at 360–430 px
 
 ---
 

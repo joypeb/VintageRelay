@@ -54,6 +54,6 @@ Feature numbers are roadmap IDs. Spec Kit assigns the next free `specs/0NN-*` nu
 | 016 | Done |
 | 017 | Done (backend PATCH/DELETE + C1/C4/edit; photo reorder UI deferred, API supports it) |
 | 018 | Done (backend analysis + C1/C4/B3 UI; real-model authenticated call pending operator AI_API_KEY — route liveness verified without key) |
-| 019 | Not started |
+| 019 | Done (backend interpretation + ranked search, S1/S2 UI; search items reuse the Home `Clothing` object instead of `ClothingSummary`; real-model interpretation quality pending operator AI_API_KEY) |
 | 020 | Not started |
 | 021 | Not started |
