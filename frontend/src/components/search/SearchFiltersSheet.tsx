@@ -108,9 +108,9 @@ function fieldChipLabel(field: MeasurementField, draft: RangeDraft | undefined):
   const label = MEASUREMENT_LABELS[field];
   const min = draft?.min.trim() ?? '';
   const max = draft?.max.trim() ?? '';
-  if (min !== '' && max !== '') return `${label} ${min}–${max}`;
-  if (min !== '') return `${label} ≥ ${min}`;
-  if (max !== '') return `${label} ≤ ${max}`;
+  if (min !== '' && max !== '') return `${label} ${min}–${max} in`;
+  if (min !== '') return `${label} ≥ ${min} in`;
+  if (max !== '') return `${label} ≤ ${max} in`;
   return label;
 }
 

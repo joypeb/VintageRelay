@@ -40,8 +40,6 @@ const SIZE_FALLBACK_ORDER: MeasurementField[] = [
 function formatCardMeta(item: Clothing): string {
   const categoryLabel =
     CATEGORY_OPTIONS.find((option) => option.value === item.category)?.label ?? item.category;
-  const sizeLabel = item.analysis?.features?.sizeLabel?.trim();
-  if (sizeLabel) return `${categoryLabel} · ${sizeLabel} · ${item.owner.displayName}`;
   const fallback = SIZE_FALLBACK_ORDER.map((field) => ({
     field,
     value: item.measurements?.[field],
