@@ -53,18 +53,18 @@ A participant opens their garment's detail and sees the same photos and fields a
 
 ---
 
-### User Story 3 - Edit my garment through the familiar form (Priority: P1)
+### User Story 3 - Edit my garment fields (Priority: P1)
 
-A participant taps [Edit] and sees the same two-step form as registration, prefilled with current photos (existing photos start as ready), category, title, description, and measurements. Saving sends only a PATCH and returns to the detail with "Saved." Unchanged submissions replay without bumping the version.
+A participant taps [Edit] and sees a single-step form prefilled with current title, description, category, and measurements plus the current photos shown view-only in order. Saving sends a PATCH (fields edited; photoIds sent unchanged as the whole current list) and returns to the detail with "Saved." Unchanged submissions replay without bumping the version. Photo reorder/replace UI is deferred (backend whole-list `photoIds` replacement is implemented and API-tested; `initialReadyPhotos`/`initialPhotos` infrastructure is in place for the follow-up).
 
-**Why this priority**: Correcting photos, titles, and measurements is the core owner workflow; replay keeps double-taps safe.
+**Why this priority**: Correcting titles, descriptions, categories, and measurements is the core owner workflow; replay keeps double-taps safe.
 
-**Independent Test**: Can be fully tested by editing each field, reordering photos, submitting unchanged content, and sending invalid category/measurement combos; it delivers correct PATCH behavior and validation.
+**Independent Test**: Can be fully tested by editing each field, submitting unchanged content, and sending invalid category/measurement combos; it delivers correct PATCH behavior and validation. Photo reorder is API-tested (`test_edit_reorders_photos_and_detaches_dropped`) but has no edit-UI test in this slice.
 
 **Acceptance Scenarios**:
 
-1. **Given** the edit form opens, **When** it renders, **Then** current photos appear as ready in order with title, description, category, and measurements prefilled.
-2. **Given** edited fields, **When** the user saves, **Then** `PATCH` replaces photoIds as a whole list and measurements as a whole object, `contentVersion` increments by 1, and the app returns to C4 with "Saved.".
+1. **Given** the edit form opens, **When** it renders, **Then** current photos appear view-only in order ("Photos (view only in this version)") with title, description, category, and measurements prefilled.
+2. **Given** edited fields, **When** the user saves, **Then** `PATCH` sends photoIds as the whole current list and measurements as a whole object, `contentVersion` increments by 1, and the app returns to C4 with "Saved.".
 3. **Given** submitted values equal current values, **When** PATCH is sent, **Then** `200` returns the unchanged garment without incrementing `contentVersion`.
 4. **Given** a category change without fitting measurements, **When** PATCH is sent, **Then** `422 VALIDATION_ERROR` is returned and nothing is changed.
 5. **Given** the event is closed, **When** PATCH is sent with changed content, **Then** `409 EVENT_CLOSED` is returned; unchanged replay still returns `200`.
@@ -129,7 +129,7 @@ A participant who just registered clothing lands on My items with "Clothing regi
 - **FR-014**: C1 row MUST navigate to C4; empty C1 MUST show [Register item]; loading/error states MUST mirror Home patterns with retry.
 - **FR-015**: C4 MUST show full detail (photos carousel, category, title, description, entered measurements, status) plus [Edit] and [Delete]; [Delete] MUST ask confirmation; success MUST return to C1.
 - **FR-016**: Confirmed garments in C4 MUST lock edit/delete with guidance toward cancellation (T3 in 021).
-- **FR-017**: Edit MUST reuse the 014 two-step form prefilled; existing photos start as ready; [Save] MUST send `PATCH`; success MUST return to C4 with "Saved.".
+- **FR-017**: Edit MUST show a single-step form prefilled with title, description, category, measurements and current photos view-only in order ("Photos (view only in this version)"); it MUST reuse validation + details-form patterns (two-step photo editing deferred); [Save] MUST send `PATCH` with whole photoIds (current list) + whole measurements; success MUST return to C4 with "Saved.".
 - **FR-018**: Registration success MUST navigate to C1 with "Clothing registered."; Home MUST no longer show that confirmation.
 - **FR-019**: C4 MUST include a "Requests" section placeholder for 020 (empty or hidden, no behavior).
 - **FR-020**: All new UI text MUST be in English; reads used by this feature stay available in tests after closure (retention duration still open); edit/delete/registration actions are disabled after closure.
@@ -145,7 +145,7 @@ A participant who just registered clothing lands on My items with "Clothing regi
 ### Measurable Outcomes
 
 - **SC-001**: Owners see all own garments (including withdrawn) on C1 newest first with correct badges and can open each detail in one tap.
-- **SC-002**: Owners can edit photos (reorder/replace), category, title, description, and measurements; valid edits bump `contentVersion` by 1, invalid category/measurement combos fail with `422` and change nothing.
+- **SC-002**: Owners can edit title, description, category, and measurements; valid edits bump `contentVersion` by 1, invalid category/measurement combos fail with `422` and change nothing. Photo replacement is API-complete (reorder/detach tested) with edit-UI deferred.
 - **SC-003**: Unchanged PATCH replays without version bump; repeated DELETE returns `204`; non-owners get `403` on edit/delete.
 - **SC-004**: Registration lands on C1 with confirmation; edit lands on C4 with "Saved."; confirmed garments lock edit/delete.
 - **SC-005**: Backend and frontend checks pass; no deviation from API 07 without a docs update in the same PR.
