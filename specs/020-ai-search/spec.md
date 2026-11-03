@@ -142,7 +142,7 @@ From S1, [Edit filters] opens S2 prefilled with the current conditions: category
 
 ### Measurable Outcomes
 
-- **SC-001**: A participant goes from typing a query to seeing ranked results in one submit, typically within a few seconds. The expected worst-case budget (not a hard deadline) is about 25 seconds: two attempts bounded by the configurable 10-second timeout, a 1-second retry wait, and a 2-second wait for a free AI slot, after which the participant sees results or the fallback message.
+- **SC-001**: A participant goes from typing a query to seeing ranked results in one submit, typically within 5–20 seconds (real-model interpretation measured at 5–19 s on 2026-11-03). The expected worst-case budget (not a hard deadline) is about 43 seconds: two attempts bounded by the configurable 20-second timeout, a 1-second retry wait, and a 2-second wait for a free AI slot, after which the participant sees results or the fallback message.
 - **SC-002**: Removing a chip or applying filters updates results without any AI call.
 - **SC-003**: With AI disabled, a participant can still reach ranked results through filters in at most two taps from the error.
 - **SC-004**: For the same conditions, AI-derived and manual searches return identical rankings.
@@ -151,7 +151,7 @@ From S1, [Edit filters] opens S2 prefilled with the current conditions: category
 
 ## Assumptions
 
-- The 018 AI client, its fake, and `clothing_analyses` are reused; the interpretation call uses a 10 s timeout and 1 retry per the proposed call policy.
+- The 018 AI client, its fake, and `clothing_analyses` are reused; the interpretation call uses a 20 s timeout (raised from the proposed 10 s after real-model runs timed out) and 1 retry.
 - Minimum query length is 1 character after trimming (API limit); no extra client-side minimum.
 - Query and conditions live in the URL (`?q=` plus filter params) to restore results on back navigation (FR-017).
 - Event sizes are small, so ranking over the full candidate set per request is acceptable; no pagination.

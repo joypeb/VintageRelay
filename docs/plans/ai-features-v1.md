@@ -39,7 +39,7 @@ Principles:
 
 | Setting | Analysis | Interpretation |
 |---|---|---|
-| Timeout | 30 s (background) | 10 s (participant waits; `AI_SEARCH_TIMEOUT_SECONDS`) |
+| Timeout | 30 s (background) | 20 s (participant waits; `AI_SEARCH_TIMEOUT_SECONDS`; 10 s timed out against the real model) |
 | Retries | 1, only on timeout/5xx/429/invalid output | 1 |
 | Temperature | Low (e.g. 0.2) | Low |
 

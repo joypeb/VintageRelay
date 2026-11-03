@@ -22,7 +22,7 @@ Two backend endpoints and the S1/S2 screens. Interpretation reuses the 018 AI cl
 
 **Project Type**: Web application (backend + frontend).
 
-**Performance Goals**: Interpretation bounded by 10 s timeout + 1 retry; ranked search in-memory over one event's garments.
+**Performance Goals**: Interpretation bounded by a 20 s timeout + 1 retry (client waits up to 50 s); ranked search in-memory over one event's garments.
 
 **Constraints**: AI sees only the search text; ranking is regular code; never log search text; closed events allowed.
 
