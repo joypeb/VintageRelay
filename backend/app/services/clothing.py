@@ -347,6 +347,36 @@ class ClothingService:
         )
         return response
 
+    def withdraw(self, participant: Participant, clothing_id: str) -> None:
+        with self.db.write() as s:
+            clothing = s.get(ClothingModel, clothing_id)
+            if clothing is None or clothing.event_id != participant.event_id:
+                raise NotFoundError()
+            if clothing.owner_id != participant.id:
+                raise ForbiddenError()
+            if clothing.status == ClothingStatus.WITHDRAWN:
+                return
+            event = event_repo.get(s, clothing.event_id)
+            if event is None:
+                raise NotFoundError()
+            if event.status == EventStatus.CLOSED:
+                raise EventClosedError()
+            if clothing.status == ClothingStatus.CONFIRMED:
+                raise ClothingAlreadyConfirmedError(
+                    "Cancel the confirmed exchange before withdrawing this garment."
+                )
+            clothing.status = ClothingStatus.WITHDRAWN
+            clothing.updated_at = self.clock()
+            s.flush()
+        logger.info(
+            "clothing_withdrawn",
+            extra={
+                "clothing_id": clothing.id,
+                "invalidated_intent_count": 0,
+                "invalidated_proposal_count": 0,
+            },
+        )
+
     @staticmethod
     def _validate_resulting_measurements(
         category: ClothingCategory, measurements: Measurements | None

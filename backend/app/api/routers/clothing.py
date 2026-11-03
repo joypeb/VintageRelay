@@ -48,3 +48,28 @@ def edit_clothing(
 ) -> Clothing:
     participant = get_token_participant(db, credentials)
     return ClothingService(db, settings).edit(participant, clothing_id, body)
+
+
+@router.delete(
+    "/{clothing_id}",
+    operation_id="withdrawClothing",
+    summary="Withdraw a garment",
+    status_code=204,
+    responses={
+        204: {
+            "description": "Garment withdrawn",
+            "headers": {
+                "X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}
+            },
+        },
+        **error_responses(401, 403, 404, 409, 500),
+    },
+)
+def withdraw_clothing(
+    clothing_id: str,
+    participant: TokenParticipant,
+    db: DbDep,
+    settings: SettingsDep,
+) -> None:
+    ClothingService(db, settings).withdraw(participant, clothing_id)
+    return None
