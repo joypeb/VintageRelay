@@ -1,0 +1,113 @@
+{
+  "event": "event1103",
+  "organizer": "Mina",
+  "items": [
+    {
+      "seller": "Sora",
+      "category": "outer",
+      "title": "Light wash denim trucker jacket",
+      "description": "Classic light blue denim jacket with two flap chest pockets and metal shank buttons. Some natural fading on the sleeves. Fits like a women's M.",
+      "measurements": {"chest": 19.5, "totalLength": 22, "sleeve": 23},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/0/06/Jean_jacket.jpg/1280px-Jean_jacket.jpg"],
+      "source": "File:Jean jacket.jpg (Wikimedia Commons), CC0"
+    },
+    {
+      "seller": "Sora",
+      "category": "outer",
+      "title": "Olive cotton chore coat",
+      "description": "Workwear style chore coat in washed olive brown cotton. Notched collar, patch pockets on the front. Relaxed boxy fit, worn a handful of times.",
+      "measurements": {"chest": 22, "totalLength": 28, "shoulder": 18.5},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/e/ec/Chore_Jacket_%2851080345946%29.jpg/1280px-Chore_Jacket_%2851080345946%29.jpg"],
+      "source": "File:Chore Jacket (51080345946).jpg (Wikimedia Commons), CC BY 2.0"
+    },
+    {
+      "seller": "Jun",
+      "category": "outer",
+      "title": "Grey canvas work jacket with orange lining",
+      "description": "Heavy grey canvas work jacket, snap front, chest and hand pockets, bright orange lining. Rugged workwear piece, good for autumn.",
+      "measurements": {"chest": 24, "totalLength": 29},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/6/60/A_Carhartt_work_jacket_with_grey_fabric.png/500px-A_Carhartt_work_jacket_with_grey_fabric.png"],
+      "source": "File:A Carhartt work jacket with grey fabric.png (Wikimedia Commons), CC BY-SA 4.0"
+    },
+    {
+      "seller": "Jun",
+      "category": "top",
+      "title": "Teal and mustard plaid flannel shirt",
+      "description": "Soft wool-blend flannel overshirt in a teal, mustard and grey plaid. Two lower patch pockets, snap buttons. Can be layered as a light jacket.",
+      "measurements": {"chest": 21, "totalLength": 27, "sleeve": 24},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/1/1c/Flannel_Shirt_For_Abi.jpg/1280px-Flannel_Shirt_For_Abi.jpg"],
+      "source": "File:Flannel Shirt For Abi.jpg (Wikimedia Commons), CC BY-SA 2.0"
+    },
+    {
+      "seller": "Hana",
+      "category": "top",
+      "title": "Red ribbed knit cardigan",
+      "description": "Bright red rib knit cardigan with a small collar and seven buttons. Stretchy and cozy, no pilling that I can see.",
+      "measurements": {"chest": 17.5, "totalLength": 22, "sleeve": 23},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Cardigan%2C_sweater.JPG/1280px-Cardigan%2C_sweater.JPG"],
+      "source": "File:Cardigan, sweater.JPG (Wikimedia Commons), CC BY 2.5"
+    },
+    {
+      "seller": "Hana",
+      "category": "top",
+      "title": "Washed black flame graphic hoodie",
+      "description": "Faded black pullover hoodie with a flame logo print on the chest and star graphics on both sleeves. Kangaroo pocket. Streetwear vibe.",
+      "measurements": {"chest": 22, "totalLength": 26, "sleeve": 25},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Hoodie_m7agar.jpg/500px-Hoodie_m7agar.jpg"],
+      "source": "File:Hoodie m7agar.jpg (Wikimedia Commons), CC0"
+    },
+    {
+      "seller": "Taeo",
+      "category": "bottom",
+      "title": "Olive military cargo pants",
+      "description": "Vintage army style cargo pants in olive green cotton ripstop. Big bellows side pockets, adjustable waist tabs. Hem is a little frayed.",
+      "measurements": {"waist": 16, "totalLength": 42, "inseam": 31},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/c/cd/Cargo_pants_001.jpg/1280px-Cargo_pants_001.jpg"],
+      "source": "File:Cargo pants 001.jpg (Wikimedia Commons), CC0"
+    },
+    {
+      "seller": "Taeo",
+      "category": "bottom",
+      "title": "Khaki multi-pocket cargo pants",
+      "description": "Sand khaki cotton cargo pants with flap pockets on the thighs and calves. Utility workwear look. Barely worn.",
+      "measurements": {"waist": 15, "totalLength": 40, "inseam": 30},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d6/Khaki_Cargo_Pants_Side.jpg/500px-Khaki_Cargo_Pants_Side.jpg"],
+      "source": "File:Khaki Cargo Pants Side.jpg (Wikimedia Commons), CC BY-SA 4.0"
+    },
+    {
+      "seller": "Sora",
+      "category": "outer",
+      "title": "Distressed leather rider jacket",
+      "description": "Dark brown leather jacket with a stand collar, zip front and zip chest pocket. Nicely broken in with creasing on the sleeves.",
+      "measurements": {"chest": 21.5, "totalLength": 25, "shoulder": 18},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/9/93/Leather_jacket.jpg/500px-Leather_jacket.jpg"],
+      "source": "File:Leather jacket.jpg (Wikimedia Commons), CC BY-SA 2.0"
+    },
+    {
+      "seller": "Jun",
+      "category": "outer",
+      "title": "Beige nylon hooded shell jacket",
+      "description": "Lightweight nylon rain shell in beige with a hood, zip and snap placket and hand pockets. Packable, good for spring.",
+      "measurements": {"chest": 23, "totalLength": 28, "sleeve": 25},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/4/46/Windbreaker_Jacket%2C_Hood_Outside.jpg/500px-Windbreaker_Jacket%2C_Hood_Outside.jpg"],
+      "source": "File:Windbreaker Jacket, Hood Outside.jpg (Wikimedia Commons), public domain"
+    },
+    {
+      "seller": "Hana",
+      "category": "outer",
+      "title": "Color block nylon windbreaker",
+      "description": "90s style green nylon windbreaker with red and blue color block panels. Full zip, elastic cuffs and hem.",
+      "measurements": {"chest": 24, "totalLength": 27},
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/6/63/Polo_Ralph_Lauren_color_block_Windbreaker_jacket.jpg/1280px-Polo_Ralph_Lauren_color_block_Windbreaker_jacket.jpg"],
+      "source": "File:Polo Ralph Lauren color block Windbreaker jacket.jpg (Wikimedia Commons), CC BY 2.0"
+    },
+    {
+      "seller": "Taeo",
+      "category": "other",
+      "title": "Navy striped canvas tote bag",
+      "description": "Sturdy cotton canvas tote with navy and cream stripes and navy handles. Fits a laptop and a sweater.",
+      "photos": ["https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c1/Canvas_two-tone_tote_Navy_and_Natural7_%289038437258%29.jpg/1280px-Canvas_two-tone_tote_Navy_and_Natural7_%289038437258%29.jpg"],
+      "source": "File:Canvas two-tone tote Navy and Natural7 (9038437258).jpg (Wikimedia Commons), CC BY 2.0"
+    }
+  ]
+}
