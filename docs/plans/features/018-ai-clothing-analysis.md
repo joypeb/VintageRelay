@@ -10,7 +10,7 @@ Right after a garment is registered or its content edited, the backend asks the 
 
 **Backend**
 - `clothing_analyses` table and Alembic migration (one current row per garment: `content_version`, `status`, `features`, `uncertainties`, `model_info`, `updated_at`).
-- AI client in `app/ai/` behind a protocol with a fake for tests and demos; `META_API_KEY` setting (startup fails if missing); timeouts, one retry, concurrency cap, Pydantic validation of structured output.
+- AI client in `app/ai/` behind a protocol with a fake for tests and demos; `AI_API_KEY` setting (startup fails if missing); timeouts, one retry, concurrency cap, Pydantic validation of structured output.
 - Trigger: in the registration (06) and content-edit (07 PATCH step 5) transactions, upsert a `pending` row for the new version; after the response, run the job with FastAPI `BackgroundTasks`. On startup mark leftover `pending` rows `failed`.
 - Job: first 3 photos plus owner category, title, description, measurements → `ClothingFeatures` (colors from the fixed vocabulary, pattern, material, style tags, visible details, size label) and uncertainties; save only if the garment is still at that version and not withdrawn; else discard. Failure → `failed`, log `ai_call_failed`.
 - `Clothing.analysis` returned in register, list, detail, and edit responses.
@@ -30,7 +30,7 @@ Right after a garment is registered or its content edited, the backend asks the 
 | [Database design](../database-design-v1.md) | 3.5 `clothing_analyses`; 5 Data flow; 7 AI persistence |
 | [API 06](../api/06-register-read-clothing.md) | `Clothing.analysis`; 1 Response note on `pending` |
 | [API 07](../api/07-edit-withdraw-clothing.md) | PATCH step 5 |
-| [Tech stack](../../rules/dev/common/tech-stack.md) | `META_API_KEY`, secrets, startup failure on missing variables |
+| [Tech stack](../../rules/dev/common/tech-stack.md) | `AI_API_KEY`, secrets, startup failure on missing variables |
 | [Error handling and logging](../../rules/dev/common/error-handling-logging.md), [backend logging](../../rules/dev/backend/logging.md) | Never log text or photo bytes; `ai_call_failed` |
 | [Backend testing](../../rules/dev/backend/testing.md), [common testing](../../rules/dev/common/testing.md) | Fake model, no external calls in tests |
 | [Frontend data fetching](../../rules/dev/frontend/data-fetching.md) | Polling row for `pending` analyses |
@@ -38,7 +38,7 @@ Right after a garment is registered or its content edited, the backend asks the 
 
 ## 4. Existing Code
 
-- `backend/app/core/config.py` — add `META_API_KEY` (and AI timeouts/concurrency settings).
+- `backend/app/core/config.py` — add `AI_API_KEY` (and AI timeouts/concurrency settings).
 - `backend/app/services/clothing.py` (`register`, edit from 017, `_build_response`), `backend/app/schemas/clothing.py` (`Clothing.analysis` is `None` today), `backend/app/models/`, `backend/alembic/versions/`.
 - `backend/app/main.py` — `lifespan` context manager: add the stale-`pending` cleanup there.
 - `backend/app/services/photo.py` — photos are stored as files at `photo_dir/<storage_location>`, so the job can read bytes for base64; `domain/photos.py` `photo_url` builds URLs from `APP_BASE_URL` (the frontend origin).
@@ -62,7 +62,7 @@ Right after a garment is registered or its content edited, the backend asks the 
 
 ```text
 018 Background AI clothing analysis (backend + frontend).
-After each clothing registration or content edit, the backend upserts a pending analysis for the new contentVersion in the same transaction and, after responding, runs a FastAPI BackgroundTasks job that sends the first 3 photos and the owner's category, title, description, and measurements to the Meta model (muse-spark-1.3) and stores colors (fixed 14-color vocabulary), pattern, material estimate, style tags, visible details, size label, and uncertainties, only if the garment is still at that version. Failures set status failed; leftover pending rows become failed on startup. Clothing responses include analysis. AI client isolated behind a protocol with a fake for tests; META_API_KEY required.
+After each clothing registration or content edit, the backend upserts a pending analysis for the new contentVersion in the same transaction and, after responding, runs a FastAPI BackgroundTasks job that sends the first 3 photos and the owner's category, title, description, and measurements to the Meta model (muse-spark-1.3) and stores colors (fixed 14-color vocabulary), pattern, material estimate, style tags, visible details, size label, and uncertainties, only if the garment is still at that version. Failures set status failed; leftover pending rows become failed on startup. Clothing responses include analysis. AI client isolated behind a protocol with a fake for tests; AI_API_KEY required.
 Frontend: "AI analyzing..." on My items rows and detail while pending (5 s polling); item detail screens show an "Estimated by AI" section when done.
 Sources: docs/plans/features/018-ai-clothing-analysis.md, docs/plans/ai-features-v1.md (1-3, 5-8, 10), docs/rules/dev/backend/ai-integration.md, docs/plans/database-design-v1.md (3.5, 5, 7), docs/plans/api/06-register-read-clothing.md, docs/plans/api/07-edit-withdraw-clothing.md.
 ```

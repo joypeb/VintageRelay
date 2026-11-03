@@ -73,9 +73,23 @@ def test_application_startup_creates_photo_dir(
 ) -> None:
     photo_dir = tmp_path / "nested" / "photos"
     monkeypatch.setenv("PHOTO_DIR", str(photo_dir))
-    app = create_app(Settings())
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    app = create_app(Settings(ai_api_key="test"))
 
     assert not photo_dir.exists()
     with TestClient(app) as client:
         assert photo_dir.is_dir()
         assert client.get("/api/v1/health").status_code == 200
+
+
+def test_application_startup_requires_ai_api_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    photo_dir = tmp_path / "nested" / "photos"
+    monkeypatch.setenv("PHOTO_DIR", str(photo_dir))
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    app = create_app(Settings())
+
+    assert app.state.settings.ai_api_key is None
+    with pytest.raises(RuntimeError, match="AI_API_KEY"), TestClient(app):
+        pass

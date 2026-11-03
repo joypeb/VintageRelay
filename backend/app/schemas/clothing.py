@@ -280,6 +280,36 @@ class ClothingPhoto(ApiModel):
     url: str
 
 
+class ClothingFeatures(ApiModel):
+    colors: list[str]
+    pattern: str | None = None
+    material_estimate: str | None = None
+    style_tags: list[str] = Field(default_factory=list)
+    visible_details: list[str] = Field(default_factory=list)
+    size_label: str | None = None
+
+
+class AnalysisUncertainty(ApiModel):
+    aspect: str
+    message: str
+
+
+class AnalysisModelInfo(ApiModel):
+    model_id: str
+    latency_ms: int | None = None
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+
+
+class ClothingAnalysis(ApiModel):
+    content_version: int
+    status: str
+    features: ClothingFeatures | None = None
+    uncertainties: list[AnalysisUncertainty] = Field(default_factory=list)
+    model_info: AnalysisModelInfo | None = None
+    updated_at: UtcDatetime
+
+
 class Clothing(ApiModel):
     id: str
     event_id: str
@@ -292,7 +322,7 @@ class Clothing(ApiModel):
     measurements: Measurements | None
     status: ClothingStatus
     content_version: int
-    analysis: None = None
+    analysis: ClothingAnalysis | None = None
     created_at: UtcDatetime
     updated_at: UtcDatetime
 

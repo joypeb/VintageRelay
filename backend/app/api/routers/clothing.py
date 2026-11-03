@@ -1,12 +1,15 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 
+from app.ai.deps import get_analyzer
+from app.ai.protocols import ClothingAnalyzer
 from app.api.deps import DbDep, SettingsDep, TokenParticipant, bearer_scheme, get_token_participant
 from app.api.errors import error_responses
 from app.schemas.clothing import Clothing, ClothingUpdate
 from app.services.clothing import ClothingService
+from app.services.clothing_analysis import run_clothing_analysis
 
 router = APIRouter(prefix="/clothing", tags=["clothing"])
 
@@ -42,12 +45,19 @@ def get_clothing(
 def edit_clothing(
     clothing_id: str,
     body: ClothingUpdate,
+    background_tasks: BackgroundTasks,
     db: DbDep,
     settings: SettingsDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    analyzer: Annotated[ClothingAnalyzer, Depends(get_analyzer)],
 ) -> Clothing:
     participant = get_token_participant(db, credentials)
-    return ClothingService(db, settings).edit(participant, clothing_id, body)
+    response, version_bumped = ClothingService(db, settings).edit(participant, clothing_id, body)
+    if version_bumped:
+        background_tasks.add_task(
+            run_clothing_analysis, db, settings, analyzer, response.id, response.content_version
+        )
+    return response
 
 
 @router.delete(

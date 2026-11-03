@@ -63,7 +63,9 @@ def test_register_clothing_returns_complete_resource(
     assert body["description"] == "Green denim jacket, M"
     assert body["status"] == "available"
     assert body["contentVersion"] == 1
-    assert body["analysis"] is None
+    assert body["analysis"] is not None
+    assert body["analysis"]["status"] == "pending"
+    assert body["analysis"]["contentVersion"] == 1
     assert body["createdAt"] == body["updatedAt"]
 
 

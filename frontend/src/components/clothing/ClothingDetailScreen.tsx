@@ -11,6 +11,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
 import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
@@ -161,6 +162,7 @@ export function ClothingDetailScreen({
             </Grid>
           </VStack>
         ) : null}
+        <EstimatedByAI analysis={clothing.analysis} />
         <Button label="Request exchange" size="lg" width="100%" isDisabled />
         <Text type="body">Coming soon: exchange requests are not available yet.</Text>
       </VStack>

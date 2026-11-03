@@ -35,6 +35,53 @@ const measurementsSchema = z.object({
   thigh: measurementValue,
 });
 
+const analysisColorSchema = z.enum([
+  'black',
+  'white',
+  'gray',
+  'beige',
+  'brown',
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'navy',
+  'purple',
+  'pink',
+  'multicolor',
+]);
+
+const analysisFeaturesSchema = z.object({
+  colors: z.array(analysisColorSchema).max(3),
+  pattern: z.enum(['solid', 'striped', 'checked', 'floral', 'graphic', 'other']).nullable(),
+  materialEstimate: z.string().min(1).nullable(),
+  styleTags: z.array(z.string().min(1)).max(8),
+  visibleDetails: z.array(z.string().min(1)).max(8),
+  sizeLabel: z.string().min(1).nullable(),
+});
+
+const analysisSchema = z.object({
+  contentVersion: z.number().int().nonnegative(),
+  status: z.enum(['pending', 'done', 'failed', 'stale']),
+  features: analysisFeaturesSchema.nullable(),
+  uncertainties: z.array(
+    z.object({
+      aspect: z.enum(['condition', 'size', 'fit', 'material', 'logo', 'color', 'other']),
+      message: z.string().min(1).max(200),
+    }),
+  ),
+  modelInfo: z
+    .object({
+      modelId: z.string().min(1),
+      latencyMs: z.number().nonnegative().optional(),
+      promptTokens: z.number().int().nonnegative().optional(),
+      completionTokens: z.number().int().nonnegative().optional(),
+    })
+    .nullable(),
+  updatedAt: timestamp,
+});
+
 const clothingItemSchema = z.object({
   id: z.string().min(1),
   eventId: z.string().min(1),
@@ -58,8 +105,8 @@ const clothingItemSchema = z.object({
   measurements: measurementsSchema.nullable(),
   status: z.enum(['available', 'confirmed', 'withdrawn']),
   contentVersion: z.number().int().nonnegative(),
-  // shortcut: strict null until 018 ships analysis; relax to z.unknown().nullable() then
-  analysis: z.null(),
+  // Strict: unknown vocab, over-cap arrays, and malformed shapes reject as UNKNOWN_ERROR.
+  analysis: analysisSchema.nullable(),
   createdAt: timestamp,
   updatedAt: timestamp,
 });

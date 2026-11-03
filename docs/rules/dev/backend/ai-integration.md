@@ -12,13 +12,14 @@ Call Meta Model API from the server (`muse-spark-1.3` is the first candidate). M
 ## Timeouts and Retries
 
 - **MUST:** explicitly set timeouts, e.g. `httpx.Client(timeout=httpx.Timeout(20.0, connect=5.0))`. Make values configurable.
-- Retry **at most once**, after a short wait (1 second), only for connection failures, 429, or 5xx. Do not retry request errors (4xx).
+- Retry **at most once**, after a short wait (1 second), only for connection failures, 429, 5xx, or invalid model output (analysis structured-output validation only). Do not retry request errors (4xx).
 - Convert final failure to `AIUnavailableError` (503) and log `WARNING`. Search falls back to manual filters; a background analysis is marked `failed` instead of raising to a client.
-- **MUST:** cap concurrent AI calls (`threading.BoundedSemaphore`, configurable default 4). Synchronous AI calls occupy FastAPI's thread pool (default 40); without a cap, bursts exhaust threads and **all requests, including polling/consent, stall**.
+- **MUST:** cap concurrent AI calls with one process-wide `threading.BoundedSemaphore` (fixed cap 4; only the slot wait is configurable). Synchronous AI calls occupy FastAPI's thread pool (default 40); without a cap, bursts exhaust threads and **all requests, including polling/consent, stall**.
 - Wait briefly for the semaphore (default 2 seconds); on failure, immediately return `AIUnavailableError` (503) and offer manual filters. **No** long queues. Background analysis jobs use the same cap and mark the analysis `failed` when no slot frees up.
 
 ```python
-_ai_slots = threading.BoundedSemaphore(settings.ai_max_concurrency)
+# One process-wide semaphore shared by all analyzer clients (fixed cap).
+_ai_slots = threading.BoundedSemaphore(4)
 
 def call_model(self, req: AiRequest) -> AiResponse:
     if not _ai_slots.acquire(timeout=settings.ai_slot_wait_seconds):

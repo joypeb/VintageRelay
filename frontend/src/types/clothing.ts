@@ -24,6 +24,65 @@ export type ClothingMeasurements = {
   thigh: number | null;
 };
 
+export type AnalysisStatus = 'pending' | 'done' | 'failed' | 'stale';
+
+export type ClothingColor =
+  | 'black'
+  | 'white'
+  | 'gray'
+  | 'beige'
+  | 'brown'
+  | 'red'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'navy'
+  | 'purple'
+  | 'pink'
+  | 'multicolor';
+
+export type ClothingPattern = 'solid' | 'striped' | 'checked' | 'floral' | 'graphic' | 'other';
+
+export type UncertaintyAspect =
+  | 'condition'
+  | 'size'
+  | 'fit'
+  | 'material'
+  | 'logo'
+  | 'color'
+  | 'other';
+
+export type ClothingAnalysisFeatures = {
+  colors: ClothingColor[];
+  pattern: ClothingPattern | null;
+  materialEstimate: string | null;
+  styleTags: string[];
+  visibleDetails: string[];
+  sizeLabel: string | null;
+};
+
+export type ClothingAnalysisUncertainty = {
+  aspect: UncertaintyAspect;
+  message: string;
+};
+
+export type ClothingAnalysisModelInfo = {
+  modelId: string;
+  latencyMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+};
+
+export type ClothingAnalysis = {
+  contentVersion: number;
+  status: AnalysisStatus;
+  features: ClothingAnalysisFeatures | null;
+  uncertainties: ClothingAnalysisUncertainty[];
+  modelInfo: ClothingAnalysisModelInfo | null;
+  updatedAt: string;
+};
+
 /** Full `Clothing` as returned by list and detail reads. */
 export type Clothing = {
   id: string;
@@ -37,7 +96,7 @@ export type Clothing = {
   measurements: ClothingMeasurements | null;
   status: ClothingStatus;
   contentVersion: number;
-  analysis: null;
+  analysis: ClothingAnalysis | null;
   createdAt: string;
   updatedAt: string;
 };

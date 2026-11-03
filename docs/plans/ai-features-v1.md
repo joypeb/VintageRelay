@@ -30,7 +30,7 @@ Principles:
 | Model | **Muse Spark 1.3 (`muse-spark-1.3`)** via Meta Model API only. [Model documentation](https://dev.meta.ai/docs/models) |
 | Capabilities used | Image understanding (clothing analysis), structured JSON output (both tasks) |
 | Caller | Backend only. The frontend never calls the model or sees the key |
-| Key | `META_API_KEY` backend environment variable; startup fails if missing |
+| Key | `AI_API_KEY` backend environment variable; startup fails if missing |
 | Not used in v1 | Fine-tuning, vector DBs, image generation, speech, agent tool calling |
 
 **Day-one verification:** account access, an actual image call, structured output compliance, search interpretation quality on sample queries, and latency. Also confirm how images are passed (public photo URL vs. inline base64) and the model's size/type limits.
@@ -181,7 +181,7 @@ Turns search text into `SearchConditions` (S1). Synchronous. The frontend then c
 |---|---|---|
 | Analysis timeout / 5xx / 429 / invalid output after one retry | `analysis.status = failed` | AI estimates hidden on B3/C4; the garment never matches color conditions |
 | Interpretation failure after one retry | `503 AI_UNAVAILABLE` | Error message and S2 manual filters |
-| Missing `META_API_KEY` | Startup fails | — |
+| Missing `AI_API_KEY` | Startup fails | — |
 
 Log handled model failures at `WARNING` (event `ai_call_failed` with `extra`: `task`, `reason`, `latency_ms`). Do not convert model errors into `500`.
 

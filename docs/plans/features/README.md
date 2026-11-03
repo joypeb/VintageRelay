@@ -53,7 +53,7 @@ Feature numbers are roadmap IDs. Spec Kit assigns the next free `specs/0NN-*` nu
 | 015 | Not started |
 | 016 | Done |
 | 017 | Done (backend PATCH/DELETE + C1/C4/edit; photo reorder UI deferred, API supports it) |
-| 018 | Not started |
+| 018 | Done (backend analysis + C1/C4/B3 UI; real-model authenticated call pending operator AI_API_KEY — route liveness verified without key) |
 | 019 | Not started |
 | 020 | Not started |
 | 021 | Not started |

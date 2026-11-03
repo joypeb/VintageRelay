@@ -19,12 +19,17 @@ from app.domain.errors import (
 )
 from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
+from app.models.clothing_analysis import ClothingAnalysis as ClothingAnalysisModel
 from app.models.participant import Participant
 from app.models.photo import Photo as PhotoModel
 from app.repositories import clothing as clothing_repo
+from app.repositories import clothing_analysis as analysis_repo
 from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
 from app.schemas.clothing import Clothing as ClothingSchema
+from app.schemas.clothing import (
+    ClothingAnalysis as ClothingAnalysisSchema,
+)
 from app.schemas.clothing import (
     ClothingCreate,
     ClothingList,
@@ -35,6 +40,21 @@ from app.schemas.clothing import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _to_analysis_schema(row: ClothingAnalysisModel | None) -> ClothingAnalysisSchema | None:
+    if row is None:
+        return None
+    return ClothingAnalysisSchema.model_validate(
+        {
+            "content_version": row.content_version,
+            "status": row.status,
+            "features": row.features,
+            "uncertainties": row.uncertainties or [],
+            "model_info": row.model_info,
+            "updated_at": row.updated_at,
+        }
+    )
 
 
 class ClothingService:
@@ -99,12 +119,14 @@ class ClothingService:
             for position, photo in enumerate(ordered):
                 if not photo_repo.attach(s, photo.id, clothing.id, position):
                     raise PhotoAlreadyAttachedError()
+            analysis_row = analysis_repo.replace_pending(s, clothing.id, 1, now)
             response = self._build_response(
                 clothing,
                 owner_display_name=participant.display_name,
                 organizer_participant_id=event.organizer_participant_id,
                 viewer_id=participant.id,
                 photos=ordered,
+                analysis=_to_analysis_schema(analysis_row),
             )
             description_length = len(clothing.description)
             title_length = len(clothing.title)
@@ -140,6 +162,7 @@ class ClothingService:
                     organizer_participant_id=organizer_id,
                     viewer_id=participant.id,
                     photos=photo_map.get(clothing.id, []),
+                    analysis=_to_analysis_schema(analysis_repo.get_current(s, clothing.id)),
                 )
                 for clothing, display_name, organizer_id in rows
             ]
@@ -157,11 +180,12 @@ class ClothingService:
                 organizer_participant_id=organizer_id,
                 viewer_id=participant.id,
                 photos=photo_repo.photos_for(s, [clothing.id]).get(clothing.id, []),
+                analysis=_to_analysis_schema(analysis_repo.get_current(s, clothing.id)),
             )
 
     def edit(
         self, participant: Participant, clothing_id: str, body: ClothingUpdate
-    ) -> ClothingSchema:
+    ) -> tuple[ClothingSchema, bool]:
         with self.db.write() as s:
             clothing = s.get(ClothingModel, clothing_id)
             if clothing is None or clothing.event_id != participant.event_id:
@@ -230,12 +254,16 @@ class ClothingService:
                 and description_same
                 and measurements_same
             ):
-                return self._build_response(
-                    clothing,
-                    owner_display_name=participant.display_name,
-                    organizer_participant_id=event.organizer_participant_id,
-                    viewer_id=participant.id,
-                    photos=current_photos,
+                return (
+                    self._build_response(
+                        clothing,
+                        owner_display_name=participant.display_name,
+                        organizer_participant_id=event.organizer_participant_id,
+                        viewer_id=participant.id,
+                        photos=current_photos,
+                        analysis=_to_analysis_schema(analysis_repo.get_current(s, clothing.id)),
+                    ),
+                    False,
                 )
             if event.status == EventStatus.CLOSED:
                 raise EventClosedError()
@@ -328,12 +356,16 @@ class ClothingService:
             clothing.content_version += 1
             clothing.updated_at = now
             s.flush()
+            analysis_row = analysis_repo.replace_pending(
+                s, clothing.id, clothing.content_version, now
+            )
             response = self._build_response(
                 clothing,
                 owner_display_name=participant.display_name,
                 organizer_participant_id=event.organizer_participant_id,
                 viewer_id=participant.id,
                 photos=ordered_photos,
+                analysis=_to_analysis_schema(analysis_row),
             )
         logger.info(
             "clothing_updated",
@@ -345,7 +377,7 @@ class ClothingService:
                 "invalidated_proposal_count": 0,
             },
         )
-        return response
+        return response, True
 
     def withdraw(self, participant: Participant, clothing_id: str) -> None:
         with self.db.write() as s:
@@ -422,6 +454,7 @@ class ClothingService:
         organizer_participant_id: str | None,
         viewer_id: str,
         photos: Sequence[PhotoModel],
+        analysis: ClothingAnalysisSchema | None = None,
     ) -> ClothingSchema:
         measure_values = (
             clothing.measure_total_length,
@@ -468,7 +501,7 @@ class ClothingService:
             ),
             status=ClothingStatus(clothing.status),
             content_version=clothing.content_version,
-            analysis=None,
+            analysis=analysis,
             created_at=clothing.created_at,
             updated_at=clothing.updated_at,
         )
