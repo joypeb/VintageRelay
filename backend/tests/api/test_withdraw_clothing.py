@@ -3,11 +3,12 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import update
+from sqlalchemy import delete, select, update
 
 from app.core.logging import JsonFormatter, TextFormatter
 from app.domain.errors import NotFoundError
 from app.models.clothing import Clothing
+from app.models.clothing_analysis import ClothingAnalysis
 from tests.conftest import close_event
 
 
@@ -213,3 +214,62 @@ def test_withdraw_logs_withdrawn_counts(client, caplog, withdraw_context):
     for formatter in (JsonFormatter(), TextFormatter()):
         formatted = formatter.format(record)
         assert clothing_id in formatted
+
+
+def analysis_state(db, clothing_id):
+    with db.read() as session:
+        row = session.scalar(
+            select(ClothingAnalysis).where(ClothingAnalysis.clothing_id == clothing_id)
+        )
+        return None if row is None else (row.status, row.updated_at, row.features)
+
+
+def test_withdraw_pending_analysis_becomes_failed(client, withdraw_context):
+    clothing_id = withdraw_context["clothing"]["id"]
+    token = withdraw_context["token"]
+    assert get_clothing(client, clothing_id, token).json()["analysis"]["status"] == "pending"
+    assert delete_clothing(client, clothing_id, token).status_code == 204
+    analysis = get_clothing(client, clothing_id, token).json()["analysis"]
+    assert analysis["status"] == "failed"
+    assert analysis["features"] is None
+
+
+@pytest.mark.parametrize("status", ["done", "failed"])
+def test_withdraw_finished_analysis_is_unchanged(client, db, withdraw_context, status):
+    clothing_id = withdraw_context["clothing"]["id"]
+    with db.write() as session:
+        session.execute(
+            update(ClothingAnalysis)
+            .where(ClothingAnalysis.clothing_id == clothing_id)
+            .values(status=status, features={"colors": ["blue"]} if status == "done" else None)
+        )
+    before = analysis_state(db, clothing_id)
+    assert delete_clothing(client, clothing_id, withdraw_context["token"]).status_code == 204
+    assert analysis_state(db, clothing_id) == before
+
+
+def test_withdraw_without_analysis_row(client, db, withdraw_context):
+    clothing_id = withdraw_context["clothing"]["id"]
+    with db.write() as session:
+        session.execute(delete(ClothingAnalysis).where(ClothingAnalysis.clothing_id == clothing_id))
+    assert delete_clothing(client, clothing_id, withdraw_context["token"]).status_code == 204
+    assert analysis_state(db, clothing_id) is None
+
+
+@pytest.mark.parametrize("scenario", ["replay", "replay_closed", "closed", "confirmed"])
+def test_withdraw_replay_or_rejection_leaves_analysis_unchanged(
+    client, db, withdraw_context, scenario
+):
+    clothing_id = withdraw_context["clothing"]["id"]
+    token = withdraw_context["token"]
+    if scenario.startswith("replay"):
+        assert delete_clothing(client, clothing_id, token).status_code == 204
+    if scenario in ("replay_closed", "closed"):
+        close_event(db, withdraw_context["event"]["event"]["id"], datetime.now(UTC))
+    if scenario == "confirmed":
+        set_status(db, clothing_id, "confirmed")
+    before = analysis_state(db, clothing_id)
+    assert before is not None
+    response = delete_clothing(client, clothing_id, token)
+    assert response.status_code == (204 if scenario.startswith("replay") else 409)
+    assert analysis_state(db, clothing_id) == before

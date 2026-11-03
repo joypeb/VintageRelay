@@ -398,7 +398,9 @@ class ClothingService:
                     "Cancel the confirmed exchange before withdrawing this garment."
                 )
             clothing.status = ClothingStatus.WITHDRAWN
-            clothing.updated_at = self.clock()
+            now = self.clock()
+            clothing.updated_at = now
+            analysis_repo.mark_failed(s, clothing.id, clothing.content_version, now)
             s.flush()
         logger.info(
             "clothing_withdrawn",
