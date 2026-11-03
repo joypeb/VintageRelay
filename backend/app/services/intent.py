@@ -15,6 +15,8 @@ from app.domain.errors import (
     ClothingNotAvailableError,
     EventClosedError,
     ForbiddenError,
+    IntentNotActiveError,
+    InternalError,
     NotFoundError,
 )
 from app.domain.matching import cycle_key, detect_cycles, is_suppressed
@@ -36,6 +38,8 @@ from app.schemas.intent import (
     IntentList,
     IntentOwner,
 )
+from app.schemas.proposal import Proposal
+from app.services import proposal as proposal_service
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +184,138 @@ class IntentService:
             "intent_withdrawn",
             extra={"intent_id": intent_id, "event_id": intent.event_id},
         )
+
+    def accept(self, participant: Participant, intent_id: str) -> Proposal:
+        pending_error: AppError | None = None
+        response: Proposal | None = None
+        proposal_id: str | None = None
+        with self.db.write() as s:
+            intent = intent_repo.get(s, intent_id)
+            if intent is None or intent.event_id != participant.event_id:
+                raise NotFoundError()
+            wanted = s.get(ClothingModel, intent.wanted_clothing_id)
+            if wanted is None:
+                raise NotFoundError()
+            is_sender = intent.participant_id == participant.id
+            is_receiver = wanted.owner_id == participant.id
+            if not is_sender and not is_receiver:
+                raise NotFoundError()
+            if not is_receiver:
+                raise ForbiddenError()
+            if intent.accepted_proposal_id is not None:
+                existing = s.get(TradeProposal, intent.accepted_proposal_id)
+                if existing is not None and existing.status in ("pending", "confirmed"):
+                    return proposal_service.to_schema(existing)
+            event = event_repo.get(s, intent.event_id)
+            if event is None:
+                raise NotFoundError()
+            if event.status == EventStatus.CLOSED:
+                raise EventClosedError()
+            if intent.status != "active":
+                raise IntentNotActiveError()
+            offered = s.get(ClothingModel, intent.offered_clothing_id)
+            if offered is None:
+                raise NotFoundError()
+            if (
+                offered.status == ClothingStatus.CONFIRMED
+                or wanted.status == ClothingStatus.CONFIRMED
+            ):
+                guilty = offered.id if offered.status == ClothingStatus.CONFIRMED else wanted.id
+                raise ClothingAlreadyConfirmedError(details={"clothingId": guilty})
+            if (
+                offered.status != ClothingStatus.AVAILABLE
+                or wanted.status != ClothingStatus.AVAILABLE
+            ):
+                guilty = offered.id if offered.status != ClothingStatus.AVAILABLE else wanted.id
+                raise ClothingNotAvailableError(details={"clothingId": guilty})
+            now = self.clock()
+            reverse = intent_repo.find_active_pair(
+                s, event.id, participant.id, wanted.id, offered.id
+            )
+            if reverse is None:
+                reverse = ExchangeIntent(
+                    id=self.intent_id_generator(),
+                    event_id=event.id,
+                    participant_id=participant.id,
+                    offered_clothing_id=wanted.id,
+                    wanted_clothing_id=offered.id,
+                    status="active",
+                    accepted_proposal_id=None,
+                    created_at=now,
+                    updated_at=now,
+                )
+                intent_repo.add(s, reverse)
+            intent.updated_at = now
+            reverse.updated_at = now
+            s.flush()
+            proposal = proposal_service.ensure_two_person_proposal(
+                s,
+                event.id,
+                intent.participant_id,
+                participant.id,
+                offered.id,
+                wanted.id,
+                {offered.id: offered, wanted.id: wanted},
+                now,
+            )
+            try:
+                proposal_service.try_confirm_if_unanimous(s, proposal, now)
+            except AppError as exc:
+                intent.accepted_proposal_id = proposal.id
+                s.flush()
+                pending_error = exc
+                proposal_id = proposal.id
+                response = None
+            else:
+                intent.accepted_proposal_id = proposal.id
+                s.flush()
+                response = proposal_service.to_schema(proposal)
+                proposal_id = proposal.id
+                pending_error = None
+        if pending_error is not None:
+            raise pending_error
+        if response is None or proposal_id is None:
+            raise InternalError()
+        logger.info(
+            "intent_accepted",
+            extra={"intent_id": intent_id, "proposal_id": proposal_id},
+        )
+        return response
+
+    def decline(self, participant: Participant, intent_id: str) -> Intent:
+        with self.db.write() as s:
+            intent = intent_repo.get(s, intent_id)
+            if intent is None or intent.event_id != participant.event_id:
+                raise NotFoundError()
+            wanted = s.get(ClothingModel, intent.wanted_clothing_id)
+            if wanted is None:
+                raise NotFoundError()
+            is_sender = intent.participant_id == participant.id
+            is_receiver = wanted.owner_id == participant.id
+            if not is_sender and not is_receiver:
+                raise NotFoundError()
+            if not is_receiver:
+                raise ForbiddenError()
+            event = event_repo.get(s, intent.event_id)
+            if event is None:
+                raise NotFoundError()
+            if intent.status == "declined":
+                return self._build_intent(s, intent, event)
+            if event.status == EventStatus.CLOSED:
+                raise EventClosedError()
+            if intent.status != "active":
+                raise IntentNotActiveError()
+            now = self.clock()
+            intent.status = "declined"
+            intent.updated_at = now
+            s.flush()
+            count = self._invalidate_dependents(s, intent, now)
+            response = self._build_intent(s, intent, event)
+        logger.info(
+            "intent_declined",
+            extra={"intent_id": intent_id, "invalidated_proposal_count": count},
+        )
+        return response
 
     def _invalidate_dependents(self, s: Session, intent: ExchangeIntent, now: datetime) -> int:
         stmt = (

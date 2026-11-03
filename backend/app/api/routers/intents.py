@@ -12,6 +12,7 @@ from app.api.deps import (
 )
 from app.api.errors import error_responses
 from app.schemas.intent import Intent, IntentCreate, IntentList
+from app.schemas.proposal import Proposal
 from app.services.intent import IntentService
 
 router = APIRouter(tags=["intents"])
@@ -99,3 +100,47 @@ def withdraw_intent(
     participant = get_token_participant(db, credentials)
     IntentService(db, settings).withdraw(participant, intent_id)
     return None
+
+
+@router.post(
+    "/intents/{intent_id}/accept",
+    operation_id="acceptIntent",
+    summary="Accept an exchange request",
+    response_model=Proposal,
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 403, 404, 409, 500),
+    },
+)
+def accept_intent(
+    intent_id: str,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Proposal:
+    participant = get_token_participant(db, credentials)
+    return IntentService(db, settings).accept(participant, intent_id)
+
+
+@router.post(
+    "/intents/{intent_id}/decline",
+    operation_id="declineIntent",
+    summary="Decline an exchange request",
+    response_model=Intent,
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 403, 404, 409, 500),
+    },
+)
+def decline_intent(
+    intent_id: str,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Intent:
+    participant = get_token_participant(db, credentials)
+    return IntentService(db, settings).decline(participant, intent_id)
