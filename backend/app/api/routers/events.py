@@ -21,7 +21,12 @@ from app.domain.enums import ClothingCategory, ClothingStatus, Ownership
 from app.schemas.clothing import Clothing, ClothingCreate, ClothingList, Measurements
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
-from app.schemas.search import MeasurementRange, SearchConditions, SearchResults
+from app.schemas.search import (
+    MeasurementRange,
+    SearchConditions,
+    SearchInterpretationRequest,
+    SearchResults,
+)
 from app.services.clothing import ClothingService
 from app.services.clothing_analysis import run_clothing_analysis
 from app.services.photo import PhotoService
@@ -268,3 +273,25 @@ def search_clothing(
     conditions: Annotated[SearchConditions, Depends(parse_search_conditions)],
 ) -> SearchResults:
     return SearchService(db, settings).search(event_id, me, conditions)
+
+
+@router.post(
+    "/{event_id}/search/interpretation",
+    operation_id="interpretSearch",
+    summary="Interpret search text",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 422, 503, 500),
+    },
+)
+def interpret_search(
+    event_id: str,
+    body: SearchInterpretationRequest,
+    me: CurrentParticipant,
+    db: DbDep,
+    settings: SettingsDep,
+    analyzer: Annotated[ClothingAnalyzer, Depends(get_analyzer)],
+) -> SearchConditions:
+    return SearchService(db, settings).interpret(event_id, me, body.text, analyzer)

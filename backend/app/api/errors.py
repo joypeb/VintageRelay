@@ -24,6 +24,7 @@ _ERROR_DESCRIPTIONS = {
     415: "File type not allowed.",
     422: "Field validation failed.",
     500: "A temporary error occurred.",
+    503: "Model API unavailable; use manual filters.",
 }
 
 

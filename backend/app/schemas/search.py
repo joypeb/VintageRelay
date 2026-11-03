@@ -20,7 +20,7 @@ class SearchConditions(ApiModel):
 
 
 class SearchInterpretationRequest(ApiModel):
-    text: str
+    text: str = Field(min_length=1, max_length=200)
 
 
 class SearchResultItem(ApiModel):
