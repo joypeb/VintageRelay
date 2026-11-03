@@ -164,18 +164,18 @@
 
 Frontend unit tests target pure logic + interaction contracts; layout verified manually + `/impeccable critique|audit`.
 
-- [ ] T026 [P] [US5] Failing frontend tests for intent/proposal API + mappers in frontend/src/lib/api/intents.test.ts, frontend/src/lib/api/proposals.test.ts, frontend/src/lib/api/query-keys.test.ts (eventId-first token selection for top-level paths; version passthrough unchanged; 409 `PROPOSAL_VERSION_MISMATCH` → modal data)
-- [ ] T027 [P] [US5] Failing tests for proposal grouping/sorting (newest-first) + badge counts per definition above in frontend/src/lib/trades.test.ts
-- [ ] T028 [P] [US5] Failing T2 interaction tests in frontend/src/components/trade/ProposalDetail.test.tsx (sends displayed version for consent/reject; shows conflict notice + reload on 409; disables consent when invalidated/closed or version changes via polling)
+- [x] T026 [P] [US5] Failing frontend tests for intent/proposal API + mappers in frontend/src/lib/api/intents.test.ts, frontend/src/lib/api/proposals.test.ts, frontend/src/lib/api/query-keys.test.ts (eventId-first token selection for top-level paths; version passthrough unchanged; 409 `PROPOSAL_VERSION_MISMATCH` → modal data)
+- [x] T027 [P] [US5] Failing tests for proposal grouping/sorting (newest-first) + badge counts per definition above in frontend/src/lib/trades.test.ts
+- [x] T028 [P] [US5] Failing T2 interaction tests in frontend/src/components/trade/ProposalDetail.test.tsx (sends displayed version for consent/reject; shows conflict notice + reload on 409; disables consent when invalidated/closed or version changes via polling)
 
 ### Implementation for US5
 
-- [ ] T029 [US5] Implement `lib/api/intents.ts`, `lib/api/proposals.ts`, `src/types/intent.ts`, `src/types/proposal.ts`, extend `query-keys.ts` + `mutationKeys` in frontend/src/lib/api/query-keys.ts (no direct fetch; `apiFetch(eventId, …)`; `retry: 0` on mutations; disable buttons while pending)
-- [ ] T030 [US5] Enable B3 Request exchange + I1 offer sheet (pick owned available garment; empty → Register item) + Withdraw in frontend/src/components/clothing/ClothingDetailScreen.tsx + new OfferSheet component (Astryx template-first; Next docs pattern; run `pnpm exec astryx doctor --built`)
-- [ ] T031 [US5] Implement T1 Trades Received/Sent/Exchanges segments in frontend/src/app/events/[eventId]/(tabs)/trades/page.tsx + frontend/src/components/trade/* and badge in frontend/src/components/ui/BottomTabBar.tsx (accept/decline/withdraw; polling 15s badge/lists; closed banner + disabled actions)
-- [ ] T032 [US5] Implement T2 `trades/[tradeId]` detail (cycle view, responses, version; Consent/Reject confirmations; 5s polling while pending; proposal-changed modal + reload; stop when terminal) — new route under frontend/src/app/events/[eventId]/trades/[tradeId]/page.tsx
-- [ ] T033 [US5] Implement C4 Requests section + related exchanges in frontend/src/components/clothing/MyItemDetailScreen.tsx and C2 edit invalidation warning in frontend/src/components/clothing/EditClothingForm.tsx
-- [ ] T034 [US5] Run `/impeccable critique` (or `audit`) on new/changed I1, T1, T2, C4 screens within Astryx rules and apply findings before review
+- [x] T029 [US5] Implement `lib/api/intents.ts`, `lib/api/proposals.ts`, `src/types/intent.ts`, `src/types/proposal.ts`, extend `query-keys.ts` + `mutationKeys` in frontend/src/lib/api/query-keys.ts (no direct fetch; `apiFetch(eventId, …)`; `retry: 0` on mutations; disable buttons while pending)
+- [x] T030 [US5] Enable B3 Request exchange + I1 offer sheet (pick owned available garment; empty → Register item) + Withdraw in frontend/src/components/clothing/ClothingDetailScreen.tsx + new OfferSheet component (Astryx template-first; Next docs pattern; run `pnpm exec astryx doctor --built`)
+- [x] T031 [US5] Implement T1 Trades Received/Sent/Exchanges segments in frontend/src/app/events/[eventId]/(tabs)/trades/page.tsx + frontend/src/components/trade/* and badge in frontend/src/components/ui/BottomTabBar.tsx (accept/decline/withdraw; polling 15s badge/lists; closed banner + disabled actions)
+- [x] T032 [US5] Implement T2 `trades/[tradeId]` detail (cycle view, responses, version; Consent/Reject confirmations; 5s polling while pending; proposal-changed modal + reload; stop when terminal) — new route under frontend/src/app/events/[eventId]/trades/[tradeId]/page.tsx
+- [x] T033 [US5] Implement C4 Requests section + related exchanges in frontend/src/components/clothing/MyItemDetailScreen.tsx and C2 edit invalidation warning in frontend/src/components/clothing/EditClothingForm.tsx
+- [x] T034 [US5] Run `/impeccable critique` (or `audit`) on new/changed I1, T1, T2, C4 screens within Astryx rules and apply findings before review
 
 **Checkpoint**: `cd frontend && pnpm lint && pnpm typecheck && pnpm test` green (+ `pnpm build` before PR); screenshots attached
 
