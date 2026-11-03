@@ -15,6 +15,7 @@ import {
   updateClothing,
   useClothingListQuery,
   useClothingQuery,
+  useMyItemsQuery,
 } from '@/lib/api/clothing';
 import { queryKeys } from '@/lib/api/query-keys';
 import { renderWithClient } from '@/test/render';
@@ -301,5 +302,157 @@ describe('clothing list keys', () => {
   it('includes ownership in the key', () => {
     expect(JSON.stringify(queryKeys.clothingList('e1', 'mine'))).toContain('mine');
     expect(JSON.stringify(queryKeys.clothingList('e1', 'others'))).toContain('others');
+  });
+});
+
+const pendingAnalysis = {
+  contentVersion: 1,
+  status: 'pending',
+  features: null,
+  uncertainties: [],
+  modelInfo: null,
+  updatedAt: '2026-11-04T00:00:00Z',
+};
+
+const doneAnalysis = {
+  contentVersion: 1,
+  status: 'done',
+  features: {
+    colors: ['green'],
+    pattern: 'solid',
+    materialEstimate: 'denim',
+    styleTags: ['vintage'],
+    visibleDetails: ['front zip'],
+    sizeLabel: 'M',
+  },
+  uncertainties: [{ aspect: 'logo', message: 'Check in person for a back logo.' }],
+  modelInfo: { modelId: 'muse-spark-1.3' },
+  updatedAt: '2026-11-04T00:01:00Z',
+};
+
+const failedAnalysis = {
+  contentVersion: 1,
+  status: 'failed',
+  features: null,
+  uncertainties: [],
+  modelInfo: null,
+  updatedAt: '2026-11-04T00:01:00Z',
+};
+
+describe('clothing analysis polling', () => {
+  it('polls detail every 5 seconds while analysis is pending', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ ...clothing, analysis: pendingAnalysis });
+    let query!: ReturnType<typeof useClothingQuery>;
+    function Probe() {
+      query = useClothingQuery('e1', 'c1');
+      return null;
+    }
+    vi.useFakeTimers();
+    const { unmount } = renderWithClient(createElement(Probe));
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(query.data).toEqual({ ...clothing, analysis: pendingAnalysis });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(3);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['done', doneAnalysis],
+    ['failed', failedAnalysis],
+    ['null', null],
+  ])('does not poll detail when analysis is %s', async (_label, analysis) => {
+    vi.mocked(apiFetch).mockResolvedValue({ ...clothing, analysis });
+    let query!: ReturnType<typeof useClothingQuery>;
+    function Probe() {
+      query = useClothingQuery('e1', 'c1');
+      return null;
+    }
+    vi.useFakeTimers();
+    const { unmount } = renderWithClient(createElement(Probe));
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(query.data).toEqual({ ...clothing, analysis });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300_000);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it('polls my items every 5 seconds while any item is pending', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      items: [{ ...clothing, analysis: pendingAnalysis }],
+      nextCursor: null,
+    });
+    let query!: ReturnType<typeof useMyItemsQuery>;
+    function Probe() {
+      query = useMyItemsQuery('e1');
+      return null;
+    }
+    vi.useFakeTimers();
+    const { unmount } = renderWithClient(createElement(Probe));
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(5000);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(2);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([
+    ['done', doneAnalysis],
+    ['failed', failedAnalysis],
+    ['null', null],
+  ])('does not poll my items when analysis is %s', async (_label, analysis) => {
+    vi.mocked(apiFetch).mockResolvedValue({
+      items: [{ ...clothing, analysis }],
+      nextCursor: null,
+    });
+    let query!: ReturnType<typeof useMyItemsQuery>;
+    function Probe() {
+      query = useMyItemsQuery('e1');
+      return null;
+    }
+    vi.useFakeTimers();
+    const { unmount } = renderWithClient(createElement(Probe));
+    try {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300_000);
+      });
+      expect(apiFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      unmount();
+      vi.useRealTimers();
+    }
   });
 });

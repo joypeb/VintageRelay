@@ -111,6 +111,8 @@ export function useMyItemsQuery(eventId: string, { enabled = true }: { enabled?:
     retry: shouldRetryClothingQuery,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) => item.analysis?.status === 'pending') ? 5000 : false,
   });
 }
 
@@ -126,6 +128,8 @@ export function useClothingQuery(
     retry: shouldRetryClothingQuery,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    refetchInterval: (query) =>
+      query.state.data?.analysis?.status === 'pending' ? 5000 : false,
   });
 }
 

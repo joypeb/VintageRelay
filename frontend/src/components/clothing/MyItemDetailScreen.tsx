@@ -14,6 +14,7 @@ import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
 import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { ApiError } from '@/lib/api/api-error';
@@ -203,6 +204,7 @@ export function MyItemDetailScreen({
             </Grid>
           </VStack>
         ) : null}
+        <EstimatedByAI analysis={clothing.analysis} />
         {locked ? (
           <Button label="Edit" size="lg" width="100%" isDisabled />
         ) : (

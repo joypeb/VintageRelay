@@ -12,6 +12,7 @@ import { Stack } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
+import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { useMyItemsQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
@@ -129,6 +130,9 @@ export function MyItemsList({ eventId }: { eventId: string }) {
                 )}
                 <Text type="body">{item.title}</Text>
                 <Badge label={statusLabel(item.status)} variant={statusVariant(item.status)} />
+                {item.analysis?.status === 'pending' ? (
+                  <EstimatedByAI analysis={item.analysis} />
+                ) : null}
               </Stack>
             }
           />
