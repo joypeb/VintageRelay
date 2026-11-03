@@ -230,4 +230,4 @@ Log `INFO` event `intent_declined` with `extra`: `intent_id`, `invalidated_propo
 
 ## Open Decisions
 
-- Whether active requests for a garment are invalidated when that garment is confirmed in another exchange (current rules only invalidate pending proposals).
+- None for v1: when a garment is confirmed elsewhere, only pending proposals are invalidated; other active requests stay active (decided 2026-11-03).

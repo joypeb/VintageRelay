@@ -1,82 +1,191 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { Heading } from '@astryxdesign/core/Heading';
+import { List, ListItem } from '@astryxdesign/core/List';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { Tab, TabList } from '@astryxdesign/core/TabList';
+import { Text } from '@astryxdesign/core/Text';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
+import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { useEventQuery } from '@/lib/api/events';
+import {
+  useAcceptIntentMutation,
+  useDeclineIntentMutation,
+  useIntentsQuery,
+  useWithdrawIntentMutation,
+} from '@/lib/api/intents';
+import { useProposalsQuery } from '@/lib/api/proposals';
 import { getEventScreenState, isClosed } from '@/lib/event';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
+import { groupProposals } from '@/lib/trades';
+import type { Intent } from '@/types/intent';
+import type { Proposal } from '@/types/proposal';
 
 export type TradeTab = 'received' | 'sent' | 'exchanges';
 
-type TabCopy = {
-  label: string;
-  panelLabel: string;
-  title: string;
-  description: string;
-  ctaLabel: string;
-  ctaHref: (eventId: string) => string;
-};
+const TABS: TradeTab[] = ['received', 'sent', 'exchanges'];
 
-const TAB_COPY: Record<TradeTab, TabCopy> = {
-  received: {
-    label: 'Received',
-    panelLabel: 'Received requests',
-    title: 'No requests yet',
-    description:
-      'Requests arrive here when another participant picks one of your items and offers one of theirs. Each exchange is 1-for-1: you give one item and receive one. Nothing is confirmed until every participant consents.',
-    ctaLabel: 'Register item',
-    ctaHref: routes.newItem,
-  },
-  sent: {
-    label: 'Sent',
-    panelLabel: 'Sent requests',
-    title: 'No sent requests yet',
-    description:
-      'Browse clothes and send a request by offering one of your items. Each exchange is 1-for-1 and needs every participant’s consent before it is confirmed.',
-    ctaLabel: 'Browse clothes',
-    ctaHref: routes.search,
-  },
-  exchanges: {
-    label: 'Exchanges',
-    panelLabel: 'Exchanges',
-    title: 'No exchanges yet',
-    description:
-      'Accepted requests become proposals here. An exchange is confirmed only when every participant consents. Consent is not handover — hand items over in person at the event.',
-    ctaLabel: 'Register item',
-    ctaHref: routes.newItem,
-  },
-};
+function intentStatusLabel(intent: Intent): string {
+  if (intent.status === 'active') {
+    return intent.acceptedProposalId !== null ? 'Accepted' : 'Waiting';
+  }
+  if (intent.status === 'declined') return 'Declined';
+  if (intent.status === 'withdrawn') return 'Withdrawn';
+  return 'Invalidated';
+}
+
+function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Intent; closed: boolean }) {
+  const accept = useAcceptIntentMutation(eventId, intent.id);
+  const decline = useDeclineIntentMutation(eventId, intent.id);
+  const [error, setError] = useState<string | null>(null);
+  const actionable = intent.status === 'active' && !closed;
+
+  async function handleAccept() {
+    setError(null);
+    try {
+      await accept.mutateAsync();
+    } catch (err) {
+      setError(getFormErrorMessage(err));
+    }
+  }
+
+  async function handleDecline() {
+    setError(null);
+    try {
+      await decline.mutateAsync();
+    } catch (err) {
+      setError(getFormErrorMessage(err));
+    }
+  }
+
+  return (
+    <VStack gap={2}>
+      <ListItem
+        label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
+        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent)}`}
+      />
+      {error !== null ? (
+        <Text type="body" as="p">
+          <span role="alert">{error}</span>
+        </Text>
+      ) : null}
+      {actionable ? (
+        <VStack gap={2}>
+          <Button
+            label="Accept"
+            size="md"
+            width="100%"
+            isLoading={accept.isPending}
+            isDisabled={accept.isPending || decline.isPending}
+            onClick={() => void handleAccept()}
+          />
+          <Button
+            label="Decline"
+            variant="destructive"
+            size="md"
+            width="100%"
+            isLoading={decline.isPending}
+            isDisabled={accept.isPending || decline.isPending}
+            onClick={() => void handleDecline()}
+          />
+        </VStack>
+      ) : null}
+    </VStack>
+  );
+}
+
+function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent; closed: boolean }) {
+  const withdraw = useWithdrawIntentMutation(eventId, intent.id);
+  const [error, setError] = useState<string | null>(null);
+  const actionable = intent.status === 'active' && !closed;
+
+  async function handleWithdraw() {
+    setError(null);
+    try {
+      await withdraw.mutateAsync();
+    } catch (err) {
+      setError(getFormErrorMessage(err));
+    }
+  }
+
+  return (
+    <VStack gap={2}>
+      <ListItem
+        label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
+        description={intentStatusLabel(intent)}
+      />
+      {error !== null ? (
+        <Text type="body" as="p">
+          <span role="alert">{error}</span>
+        </Text>
+      ) : null}
+      {actionable ? (
+        <Button
+          label={withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
+          size="md"
+          width="100%"
+          isLoading={withdraw.isPending}
+          isDisabled={withdraw.isPending}
+          onClick={() => void handleWithdraw()}
+        />
+      ) : null}
+    </VStack>
+  );
+}
+
+function ProposalRow({ eventId, proposal }: { eventId: string; proposal: Proposal }) {
+  const summary = proposal.participants
+    .map((p) => `${p.participant.displayName} gives ${p.offeredClothing.title}`)
+    .join(' · ');
+  return (
+    <ListItem
+      label={`Version ${proposal.version} · ${proposal.status}`}
+      description={`${summary} · Your response: ${proposal.myResponse}`}
+      href={routes.tradeDetail(eventId, proposal.id)}
+    />
+  );
+}
 
 const subscribe = () => () => {};
 
 export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: TradeTab }) {
-  // localStorage is unavailable during SSR, so read the session only after mount.
-  const isMounted = useSyncExternalStore(
-    subscribe,
-    () => true,
-    () => false,
-  );
+  const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
   const hasSession = isMounted && hasEventSession(eventId);
-  const { data, error, isPending, isFetching, refetch } = useEventQuery(eventId, {
+  const eventQuery = useEventQuery(eventId, { enabled: hasSession });
+  const eventClosed = eventQuery.data?.status === 'closed';
+  const receivedQuery = useIntentsQuery(eventId, {
+    direction: 'received',
+    status: ['active', 'declined', 'withdrawn', 'invalidated'],
     enabled: hasSession,
+    closed: eventClosed,
   });
+  const sentQuery = useIntentsQuery(eventId, {
+    direction: 'sent',
+    status: ['active', 'declined', 'withdrawn', 'invalidated'],
+    enabled: hasSession,
+    closed: eventClosed,
+  });
+  const proposalsQuery = useProposalsQuery(eventId, { enabled: hasSession, closed: eventClosed });
 
   if (!isMounted) return null;
 
-  const state = getEventScreenState({ hasSession, data, error, isPending });
+  const state = getEventScreenState({
+    hasSession,
+    data: eventQuery.data,
+    error: eventQuery.error,
+    isPending: eventQuery.isPending,
+  });
 
   if (state.kind === 'loading') {
     return (
-      // Astryx layout components don't forward aria attributes, so a minimal element marks the busy region.
       <section aria-busy="true" aria-label="Loading trades">
         <VStack gap={4} padding={6}>
           <Skeleton width="70%" height={32} />
@@ -96,45 +205,151 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
       <EventScreenStatus
         kind="error"
         message={state.message}
-        isLoading={isFetching}
-        onRetry={() => void refetch()}
+        isLoading={eventQuery.isFetching}
+        onRetry={() => void eventQuery.refetch()}
       />
     );
   }
 
   const closed = isClosed(state.event);
-
-  const copy = TAB_COPY[tab];
   const tabHref = (value: TradeTab) => `${routes.trades(eventId)}?tab=${value}`;
+
+  function renderPanel() {
+    if (tab === 'received') {
+      if (receivedQuery.isPending) return <Text type="body">Loading requests…</Text>;
+      if (receivedQuery.error) {
+        return (
+          <VStack gap={2}>
+            <Text type="body" as="p">
+              <span role="alert">{getFormErrorMessage(receivedQuery.error)}</span>
+            </Text>
+            <Button label="Retry" size="lg" width="100%" onClick={() => void receivedQuery.refetch()} />
+          </VStack>
+        );
+      }
+      const items = receivedQuery.data?.items ?? [];
+      if (items.length === 0) {
+        return (
+          <EmptyState
+            title="No requests yet"
+            description="Requests arrive here when another participant picks one of your items and offers one of theirs. Each exchange is 1-for-1: you give one item and receive one. Nothing is confirmed until every participant consents."
+            headingLevel={1}
+            actions={closed ? undefined : <Button label="Register item" size="lg" href={routes.newItem(eventId)} />}
+          />
+        );
+      }
+      return (
+        <List header={<Heading level={2}>Received requests</Heading>} hasDividers>
+          {items.map((intent) => (
+            <ReceivedRow key={intent.id} eventId={eventId} intent={intent} closed={closed} />
+          ))}
+        </List>
+      );
+    }
+    if (tab === 'sent') {
+      if (sentQuery.isPending) return <Text type="body">Loading requests…</Text>;
+      if (sentQuery.error) {
+        return (
+          <VStack gap={2}>
+            <Text type="body" as="p">
+              <span role="alert">{getFormErrorMessage(sentQuery.error)}</span>
+            </Text>
+            <Button label="Retry" size="lg" width="100%" onClick={() => void sentQuery.refetch()} />
+          </VStack>
+        );
+      }
+      const items = sentQuery.data?.items ?? [];
+      if (items.length === 0) {
+        return (
+          <EmptyState
+            title="No sent requests yet"
+            description="Browse clothes and send a request by offering one of your items. Each exchange is 1-for-1 and needs every participant’s consent before it is confirmed."
+            headingLevel={1}
+            actions={closed ? undefined : <Button label="Browse clothes" size="lg" href={routes.search(eventId)} />}
+          />
+        );
+      }
+      return (
+        <List header={<Heading level={2}>Sent requests</Heading>} hasDividers>
+          {items.map((intent) => (
+            <SentRow key={intent.id} eventId={eventId} intent={intent} closed={closed} />
+          ))}
+        </List>
+      );
+    }
+    if (proposalsQuery.isPending) return <Text type="body">Loading exchanges…</Text>;
+    if (proposalsQuery.error) {
+      return (
+        <VStack gap={2}>
+          <Text type="body" as="p">
+            <span role="alert">{getFormErrorMessage(proposalsQuery.error)}</span>
+          </Text>
+          <Button label="Retry" size="lg" width="100%" onClick={() => void proposalsQuery.refetch()} />
+        </VStack>
+      );
+    }
+    const grouped = groupProposals(proposalsQuery.data?.items ?? []);
+    const total =
+      grouped.awaitingMyConsent.length +
+      grouped.threePersonFound.length +
+      grouped.confirmed.length +
+      grouped.history.length;
+    if (total === 0) {
+      return (
+        <EmptyState
+          title="No exchanges yet"
+          description="Accepted requests become proposals here. An exchange is confirmed only when every participant consents. Consent is not handover — hand items over in person at the event."
+          headingLevel={1}
+          actions={closed ? undefined : <Button label="Register item" size="lg" href={routes.newItem(eventId)} />}
+        />
+      );
+    }
+    return (
+      <VStack gap={4}>
+        {grouped.awaitingMyConsent.length > 0 ? (
+          <List header={<Heading level={2}>Awaiting my consent</Heading>} hasDividers>
+            {grouped.awaitingMyConsent.map((proposal) => (
+              <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
+            ))}
+          </List>
+        ) : null}
+        {grouped.threePersonFound.length > 0 ? (
+          <List header={<Heading level={2}>3-person found</Heading>} hasDividers>
+            {grouped.threePersonFound.map((proposal) => (
+              <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
+            ))}
+          </List>
+        ) : null}
+        {grouped.confirmed.length > 0 ? (
+          <List header={<Heading level={2}>Confirmed</Heading>} hasDividers>
+            {grouped.confirmed.map((proposal) => (
+              <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
+            ))}
+          </List>
+        ) : null}
+        {grouped.history.length > 0 ? (
+          <List header={<Heading level={2}>History</Heading>} hasDividers>
+            {grouped.history.map((proposal) => (
+              <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
+            ))}
+          </List>
+        ) : null}
+      </VStack>
+    );
+  }
 
   return (
     <VStack gap={4} padding={6}>
-      {/* Link navigation drives the selected value from the ?tab= query param.
-          Tabs render as anchors, so selection never fires onChange and the noop is safe. */}
       <TabList value={tab} onChange={() => undefined} layout="fill" size="lg">
-        <Tab value="received" label="Received" href={tabHref('received')} />
-        <Tab value="sent" label="Sent" href={tabHref('sent')} />
-        <Tab value="exchanges" label="Exchanges" href={tabHref('exchanges')} />
+        {TABS.map((value) => (
+          <Tab key={value} value={value} label={value === 'exchanges' ? 'Exchanges' : value === 'received' ? 'Received' : 'Sent'} href={tabHref(value)} />
+        ))}
       </TabList>
       {closed && (
-        <Banner
-          status="warning"
-          title="This event has ended."
-          description="Trades are read-only."
-        />
+        <Banner status="warning" title="This event has ended." description="Trades are read-only." />
       )}
-      {/* Astryx layout components don't forward aria attributes, so a minimal element labels the panel. */}
-      <section aria-label={copy.panelLabel}>
-        <EmptyState
-          title={copy.title}
-          description={copy.description}
-          headingLevel={1}
-          actions={
-            closed ? undefined : (
-              <Button label={copy.ctaLabel} size="lg" href={copy.ctaHref(eventId)} />
-            )
-          }
-        />
+      <section aria-label={tab === 'received' ? 'Received requests' : tab === 'sent' ? 'Sent requests' : 'Exchanges'}>
+        {renderPanel()}
       </section>
     </VStack>
   );

@@ -171,6 +171,7 @@ export function EditClothingForm({
   return (
     <VStack gap={4} padding={6}>
       <Heading level={1}>Edit item</Heading>
+      <Text type="body">Editing this item invalidates its unconfirmed proposals. Confirmed exchanges stay as they are.</Text>
       <Text type="body">Photos (view only in this version)</Text>
       {data.photos.map((photo, index) => (
         <img key={photo.id} src={photo.url} alt={`${data.title} photo ${index + 1}`} />

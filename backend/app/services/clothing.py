@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.db import Db
@@ -17,11 +18,15 @@ from app.domain.errors import (
     NotFoundError,
     PhotoAlreadyAttachedError,
 )
+from app.domain.matching import cycle_key, detect_cycles, is_suppressed
 from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
 from app.models.clothing_analysis import ClothingAnalysis as ClothingAnalysisModel
+from app.models.exchange_intent import ExchangeIntent
 from app.models.participant import Participant
 from app.models.photo import Photo as PhotoModel
+from app.models.trade_participant import TradeParticipant
+from app.models.trade_proposal import TradeProposal
 from app.repositories import clothing as clothing_repo
 from app.repositories import clothing_analysis as analysis_repo
 from app.repositories import event as event_repo
@@ -55,6 +60,197 @@ def _to_analysis_schema(row: ClothingAnalysisModel | None) -> ClothingAnalysisSc
             "updated_at": row.updated_at,
         }
     )
+
+
+def _invalidate_pending_for_clothing(
+    s: Session, event_id: str, clothing_id: str, end_reason: str, now: datetime
+) -> int:
+    proposals = list(
+        s.scalars(
+            select(TradeProposal)
+            .join(TradeParticipant, TradeParticipant.proposal_id == TradeProposal.id)
+            .where(
+                TradeProposal.event_id == event_id,
+                TradeProposal.status == "pending",
+                (
+                    (TradeParticipant.offered_clothing_id == clothing_id)
+                    | (TradeParticipant.received_clothing_id == clothing_id)
+                ),
+            )
+        )
+    )
+    seen: set[str] = set()
+    count = 0
+    for proposal in proposals:
+        if proposal.id in seen:
+            continue
+        seen.add(proposal.id)
+        proposal.status = "invalidated"
+        proposal.end_reason = end_reason
+        proposal.ended_at = now
+        count += 1
+    if count:
+        s.flush()
+    return count
+
+
+def _invalidate_active_intents_for_clothing(
+    s: Session, event_id: str, clothing_id: str, now: datetime
+) -> int:
+    intents = list(
+        s.scalars(
+            select(ExchangeIntent).where(
+                ExchangeIntent.event_id == event_id,
+                ExchangeIntent.status == "active",
+                (
+                    (ExchangeIntent.offered_clothing_id == clothing_id)
+                    | (ExchangeIntent.wanted_clothing_id == clothing_id)
+                ),
+            )
+        )
+    )
+    for intent in intents:
+        intent.status = "invalidated"
+        intent.updated_at = now
+    if intents:
+        s.flush()
+    return len(intents)
+
+
+def _is_suppressed_cycle(
+    s: Session,
+    latest: TradeProposal,
+    cycle: list[tuple[str, str, str]],
+    leg_to_intent: dict[tuple[str, str, str], ExchangeIntent],
+    clothes: dict[str, ClothingModel],
+) -> bool:
+    if latest.ended_at is None:
+        return False
+    ordered = sorted(cycle)
+    intent_ats: list[datetime] = []
+    current_versions: list[int] = []
+    for leg in ordered:
+        intent = leg_to_intent.get(leg)
+        clothing = clothes.get(leg[1])
+        if intent is None or clothing is None:
+            return False
+        intent_ats.append(intent.updated_at)
+        current_versions.append(clothing.content_version)
+    parts = list(
+        s.scalars(select(TradeParticipant).where(TradeParticipant.proposal_id == latest.id))
+    )
+    parts_sorted = sorted(parts, key=lambda p: p.participant_id)
+    proposal_versions = [p.offered_content_version for p in parts_sorted]
+    return is_suppressed(
+        latest.status,
+        latest.ended_at,
+        intent_ats,
+        current_versions,
+        proposal_versions,
+    )
+
+
+def _recalculate_cycles_for_clothing(
+    s: Session, event_id: str, clothing_id: str, now: datetime
+) -> None:
+    active = list(
+        s.scalars(
+            select(ExchangeIntent).where(
+                ExchangeIntent.event_id == event_id,
+                ExchangeIntent.status == "active",
+            )
+        )
+    )
+    if len(active) < 2:
+        return
+    clothing_ids = {
+        c for intent in active for c in (intent.offered_clothing_id, intent.wanted_clothing_id)
+    }
+    clothes: dict[str, ClothingModel] = (
+        {
+            row.id: row
+            for row in s.scalars(select(ClothingModel).where(ClothingModel.id.in_(clothing_ids)))
+        }
+        if clothing_ids
+        else {}
+    )
+    legs: list[tuple[str, str, str]] = []
+    leg_to_intent: dict[tuple[str, str, str], ExchangeIntent] = {}
+    for intent in active:
+        offered = clothes.get(intent.offered_clothing_id)
+        wanted = clothes.get(intent.wanted_clothing_id)
+        if offered is None or wanted is None:
+            continue
+        if offered.status != ClothingStatus.AVAILABLE or wanted.status != ClothingStatus.AVAILABLE:
+            continue
+        leg = (
+            intent.participant_id,
+            intent.offered_clothing_id,
+            intent.wanted_clothing_id,
+        )
+        legs.append(leg)
+        leg_to_intent.setdefault(leg, intent)
+    for cycle in detect_cycles(legs):
+        if clothing_id not in {c for _, o, w in cycle for c in (o, w)}:
+            continue
+        key = cycle_key(cycle)
+        pending = s.scalar(
+            select(TradeProposal).where(
+                TradeProposal.event_id == event_id,
+                TradeProposal.cycle_key == key,
+                TradeProposal.status == "pending",
+            )
+        )
+        if pending is not None:
+            continue
+        latest = s.scalar(
+            select(TradeProposal)
+            .where(
+                TradeProposal.event_id == event_id,
+                TradeProposal.cycle_key == key,
+            )
+            .order_by(TradeProposal.version.desc())
+        )
+        if (
+            latest is not None
+            and latest.status in ("rejected", "cancelled")
+            and latest.ended_at is not None
+            and _is_suppressed_cycle(s, latest, cycle, leg_to_intent, clothes)
+        ):
+            continue
+        version = latest.version + 1 if latest is not None else 1
+        proposal = TradeProposal(
+            id=str(uuid4()),
+            event_id=event_id,
+            version=version,
+            status="pending",
+            end_reason=None,
+            cycle_key=key,
+            created_at=now,
+            confirmed_at=None,
+            cancelled_at=None,
+            ended_at=None,
+        )
+        s.add(proposal)
+        s.flush()
+        for leg in cycle:
+            offered_clothing = clothes.get(leg[1])
+            if offered_clothing is None:
+                continue
+            s.add(
+                TradeParticipant(
+                    id=str(uuid4()),
+                    proposal_id=proposal.id,
+                    participant_id=leg[0],
+                    offered_clothing_id=leg[1],
+                    offered_content_version=offered_clothing.content_version,
+                    received_clothing_id=leg[2],
+                    response="pending",
+                    responded_at=None,
+                    is_confirmed=False,
+                )
+            )
+        s.flush()
 
 
 class ClothingService:
@@ -356,6 +552,10 @@ class ClothingService:
             clothing.content_version += 1
             clothing.updated_at = now
             s.flush()
+            invalidated_proposal_count = _invalidate_pending_for_clothing(
+                s, clothing.event_id, clothing.id, "clothing_changed", now
+            )
+            _recalculate_cycles_for_clothing(s, clothing.event_id, clothing.id, now)
             analysis_row = analysis_repo.replace_pending(
                 s, clothing.id, clothing.content_version, now
             )
@@ -374,7 +574,7 @@ class ClothingService:
                 "content_version": clothing.content_version,
                 "changed_fields": changed_fields,
                 "photo_count": len(ordered_photos),
-                "invalidated_proposal_count": 0,
+                "invalidated_proposal_count": invalidated_proposal_count,
             },
         )
         return response, True
@@ -402,12 +602,21 @@ class ClothingService:
             clothing.updated_at = now
             analysis_repo.mark_failed(s, clothing.id, clothing.content_version, now)
             s.flush()
+            invalidated_intent_count = _invalidate_active_intents_for_clothing(
+                s, clothing.event_id, clothing.id, now
+            )
+            invalidated_proposal_count = _invalidate_pending_for_clothing(
+                s, clothing.event_id, clothing.id, "clothing_withdrawn", now
+            )
+            # shortcut: no recalculation — the withdrawn garment cannot form new
+            # cycles (no active intents, clothes unavailable), so invalidation
+            # alone suffices. Revisit if withdrawn garments become restorable.
         logger.info(
             "clothing_withdrawn",
             extra={
                 "clothing_id": clothing.id,
-                "invalidated_intent_count": 0,
-                "invalidated_proposal_count": 0,
+                "invalidated_intent_count": invalidated_intent_count,
+                "invalidated_proposal_count": invalidated_proposal_count,
             },
         )
 
