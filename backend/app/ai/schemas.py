@@ -67,7 +67,7 @@ class AnalysisResult(BaseModel):
     material_estimate: str | None
     style_tags: list[str]
     visible_details: list[str]
-    size_label: str | None = None
+    size_label: str | None
     uncertainties: list[Uncertainty]
 
     @field_validator("colors", mode="before")

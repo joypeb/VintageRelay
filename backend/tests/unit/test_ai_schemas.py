@@ -152,11 +152,15 @@ def test_size_label_is_nullable():
     assert AnalysisResult(**_valid_payload(size_label=None)).size_label is None
     assert AnalysisResult(**_valid_payload(size_label="M")).size_label == "M"
 
+    assert AnalysisResult(**_valid_payload(size_label="")).size_label is None
+
+
+def test_missing_size_label_is_rejected():
     payload = _valid_payload()
     del payload["size_label"]
-    assert AnalysisResult(**payload).size_label is None
 
-    assert AnalysisResult(**_valid_payload(size_label="")).size_label is None
+    with pytest.raises(ValidationError):
+        AnalysisResult(**payload)
 
 
 def test_extra_keys_are_rejected_by_strict_flat_schema():
@@ -173,3 +177,11 @@ def test_extra_keys_are_rejected_by_strict_flat_schema():
 
     with pytest.raises(ValidationError):
         AnalysisResult(**_valid_payload(price_estimate="expensive"))
+
+
+def test_json_schema_requires_every_property_for_strict_mode():
+    # Meta strict json_schema rejects any property missing from "required" (400).
+    schema = AnalysisResult.model_json_schema()
+    assert set(schema["required"]) == set(schema["properties"])
+    for definition in schema.get("$defs", {}).values():
+        assert set(definition["required"]) == set(definition["properties"])
