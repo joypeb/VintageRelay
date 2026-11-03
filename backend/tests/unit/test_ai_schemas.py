@@ -86,6 +86,14 @@ def test_unknown_colors_are_dropped_and_empty_colors_allowed():
     assert list(AnalysisResult(**_valid_payload(colors=[])).colors) == []
 
 
+def test_colors_capped_to_first_three_in_order():
+    result = AnalysisResult(
+        **_valid_payload(colors=["red", "green", "blue", "black"])
+    )
+
+    assert list(result.colors) == ["red", "green", "blue"]
+
+
 def test_unknown_pattern_is_rejected_and_null_allowed():
     for pattern in sorted(PATTERNS):
         assert AnalysisResult(**_valid_payload(pattern=pattern)).pattern == pattern

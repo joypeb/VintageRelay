@@ -75,11 +75,12 @@ class AnalysisResult(BaseModel):
     def _drop_unknown_colors(cls, value: object) -> object:
         if not isinstance(value, list):
             return value
-        return [
+        kept = [
             color.strip().lower()
             for color in value
             if isinstance(color, str) and color.strip().lower() in COLOR_VOCABULARY
         ]
+        return kept[:3]
 
     @field_validator("style_tags", mode="before")
     @classmethod
