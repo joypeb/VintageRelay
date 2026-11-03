@@ -59,10 +59,10 @@ This is the largest feature. If the plan exceeds one reviewable PR, split Spec K
 - Consent must match the current proposal version; confirmation is exclusive per garment and serialized.
 - Alternative suggestions stay deferred.
 
-## 6. Open Questions for Clarify
+## 6. Open Questions for Clarify (resolved 2026-11-03)
 
-- When a garment is confirmed elsewhere, also invalidate its other active requests, or only pending proposals (API 09 open decision)?
-- Ordering of proposals in T1 Exchanges (open decision; draft uses newest first).
+- Only pending proposals are invalidated on confirm-elsewhere; active requests stay.
+- T1 Exchanges ordering is newest first.
 
 ## 7. Spec Kit Run
 

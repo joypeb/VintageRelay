@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from 'react';
 
+import { Skeleton } from '@astryxdesign/core/Skeleton';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
@@ -24,9 +25,13 @@ export function TradeDetailScreen({ eventId, tradeId }: { eventId: string; trade
   const state = getEventScreenState({ hasSession, data, error, isPending });
   if (state.kind === 'loading') {
     return (
-      <VStack gap={4} padding={6}>
-        <EventScreenStatus kind="error" message="Loading…" isLoading={isFetching} onRetry={() => void refetch()} />
-      </VStack>
+      <section aria-busy="true" aria-label="Loading trade">
+        <VStack gap={4} padding={6}>
+          <Skeleton width="70%" height={32} />
+          <Skeleton width="30%" height={24} />
+          <Skeleton height={72} />
+        </VStack>
+      </section>
     );
   }
   if (state.kind === 'no-access' || state.kind === 'not-found') {

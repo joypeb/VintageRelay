@@ -397,7 +397,7 @@ export function MyItemDetailScreen({
         <DialogHeader title="Delete this item?" />
         <VStack gap={4} padding={6}>
           <Text type="body">
-            {`Remove "${clothing.title}" from the exchange corner? This can't be undone. Pending requests are unaffected in this version.`}
+            {`Remove "${clothing.title}" from the exchange corner? This can't be undone. Active requests and pending proposals for this item will be invalidated.`}
           </Text>
           {deleteMutation.error && (
             // Banner doesn't create a live region, so a wrapper announces the error.

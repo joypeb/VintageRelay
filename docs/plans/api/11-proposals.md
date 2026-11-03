@@ -79,7 +79,7 @@ Lists proposals **in which the caller participates**.
 
 ### Response — `200 OK`
 
-`{ "items": [Proposal], "nextCursor": null }`. Ordering is undecided; this draft uses `createdAt` descending.
+`{ "items": [Proposal], "nextCursor": null }`. Ordering is `createdAt` descending (decided for v1, 2026-11-03).
 
 ### Errors
 
@@ -141,6 +141,5 @@ Returns one proposal (T2, T3).
 
 ## Open Decisions
 
-- Ordering among multiple proposals.
 - Preserving the clothing content shown at confirmation (`ClothingSummary` currently reflects live data).
 - Retention of non-pending proposal history.
