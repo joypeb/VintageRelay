@@ -141,12 +141,12 @@
 
 ### Tests for retrofits (REQUIRED — write first) ⚠️
 
-- [ ] T023 [P] [US4] Failing retrofit tests in backend/tests/api/test_retrofits_020.py (07 PATCH steps 6–7, DELETE steps 6–7, 03 close `event_closed`, permission matrix, closure rejections + replay matrix)
-- [ ] T024 [P] [US4] Failing event-stats test for real `confirmedExchangeCount` after confirm and after closure in backend/tests/api/test_event_stats_confirmed.py
+- [x] T023 [P] [US4] Failing retrofit tests in backend/tests/api/test_retrofits_020.py (07 PATCH steps 6–7, DELETE steps 6–7, 03 close `event_closed`, permission matrix, closure rejections + replay matrix)
+- [x] T024 [P] [US4] Failing event-stats test for real `confirmedExchangeCount` after confirm and after closure in backend/tests/api/test_event_stats_confirmed.py
 
 ### Implementation for retrofits
 
-- [ ] T025 [US4] Retrofit clothing edit/withdraw invalidation + recalculation in backend/app/services/clothing.py and event-close pending invalidation in backend/app/services/event.py (same transactions; keep confirmed checks; real `invalidated_*_count` logs) + confirmed-proposal counting in `EventService._read` (replace `TODO(feature 06/11)` zero)
+- [x] T025 [US4] Retrofit clothing edit/withdraw invalidation + recalculation in backend/app/services/clothing.py and event-close pending invalidation in backend/app/services/event.py (same transactions; keep confirmed checks; real `invalidated_*_count` logs) + confirmed-proposal counting in `EventService._read` (replace `TODO(feature 06/11)` zero)
 
 **Checkpoint**: Full backend suite green: `cd backend && uv run ruff format --check . && uv run ruff check . && uv run mypy app && uv run pytest`
 
