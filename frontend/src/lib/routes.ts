@@ -13,6 +13,8 @@ export const routes = {
     `/events/${encodeURIComponent(eventId)}/my-items/${encodeURIComponent(clothingId)}`,
   myItemEdit: (eventId: string, clothingId: string) =>
     `/events/${encodeURIComponent(eventId)}/my-items/${encodeURIComponent(clothingId)}/edit`,
-  itemDetail: (eventId: string, clothingId: string) =>
-    `/events/${encodeURIComponent(eventId)}/items/${encodeURIComponent(clothingId)}`,
+  itemDetail: (eventId: string, clothingId: string, from?: string) =>
+    from === undefined || from === ''
+      ? `/events/${encodeURIComponent(eventId)}/items/${encodeURIComponent(clothingId)}`
+      : `/events/${encodeURIComponent(eventId)}/items/${encodeURIComponent(clothingId)}?from=${encodeURIComponent(from)}`,
 } as const;

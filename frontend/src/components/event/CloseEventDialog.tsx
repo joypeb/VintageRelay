@@ -35,6 +35,7 @@ export function CloseEventDialog({
           Closing ends the exchange corner for everyone. Participants can no longer register clothes
           or make exchanges. This can&apos;t be undone.
         </Text>
+        <Text type="body">You can still browse items and confirmed exchanges.</Text>
         {errorMessage && (
           // Banner doesn't create a live region, so a wrapper announces the error.
           <div role="alert">

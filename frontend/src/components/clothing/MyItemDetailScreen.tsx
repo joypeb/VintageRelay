@@ -215,10 +215,15 @@ export function MyItemDetailScreen({
         ) : null}
         {isWithdrawn ? null : (
           <>
-            {isConfirmed ? (
+            {isClosed === true ? (
               <Text type="body">
-                This item is locked for an exchange. To cancel it, go to Trades and cancel the
-                exchange first.
+                This event has ended. You can still browse items and confirmed exchanges.
+              </Text>
+            ) : null}
+            {isConfirmed && isClosed !== true ? (
+              <Text type="body">
+                This item is locked for an exchange. To cancel it, go to Trades &gt; Exchanges and
+                cancel the exchange first.
               </Text>
             ) : null}
             {locked ? (

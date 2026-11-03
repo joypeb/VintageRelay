@@ -35,12 +35,57 @@ const MEASUREMENT_ORDER: MeasurementField[] = [
 
 const subscribe = () => () => {};
 
+// Anchored so /events/{id}/search-anything cannot pass as a same-event search return.
+function isSameEventSearchRef(value: string, searchPath: string): boolean {
+  return (
+    value === searchPath ||
+    value.startsWith(`${searchPath}?`) ||
+    value.startsWith(`${searchPath}#`) ||
+    value.startsWith(`${searchPath}/`)
+  );
+}
+
+function resolveBackHref(eventId: string, from: string | null | undefined): string {
+  const searchPath = routes.search(eventId);
+  const candidates: Array<string | null | undefined> = [from];
+  if (typeof window !== 'undefined') {
+    try {
+      candidates.push(new URLSearchParams(window.location.search).get('from'));
+    } catch {
+      // ignore malformed query strings
+    }
+  }
+  for (const candidate of candidates) {
+    if (candidate === null || candidate === undefined || candidate === '') continue;
+    if (candidate === 'search') return searchPath;
+    let decoded = candidate;
+    try {
+      decoded = decodeURIComponent(candidate);
+    } catch {
+      // keep the raw value when decoding fails
+    }
+    if (isSameEventSearchRef(decoded, searchPath)) return decoded;
+  }
+  if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.referrer !== '') {
+    try {
+      const url = new URL(document.referrer);
+      const ref = `${url.pathname}${url.search}`;
+      if (isSameEventSearchRef(ref, searchPath)) return ref;
+    } catch {
+      // ignore malformed referrers
+    }
+  }
+  return routes.eventHome(eventId);
+}
+
 export function ClothingDetailScreen({
   eventId,
   clothingId,
+  from,
 }: {
   eventId: string;
   clothingId: string;
+  from?: string;
 }) {
   // localStorage is unavailable during SSR, so read the session only after mount.
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
@@ -116,7 +161,7 @@ export function ClothingDetailScreen({
   return (
     <VStack gap={6} padding={6}>
       <Link
-        href={routes.eventHome(eventId)}
+        href={resolveBackHref(eventId, from)}
         isStandalone
         className="inline-flex min-h-11 min-w-11 items-center"
       >

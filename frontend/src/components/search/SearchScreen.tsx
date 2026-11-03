@@ -191,6 +191,7 @@ export function SearchScreen({ eventId }: { eventId: string }) {
             eventId={eventId}
             item={item.clothing}
             badge={badgeFor(item, ranked.data?.conditionCount ?? total)}
+            from={searchParams.toString() === '' ? pathname : `${pathname}?${searchParams.toString()}`}
           />
         ))}
       </Grid>

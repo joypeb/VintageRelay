@@ -17,6 +17,8 @@ import { ApiError } from '@/lib/api/api-error';
 import { useClothingListQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
+import { CATEGORY_OPTIONS, MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
+import type { MeasurementField } from '@/lib/validation/clothing-form';
 import type { Clothing } from '@/types/clothing';
 
 const subscribe = () => () => {};
@@ -24,20 +26,44 @@ const subscribe = () => () => {};
 // A downward drag of at least this far from the top edge refreshes the list.
 const PULL_TO_REFRESH_PX = 80;
 
+const SIZE_FALLBACK_ORDER: MeasurementField[] = [
+  'totalLength',
+  'chest',
+  'shoulder',
+  'sleeve',
+  'waist',
+  'hem',
+  'inseam',
+  'thigh',
+];
+
+function formatCardMeta(item: Clothing): string {
+  const categoryLabel =
+    CATEGORY_OPTIONS.find((option) => option.value === item.category)?.label ?? item.category;
+  const fallback = SIZE_FALLBACK_ORDER.map((field) => ({
+    field,
+    value: item.measurements?.[field],
+  })).find((entry): entry is { field: MeasurementField; value: number } => typeof entry.value === 'number');
+  if (fallback) return `${categoryLabel} · ${MEASUREMENT_LABELS[fallback.field]} ${fallback.value} in · ${item.owner.displayName}`;
+  return `${categoryLabel} · ${item.owner.displayName}`;
+}
+
 export function ClothingCard({
   eventId,
   item,
   badge,
+  from,
 }: {
   eventId: string;
   item: Clothing;
   badge?: ReactNode;
+  from?: string;
 }) {
   const [photoFailed, setPhotoFailed] = useState(false);
   const photo = item.photos[0];
   return (
     <Card>
-      <Link href={routes.itemDetail(eventId, item.id)} display="block" isStandalone className="w-full [&>span]:w-full">
+      <Link href={routes.itemDetail(eventId, item.id, from)} display="block" isStandalone className="w-full [&>span]:w-full">
         <AspectRatio ratio={3 / 4} fit="cover">
           {photo && !photoFailed ? (
             <img src={photo.url} alt={item.title} onError={() => setPhotoFailed(true)} />
@@ -47,6 +73,9 @@ export function ClothingCard({
         </AspectRatio>
         <Text type="body" maxLines={2}>
           {item.title}
+        </Text>
+        <Text type="supporting" maxLines={1}>
+          {formatCardMeta(item)}
         </Text>
         {badge}
       </Link>
@@ -115,9 +144,9 @@ export function HomeClothingGrid({ eventId }: { eventId: string }) {
     return (
       <EmptyState
         title="No clothes yet"
-        description="Register your clothes to join the exchange."
+        description="Register your items to join the exchange."
         actions={
-          <Button label="Register clothing" variant="primary" size="lg" href={routes.newItem(eventId)} />
+          <Button label="Register item" variant="primary" size="lg" href={routes.newItem(eventId)} />
         }
       />
     );

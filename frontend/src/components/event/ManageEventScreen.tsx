@@ -166,6 +166,9 @@ export function ManageEventScreen({ eventId }: { eventId: string }) {
         <Text type="body" color="secondary">
           {event.name}
         </Text>
+        {closed ? (
+          <Text type="body">You can still browse items and confirmed exchanges.</Text>
+        ) : null}
       </VStack>
       <EventShareCard name={event.name} entryCode={event.entryCode} entryUrl={event.entryUrl} />
       <VStack gap={2}>

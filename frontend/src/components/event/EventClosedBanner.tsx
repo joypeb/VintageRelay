@@ -27,6 +27,9 @@ export function EventClosedBanner({ eventId }: { eventId: string }) {
       status="warning"
       title="This event has ended."
       description={`Closed ${formatDateTime(data.closedAt)}`}
-    />
+      collapsible={false}
+    >
+      You can still browse items and confirmed exchanges.
+    </Banner>
   );
 }
