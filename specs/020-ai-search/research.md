@@ -44,7 +44,7 @@ Codebase research delegated to the Paseo `explorer` profile (2026-11-03). Findin
 
 - **Decision**:
   - `frontend/src/lib/search/conditions.ts` (pure; types live in `frontend/src/types/search.ts`): `parseSearchParams(URLSearchParams)`, `toSearchParams(q, conditions)`, `removeCondition`, `conditionCount`, and range validation for S2. Unit-tested with Vitest.
-  - `frontend/src/lib/api/search.ts`: `useInterpretSearch` (mutation, POST) and `useClothingSearch(eventId, params)` (query keyed by the condition params) via `apiFetch` and TanStack Query, like existing `lib/api` modules.
+  - `frontend/src/lib/api/search.ts`: `useInterpretSearch` (mutation, POST) and `useClothingSearch(eventId, params)` (query keyed by the condition params) via `apiFetch` and TanStack Query, with zod response parsers in `frontend/src/lib/validation/search-response.ts`, like existing `lib/api` modules.
   - `frontend/src/components/search/SearchScreen.tsx` replaces `SearchPlaceholderScreen`; `SearchFiltersSheet.tsx` uses Astryx `BottomSheet`; chips use Astryx `Token` with `onRemove`. Results reuse `ClothingCard`, exported from `HomeClothingGrid.tsx` with an optional label slot for "N/M match" and "No measurements".
   - URL is the single source of state: `?q=&category=&color=&<name>Min=&<name>Max=&unrecognized=`. Submitting text calls interpretation, then `router.replace` with the conditions; loading a URL with conditions runs only ranked search (no AI). Chip removal and S2 Apply rewrite the URL.
   - S2 measurement fields come from `measurementFieldsFor(category)` (`frontend/src/lib/validation/clothing-form.ts`); with no category, the union of all fields is shown.

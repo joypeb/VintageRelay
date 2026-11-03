@@ -81,12 +81,12 @@ Pure logic tested (Vitest); screens verified manually at 360–430 px.
 
 ### Tests (Red first)
 
-- [ ] T014 [P] [US2] Red: frontend/src/lib/search/conditions.test.ts for frontend/src/lib/search/conditions.ts: `validateQuery` (trimmed 1–200 chars, else no request); `parseSearchParams` / `toSearchParams` round trip for `q`, `category`, repeated `color`, `<name>Min`/`<name>Max`, repeated `unrecognized`; invalid URL values ignored; duplicate colors collapse to one; `removeCondition` for category, a color, a measurement; `conditionCount`; `validateFilters` rejects `min > max` and values outside `(0, 120]`; changing category drops ranges not in `measurementFieldsFor(category)`
+- [X] T014 [P] [US2] Red: frontend/src/lib/search/conditions.test.ts for frontend/src/lib/search/conditions.ts: `validateQuery` (trimmed 1–200 chars, else no request); `parseSearchParams` / `toSearchParams` round trip for `q`, `category`, repeated `color`, `<name>Min`/`<name>Max`, repeated `unrecognized`; invalid URL values ignored; duplicate colors collapse to one; `removeCondition` for category, a color, a measurement; `conditionCount`; `validateFilters` rejects `min > max` and values outside `(0, 120]`; changing category drops ranges not in `measurementFieldsFor(category)`
 
 ### Implementation
 
-- [ ] T015 [US2] Add types in frontend/src/types/search.ts (`SearchConditions`, `MeasurementRange`, `SearchResults`, `SearchResultItem` reusing `Clothing` from frontend/src/types/clothing.ts) and implement frontend/src/lib/search/conditions.ts (Green for T014)
-- [ ] T016 [US1] Add `clothingSearch(eventId, params)` to `queryKeys` and `interpretSearch(eventId)` to `mutationKeys` in frontend/src/lib/api/query-keys.ts; add frontend/src/lib/api/search.ts with `useInterpretSearch(eventId)` (POST) and `useClothingSearch(eventId, conditions)` using `apiFetch` and the patterns in frontend/src/lib/api/
+- [X] T015 [US2] Add types in frontend/src/types/search.ts (`SearchConditions`, `MeasurementRange`, `SearchResults`, `SearchResultItem` reusing `Clothing` from frontend/src/types/clothing.ts) and implement frontend/src/lib/search/conditions.ts (Green for T014)
+- [ ] T016 [US1] Red first (test-author): frontend/src/lib/validation/search-response.test.ts for `parseSearchConditions` and `parseSearchResults` (zod, same style as frontend/src/lib/validation/clothing-response.ts: reuse its Clothing item schema; invalid body → `ApiError(200, 'UNKNOWN_ERROR', ...)`) and frontend/src/lib/api/search.test.ts (same style as frontend/src/lib/api/clothing.test.ts: encoded event ID, POST body `{ text }`, GET query string from `toSearchParams`, parsed results). Then Green (implementer-fe): add `clothingSearch(eventId, params)` to `queryKeys` and `interpretSearch(eventId)` to `mutationKeys` in frontend/src/lib/api/query-keys.ts; add frontend/src/lib/api/search.ts with `useInterpretSearch(eventId)` (POST) and `useClothingSearch(eventId, conditions)` using `apiFetch` and the patterns in frontend/src/lib/api/
 - [ ] T017 [US1] Export `ClothingCard` from frontend/src/components/clothing/HomeClothingGrid.tsx with an optional label slot (Home unchanged)
 - [ ] T018 [US2] Implement frontend/src/components/search/SearchScreen.tsx and wire frontend/src/app/events/[eventId]/(tabs)/search/page.tsx (delete SearchPlaceholderScreen): text input → interpretation → `router.replace` with conditions; chips with Astryx `Token` `onRemove`; "Not understood" note; ranked grid with "N/M match" and "No measurements" labels; card → B3; URL with conditions runs only ranked search (no AI); empty and loading states
 - [ ] T019 [US3] In SearchScreen, on `AI_UNAVAILABLE` show "Search could not understand that right now. Choose filters instead." with [Choose filters] opening S2
@@ -118,8 +118,9 @@ Pure logic tested (Vitest); screens verified manually at 360–430 px.
 3. Red T009 → Green T011
 4. Red T008+T010 → Green T012–T013
 5. Red T014 → Green T015
-6. T016–T021 (implementer-fe, manual verification), one commit per task or small group
-7. T022–T024
+6. Red T016 tests → Green T016
+7. T017–T021 (implementer-fe, manual verification), one commit per task or small group
+8. T022–T024
 
 Never commit a Red state; Red tests of a cycle stay uncommitted until its Green tasks pass.
 
@@ -132,4 +133,4 @@ Never commit a Red state; Red tests of a cycle stay uncommitted until its Green 
 
 1. MVP: Phase 3 (ranked search) — usable as the manual-filter fallback.
 2. Add interpretation (Phase 4), then the screens (Phase 5).
-3. Each cycle: `test-author` (Red) → `implementer-be`/`implementer-fe` (Green → Refactor) → `commit-reviewer` → commit. T002 via `scaffolder` (boilerplate). T016–T021 are API wiring and UI-only screens (manual verification) and go to `implementer-fe` without `test-author`.
+3. Each cycle: `test-author` (Red) → `implementer-be`/`implementer-fe` (Green → Refactor) → `commit-reviewer` → commit. T002 via `scaffolder` (boilerplate). T016 follows Red → Green (response parsers and fetchers). T017–T021 are UI-only screens (manual verification) and go to `implementer-fe` without `test-author`.
