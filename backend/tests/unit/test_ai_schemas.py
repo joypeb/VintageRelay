@@ -87,9 +87,7 @@ def test_unknown_colors_are_dropped_and_empty_colors_allowed():
 
 
 def test_colors_capped_to_first_three_in_order():
-    result = AnalysisResult(
-        **_valid_payload(colors=["red", "green", "blue", "black"])
-    )
+    result = AnalysisResult(**_valid_payload(colors=["red", "green", "blue", "black"]))
 
     assert list(result.colors) == ["red", "green", "blue"]
 
