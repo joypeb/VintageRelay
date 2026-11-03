@@ -75,8 +75,20 @@ def test_fake_interpret_search_returns_scripted_result_and_raises_scripted_error
         fake.interpret_search("another search")
 
 
-def test_search_timeout_defaults_to_ten_seconds():
-    assert Settings().ai_search_timeout_seconds == 10.0
+def test_search_timeout_defaults_to_twenty_seconds():
+    assert Settings().ai_search_timeout_seconds == 20.0
+
+
+def test_interpret_search_uses_default_twenty_second_read_timeout(monkeypatch):
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return _response()
+
+    _transport(monkeypatch, handler)
+    HttpxChatCompletionsClient(api_key="test-key").interpret_search(SEARCH_TEXT)
+    assert requests[0].extensions["timeout"]["read"] == 20.0
 
 
 def test_interpret_search_sends_quoted_text_only_and_uses_configured_timeout(monkeypatch):
