@@ -62,6 +62,16 @@ class ClothingNotAvailableError(ConflictError):
     message = "This garment is no longer available."
 
 
+class IntentNotActiveError(ConflictError):
+    code = "INTENT_NOT_ACTIVE"
+    message = "This exchange request is no longer active."
+
+
+class ProposalVersionMismatchError(ConflictError):
+    code = "PROPOSAL_VERSION_MISMATCH"
+    message = "This proposal has a newer version. Reload to review it."
+
+
 class PhotoTooLargeError(AppError):
     status_code = 413
     code = "FILE_TOO_LARGE"

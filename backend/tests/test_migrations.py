@@ -492,3 +492,71 @@ def test_downgrade_removes_clothing_analyses_table(migrated_database):
     command.downgrade(cfg, "e4f1a2b3c5d6")
 
     assert "clothing_analyses" not in inspect(engine).get_table_names()
+
+
+def test_migration_creates_exchange_tables(migrated_database):
+    _, engine = migrated_database
+    inspector = inspect(engine)
+    expected = {
+        "exchange_intents": {
+            "id",
+            "event_id",
+            "participant_id",
+            "offered_clothing_id",
+            "wanted_clothing_id",
+            "status",
+            "accepted_proposal_id",
+            "created_at",
+            "updated_at",
+        },
+        "trade_proposals": {
+            "id",
+            "event_id",
+            "version",
+            "status",
+            "end_reason",
+            "cycle_key",
+            "created_at",
+            "confirmed_at",
+            "cancelled_at",
+            "ended_at",
+        },
+        "trade_participants": {
+            "id",
+            "proposal_id",
+            "participant_id",
+            "offered_clothing_id",
+            "offered_content_version",
+            "received_clothing_id",
+            "response",
+            "responded_at",
+            "is_confirmed",
+        },
+    }
+    assert expected.keys() <= set(inspector.get_table_names())
+    for table_name, columns in expected.items():
+        assert columns <= {column["name"] for column in inspector.get_columns(table_name)}
+
+
+@pytest.mark.parametrize(
+    ("table_name", "columns", "predicate"),
+    [
+        ("trade_proposals", ["event_id", "cycle_key"], "status"),
+        ("trade_participants", ["offered_clothing_id"], "is_confirmed"),
+    ],
+)
+def test_migration_creates_exchange_partial_unique_indexes(
+    migrated_database, table_name, columns, predicate
+):
+    _, engine = migrated_database
+    indexes = inspect(engine).get_indexes(table_name)
+    matching = [index for index in indexes if index["unique"] and index["column_names"] == columns]
+    assert matching
+    where = matching[0].get("dialect_options", {}).get("sqlite_where")
+    assert where is not None
+    normalized = re.sub(r"\s+", "", str(where)).lower()
+    assert predicate in normalized
+    if predicate == "status":
+        assert re.fullmatch(r"\(*status=['\"]pending['\"]\)*", normalized)
+    else:
+        assert re.fullmatch(r"\(*is_confirmed(?:=1|istrue|=true)?\)*", normalized)
