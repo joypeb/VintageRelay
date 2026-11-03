@@ -11,7 +11,7 @@ from app.api.deps import (
     get_token_participant,
 )
 from app.api.errors import error_responses
-from app.schemas.proposal import Proposal, ProposalList
+from app.schemas.proposal import Proposal, ProposalActionRequest, ProposalList
 from app.services import proposal as proposal_service
 
 router = APIRouter(tags=["proposals"])
@@ -63,3 +63,47 @@ def get_proposal(
 ) -> Proposal:
     participant = get_token_participant(db, credentials)
     return proposal_service.get_proposal(db, settings, participant, proposal_id)
+
+
+@router.post(
+    "/proposals/{proposal_id}/consents",
+    operation_id="consentProposal",
+    summary="Give final consent to a proposal",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 409, 422, 500),
+    },
+)
+def consent_proposal(
+    proposal_id: str,
+    body: ProposalActionRequest,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Proposal:
+    participant = get_token_participant(db, credentials)
+    return proposal_service.consent(db, settings, participant, proposal_id, body.version)
+
+
+@router.post(
+    "/proposals/{proposal_id}/reject",
+    operation_id="rejectProposal",
+    summary="Reject a proposal",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 409, 422, 500),
+    },
+)
+def reject_proposal(
+    proposal_id: str,
+    body: ProposalActionRequest,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Proposal:
+    participant = get_token_participant(db, credentials)
+    return proposal_service.reject(db, settings, participant, proposal_id, body.version)

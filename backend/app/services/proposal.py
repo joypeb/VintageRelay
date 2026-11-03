@@ -1,4 +1,5 @@
-from datetime import datetime
+import logging
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import or_, select, update
@@ -12,8 +13,11 @@ from app.domain.errors import (
     AppError,
     ClothingAlreadyConfirmedError,
     ClothingNotAvailableError,
+    EventClosedError,
     IntentNotActiveError,
+    InternalError,
     NotFoundError,
+    ProposalVersionMismatchError,
 )
 from app.domain.matching import cycle_key
 from app.domain.photos import photo_url
@@ -456,6 +460,158 @@ def _invalidate_pending(s: Session, proposal: TradeProposal, end_reason: str, no
         proposal.ended_at = now
         s.flush()
     return result.rowcount
+
+
+logger = logging.getLogger(__name__)
+
+
+def _latest_pending_id(s: Session, proposal: TradeProposal) -> str | None:
+    row = s.scalar(
+        select(TradeProposal)
+        .where(
+            TradeProposal.event_id == proposal.event_id,
+            TradeProposal.cycle_key == proposal.cycle_key,
+            TradeProposal.status == "pending",
+        )
+        .order_by(TradeProposal.version.desc())
+    )
+    return row.id if row is not None else None
+
+
+def _version_mismatch(s: Session, proposal: TradeProposal) -> ProposalVersionMismatchError:
+    return ProposalVersionMismatchError(
+        details={
+            "currentStatus": proposal.status,
+            "latestProposalId": _latest_pending_id(s, proposal),
+        }
+    )
+
+
+def _end_reason_for(exc: AppError) -> str:
+    if isinstance(exc, IntentNotActiveError):
+        return "intent_changed"
+    if isinstance(exc, ClothingAlreadyConfirmedError):
+        return "clothing_confirmed_elsewhere"
+    if isinstance(exc, ClothingNotAvailableError):
+        return "clothing_withdrawn"
+    raise exc
+
+
+def consent(
+    db: Db, settings: Settings, participant: Participant, proposal_id: str, version: int
+) -> Proposal:
+    pending_error: AppError | None = None
+    response: Proposal | None = None
+    confirmed = False
+    proposal_id_for_log = proposal_id
+    event_id_for_log = participant.event_id
+    with db.write() as s:
+        proposal = s.get(TradeProposal, proposal_id)
+        if proposal is None or proposal.event_id != participant.event_id:
+            raise NotFoundError()
+        mine = s.scalar(
+            select(TradeParticipant).where(
+                TradeParticipant.proposal_id == proposal.id,
+                TradeParticipant.participant_id == participant.id,
+            )
+        )
+        if mine is None:
+            raise NotFoundError()
+        if (
+            mine.response == "consented"
+            and proposal.version == version
+            and proposal.status in ("pending", "confirmed")
+        ):
+            return build_proposal(s, settings, proposal, participant)
+        event = s.get(Event, proposal.event_id)
+        if event is None:
+            raise NotFoundError()
+        if event.status == EventStatus.CLOSED:
+            raise EventClosedError()
+        if proposal.status != "pending" or proposal.version != version:
+            raise _version_mismatch(s, proposal)
+        now = datetime.now(UTC)
+        try:
+            with s.begin_nested():
+                mine.response = "consented"
+                mine.responded_at = now
+                s.flush()
+                try_confirm_if_unanimous(s, proposal, now)
+        except AppError as exc:
+            if not isinstance(
+                exc,
+                IntentNotActiveError | ClothingAlreadyConfirmedError | ClothingNotAvailableError,
+            ):
+                raise
+            end_reason = _end_reason_for(exc)
+            rowcount = _invalidate_pending(s, proposal, end_reason, now)
+            s.flush()
+            if rowcount == 1:
+                pending_error = exc
+            else:
+                refreshed_event = s.get(Event, proposal.event_id)
+                if refreshed_event is not None and refreshed_event.status == EventStatus.CLOSED:
+                    pending_error = EventClosedError()
+                else:
+                    s.refresh(proposal)
+                    pending_error = _version_mismatch(s, proposal)
+            response = None
+            confirmed = False
+        else:
+            response = build_proposal(s, settings, proposal, participant)
+            confirmed = proposal.status == "confirmed"
+        proposal_id_for_log = proposal.id
+        event_id_for_log = proposal.event_id
+    if pending_error is not None:
+        raise pending_error
+    if response is None:
+        raise InternalError()
+    logger.info(
+        "proposal_confirmed" if confirmed else "proposal_consented",
+        extra={"proposal_id": proposal_id_for_log, "event_id": event_id_for_log},
+    )
+    return response
+
+
+def reject(
+    db: Db, settings: Settings, participant: Participant, proposal_id: str, version: int
+) -> Proposal:
+    with db.write() as s:
+        proposal = s.get(TradeProposal, proposal_id)
+        if proposal is None or proposal.event_id != participant.event_id:
+            raise NotFoundError()
+        mine = s.scalar(
+            select(TradeParticipant).where(
+                TradeParticipant.proposal_id == proposal.id,
+                TradeParticipant.participant_id == participant.id,
+            )
+        )
+        if mine is None:
+            raise NotFoundError()
+        if proposal.status == "rejected":
+            return build_proposal(s, settings, proposal, participant)
+        event = s.get(Event, proposal.event_id)
+        if event is None:
+            raise NotFoundError()
+        if event.status == EventStatus.CLOSED:
+            raise EventClosedError()
+        if proposal.status != "pending" or proposal.version != version:
+            raise _version_mismatch(s, proposal)
+        now = datetime.now(UTC)
+        mine.response = "rejected"
+        mine.responded_at = now
+        proposal.status = "rejected"
+        proposal.end_reason = "participant_rejected"
+        proposal.ended_at = now
+        s.flush()
+        response = build_proposal(s, settings, proposal, participant)
+        logged_proposal_id = proposal.id
+        logged_event_id = proposal.event_id
+    logger.info(
+        "proposal_rejected",
+        extra={"proposal_id": logged_proposal_id, "event_id": logged_event_id},
+    )
+    return response
 
 
 def _invalidate_sharing_proposals(

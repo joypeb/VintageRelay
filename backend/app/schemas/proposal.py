@@ -1,5 +1,11 @@
+from pydantic import Field
+
 from app.schemas.common import ApiModel, UtcDatetime
 from app.schemas.intent import ClothingSummary, IntentOwner
+
+
+class ProposalActionRequest(ApiModel):
+    version: int = Field(ge=1)
 
 
 class ProposalParticipant(ApiModel):
