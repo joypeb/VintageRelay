@@ -19,6 +19,10 @@ export const SEARCH_COLORS: ClothingColor[] = [
   'multicolor',
 ];
 
+export function colorLabel(color: ClothingColor): string {
+  return color.charAt(0).toUpperCase() + color.slice(1);
+}
+
 const CATEGORIES: ClothingCategory[] = ['top', 'outer', 'bottom', 'other'];
 
 export type RemoveConditionTarget =
