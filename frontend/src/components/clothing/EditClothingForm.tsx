@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 import { Button } from '@astryxdesign/core/Button';
+import { Heading } from '@astryxdesign/core/Heading';
 import { Link } from '@astryxdesign/core/Link';
 import { Selector } from '@astryxdesign/core/Selector';
 import { Text } from '@astryxdesign/core/Text';
@@ -169,6 +170,7 @@ export function EditClothingForm({
 
   return (
     <VStack gap={4} padding={6}>
+      <Heading level={1}>Edit item</Heading>
       <Text type="body">Photos (view only in this version)</Text>
       {data.photos.map((photo, index) => (
         <img key={photo.id} src={photo.url} alt={`${data.title} photo ${index + 1}`} />

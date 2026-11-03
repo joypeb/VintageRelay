@@ -2,7 +2,9 @@
 
 import { Banner } from '@astryxdesign/core/Banner';
 import { Heading } from '@astryxdesign/core/Heading';
+import { Stack } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import type { ClothingAnalysis } from '@/types/clothing';
@@ -25,11 +27,11 @@ export function EstimatedByAI({ analysis }: { analysis: ClothingAnalysis | null 
       {features.colors.length > 0 ? (
         <>
           <Text type="label">Colors</Text>
-          {features.colors.map((color, index) => (
-            <Text key={`${index}-${color}`} type="body">
-              {color}
-            </Text>
-          ))}
+          <Stack direction="horizontal" gap={2} wrap="wrap">
+            {features.colors.map((color, index) => (
+              <Token key={`${index}-${color}`} label={color} />
+            ))}
+          </Stack>
         </>
       ) : null}
       {features.pattern ? (
@@ -47,11 +49,11 @@ export function EstimatedByAI({ analysis }: { analysis: ClothingAnalysis | null 
       {features.styleTags.length > 0 ? (
         <>
           <Text type="label">Style</Text>
-          {features.styleTags.map((tag, index) => (
-            <Text key={`${index}-${tag}`} type="body">
-              {tag}
-            </Text>
-          ))}
+          <Stack direction="horizontal" gap={2} wrap="wrap">
+            {features.styleTags.map((tag, index) => (
+              <Token key={`${index}-${tag}`} label={tag} />
+            ))}
+          </Stack>
         </>
       ) : null}
       {features.visibleDetails.length > 0 ? (
@@ -72,12 +74,14 @@ export function EstimatedByAI({ analysis }: { analysis: ClothingAnalysis | null 
       ) : null}
       {analysis.uncertainties.length > 0 ? (
         <Banner status="warning" title="Check in person" collapsible={false}>
-          {analysis.uncertainties.map((uncertainty, index) => (
-            // Messages are unique per aspect but index keys stay stable across refetches.
-            <Text key={`${index}-${uncertainty.message}`} type="body">
-              {uncertainty.message}
-            </Text>
-          ))}
+          <ul className="m-0 list-disc pl-6">
+            {analysis.uncertainties.map((uncertainty, index) => (
+              // Messages are unique per aspect but index keys stay stable across refetches.
+              <li key={`${index}-${uncertainty.message}`}>
+                <Text type="body">{uncertainty.message}</Text>
+              </li>
+            ))}
+          </ul>
         </Banner>
       ) : null}
     </VStack>

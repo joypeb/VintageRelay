@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { useState, useSyncExternalStore } from 'react';
 
-import { Badge } from '@astryxdesign/core/Badge';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
@@ -11,7 +10,9 @@ import { Grid } from '@astryxdesign/core/Grid';
 import { Heading } from '@astryxdesign/core/Heading';
 import { Link } from '@astryxdesign/core/Link';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
+import { Stack } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
+import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
@@ -36,6 +37,20 @@ const MEASUREMENT_ORDER: MeasurementField[] = [
   'inseam',
   'thigh',
 ];
+
+function statusTokenColor(status: string): 'green' | 'blue' | 'gray' | 'default' {
+  if (status === 'available') return 'green';
+  if (status === 'confirmed') return 'blue';
+  if (status === 'withdrawn') return 'gray';
+  return 'default';
+}
+
+function statusLabel(status: string): string {
+  if (status === 'available') return 'Available';
+  if (status === 'confirmed') return 'Confirmed';
+  if (status === 'withdrawn') return 'Withdrawn';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 const subscribe = () => () => {};
 
@@ -177,20 +192,14 @@ export function MyItemDetailScreen({
         }
       />
       <VStack gap={2}>
-        <Badge label={categoryLabel} variant="neutral" />
+        <Stack direction="horizontal">
+          <Token label={categoryLabel} />
+        </Stack>
         <Heading level={1}>{clothing.title}</Heading>
-        {isConfirmed ? <Badge label="Confirmed" variant="info" /> : null}
-        {isWithdrawn ? <Badge label="Withdrawn" variant="neutral" /> : null}
+        <Stack direction="horizontal">
+          <Token label={statusLabel(clothing.status)} color={statusTokenColor(clothing.status)} />
+        </Stack>
         <Text type="body">{clothing.description}</Text>
-        {isConfirmed ? (
-          <Text type="body">
-            This item is locked for an exchange. To cancel it, go to Trades and cancel the exchange
-            first.
-          </Text>
-        ) : null}
-        <Text type="body">Offered by</Text>
-        <Text type="body">{clothing.owner.displayName}</Text>
-        {clothing.owner.isOrganizer ? <Badge label="Organizer" variant="neutral" /> : null}
         {measurements.length > 0 ? (
           <VStack gap={2}>
             <Heading level={2}>Measurements</Heading>
@@ -204,25 +213,35 @@ export function MyItemDetailScreen({
             </Grid>
           </VStack>
         ) : null}
-        <EstimatedByAI analysis={clothing.analysis} />
-        {locked ? (
-          <Button label="Edit" size="lg" width="100%" isDisabled />
-        ) : (
-          <Button
-            label="Edit"
-            size="lg"
-            width="100%"
-            href={routes.myItemEdit(eventId, clothingId)}
-          />
+        {isWithdrawn ? null : (
+          <>
+            {isConfirmed ? (
+              <Text type="body">
+                This item is locked for an exchange. To cancel it, go to Trades and cancel the
+                exchange first.
+              </Text>
+            ) : null}
+            {locked ? (
+              <Button label="Edit" size="lg" width="100%" isDisabled />
+            ) : (
+              <Button
+                label="Edit"
+                size="lg"
+                width="100%"
+                href={routes.myItemEdit(eventId, clothingId)}
+              />
+            )}
+            <Button
+              label="Delete"
+              variant="destructive"
+              size="lg"
+              width="100%"
+              isDisabled={locked}
+              onClick={() => setIsDialogOpen(true)}
+            />
+          </>
         )}
-        <Button
-          label="Delete"
-          variant="destructive"
-          size="lg"
-          width="100%"
-          isDisabled={locked}
-          onClick={() => setIsDialogOpen(true)}
-        />
+        <EstimatedByAI analysis={clothing.analysis} />
         <VStack gap={2}>
           <Heading level={2}>Requests</Heading>
           <Text type="body">Coming soon: exchange requests will appear here.</Text>

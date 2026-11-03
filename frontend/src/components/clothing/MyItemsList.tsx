@@ -7,7 +7,7 @@ import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
-import { Stack } from '@astryxdesign/core/Stack';
+import { Stack, StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { Token } from '@astryxdesign/core/Token';
 import { VStack } from '@astryxdesign/core/VStack';
@@ -123,22 +123,26 @@ export function MyItemsList({ eventId }: { eventId: string }) {
             // and status all live here to stay inside one accessible name.
             label={
               <Stack direction="horizontal" gap={3} vAlign="center">
-                {photo ? (
-                  <img src={photo.url} alt={item.title} className="h-12 w-12 object-cover" />
-                ) : (
-                  <Text type="body">Photo unavailable</Text>
-                )}
-                <VStack gap={1}>
-                  <Text type="body" maxLines={2}>
-                    {item.title}
-                  </Text>
-                  <Stack direction="horizontal" gap={2} vAlign="center" wrap="wrap">
-                    <Token label={statusLabel(item.status)} color={statusTokenColor(item.status)} />
-                    {item.analysis?.status === 'pending' ? (
-                      <Text type="body">AI analyzing…</Text>
-                    ) : null}
-                  </Stack>
-                </VStack>
+                <StackItem>
+                  {photo ? (
+                    <img src={photo.url} alt={item.title} className="h-12 w-12 object-cover" />
+                  ) : (
+                    <Text type="body">Photo unavailable</Text>
+                  )}
+                </StackItem>
+                <StackItem size="fill">
+                  <VStack gap={1}>
+                    <Text type="body" maxLines={2}>
+                      {item.title}
+                    </Text>
+                    <Stack direction="horizontal" gap={2} vAlign="center" wrap="wrap">
+                      <Token label={statusLabel(item.status)} color={statusTokenColor(item.status)} />
+                      {item.analysis?.status === 'pending' ? (
+                        <Text type="body">AI analyzing…</Text>
+                      ) : null}
+                    </Stack>
+                  </VStack>
+                </StackItem>
               </Stack>
             }
           />
