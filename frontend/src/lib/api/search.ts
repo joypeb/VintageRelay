@@ -11,8 +11,8 @@ import {
 import type { SearchConditions, SearchResults } from '@/types/search';
 
 const SEARCH_READ_TIMEOUT_MS = 15_000;
-// Backend interpretation budget is ~25s (2x10s attempts + waits), so wait 30s to receive its 503.
-const INTERPRET_TIMEOUT_MS = 30_000;
+// Backend interpretation budget is ~43s (2x20s attempts + waits), so wait 50s to receive its 503.
+const INTERPRET_TIMEOUT_MS = 50_000;
 
 function toRankedSearchParams(conditions: SearchConditions): URLSearchParams {
   const params = toSearchParams('', conditions);

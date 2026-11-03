@@ -12,9 +12,13 @@ const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.';
 
 const measurementRangeSchema = z
   .object({
-    min: z.number().positive().max(120).optional(),
-    max: z.number().positive().max(120).optional(),
+    min: z.number().positive().max(120).nullish(),
+    max: z.number().positive().max(120).nullish(),
   })
+  .transform((range) => ({
+    ...(range.min != null ? { min: range.min } : {}),
+    ...(range.max != null ? { max: range.max } : {}),
+  }))
   .refine((range) => range.min !== undefined || range.max !== undefined, {
     message: 'Invalid range',
   })

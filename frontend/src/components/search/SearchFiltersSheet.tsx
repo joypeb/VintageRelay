@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { BottomSheet } from '@astryxdesign/core/BottomSheet';
 import { Button } from '@astryxdesign/core/Button';
 import { HStack } from '@astryxdesign/core/HStack';
+import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { ToggleButton } from '@astryxdesign/core/ToggleButton';
@@ -166,26 +167,30 @@ export function SearchFiltersSheet({
           ) : (
             fields.map((field) => (
               <HStack key={field} gap={2}>
-                <TextInput
-                  label={`${MEASUREMENT_LABELS[field]} min (in)`}
-                  value={ranges[field]?.min ?? ''}
-                  onChange={(value) =>
-                    setRanges((prev) => ({
-                      ...prev,
-                      [field]: { min: value, max: prev[field]?.max ?? '' },
-                    }))
-                  }
-                />
-                <TextInput
-                  label={`${MEASUREMENT_LABELS[field]} max (in)`}
-                  value={ranges[field]?.max ?? ''}
-                  onChange={(value) =>
-                    setRanges((prev) => ({
-                      ...prev,
-                      [field]: { min: prev[field]?.min ?? '', max: value },
-                    }))
-                  }
-                />
+                <StackItem size="fill">
+                  <TextInput
+                    label={`${MEASUREMENT_LABELS[field]} min (in)`}
+                    value={ranges[field]?.min ?? ''}
+                    onChange={(value) =>
+                      setRanges((prev) => ({
+                        ...prev,
+                        [field]: { min: value, max: prev[field]?.max ?? '' },
+                      }))
+                    }
+                  />
+                </StackItem>
+                <StackItem size="fill">
+                  <TextInput
+                    label={`${MEASUREMENT_LABELS[field]} max (in)`}
+                    value={ranges[field]?.max ?? ''}
+                    onChange={(value) =>
+                      setRanges((prev) => ({
+                        ...prev,
+                        [field]: { min: prev[field]?.min ?? '', max: value },
+                      }))
+                    }
+                  />
+                </StackItem>
               </HStack>
             ))
           )}

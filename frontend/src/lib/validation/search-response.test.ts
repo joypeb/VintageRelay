@@ -30,10 +30,18 @@ describe('parseSearchConditions', () => {
     expect(parseSearchConditions(body)).toEqual(body);
   });
   it.each([
+    [{ min: 20, max: null }, { min: 20 }],
+    [{ min: null, max: 22 }, { max: 22 }],
+  ])('normalizes a null measurement bound in %o', (range, expected) => {
+    const body = { ...conditions, measurements: { chest: range } };
+    expect(parseSearchConditions(body)).toEqual({ ...body, measurements: { chest: expected } });
+  });
+  it.each([
     ['unknown category', { ...conditions, category: 'shoes' }],
     ['unknown color', { ...conditions, colors: ['chartreuse'] }],
     ['wrong colors type', { ...conditions, colors: 'green' }],
     ['wrong measurement bound type', { ...conditions, measurements: { chest: { min: '20' } } }],
+    ['range with no bounds', { ...conditions, measurements: { chest: { min: null, max: null } } }],
     ['missing unrecognized', { ...conditions, unrecognized: undefined }],
   ])('rejects %s with an unexpected response error', (_label, body) => expectUnexpectedResponse(parseSearchConditions, body));
 });

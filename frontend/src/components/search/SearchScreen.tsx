@@ -9,6 +9,7 @@ import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Grid } from '@astryxdesign/core/Grid';
 import { HStack } from '@astryxdesign/core/HStack';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
+import { StackItem } from '@astryxdesign/core/Stack';
 import { Text } from '@astryxdesign/core/Text';
 import { TextInput } from '@astryxdesign/core/TextInput';
 import { Token } from '@astryxdesign/core/Token';
@@ -194,15 +195,17 @@ export function SearchScreen({ eventId }: { eventId: string }) {
   }
 
   return (
-    <VStack gap={4}>
+    <VStack gap={6} padding={6}>
       <HStack gap={2} align="end">
-        <TextInput
-          label="Search clothing"
-          placeholder='Try "green jacket, chest around 21 inches"'
-          value={text}
-          onChange={setText}
-          onEnter={handleSubmit}
-        />
+        <StackItem size="fill">
+          <TextInput
+            label="Search clothing"
+            placeholder='Try "green jacket, chest around 21 inches"'
+            value={text}
+            onChange={setText}
+            onEnter={handleSubmit}
+          />
+        </StackItem>
         <Button
           label="Search"
           variant="primary"
@@ -261,9 +264,11 @@ export function SearchScreen({ eventId }: { eventId: string }) {
         </Text>
       )}
       <HStack gap={2} align="center" wrap="wrap">
-        <Text type="body" color="secondary">
-          {total > 0 || q !== '' ? 'Best matches first.' : 'Describe what you are looking for, or edit filters.'}
-        </Text>
+        <StackItem size="fill">
+          <Text type="body" color="secondary">
+            {total > 0 || q !== '' ? 'Best matches first.' : 'Describe what you are looking for, or edit filters.'}
+          </Text>
+        </StackItem>
         <Button label="Edit filters" size="lg" onClick={() => setFiltersOpen(true)} />
       </HStack>
       {renderResults()}
