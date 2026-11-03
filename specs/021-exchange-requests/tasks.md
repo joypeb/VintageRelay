@@ -65,13 +65,13 @@
 
 ### Tests for US1b (REQUIRED — write first) ⚠️
 
-- [ ] T011 [P] [US1] Failing API tests for accept in backend/tests/api/test_intents_accept.py (owner-only 403, replay 200 while its proposal pending/confirmed, reaccept after reject in active event creates next version with fresh accepter consent, 409 only on closure/inactive-intent/unavailable-garment, `INTENT_NOT_ACTIVE`/`CLOTHING_*`)
-- [ ] T012 [P] [US1] Failing API tests for decline in backend/tests/api/test_intents_decline.py (owner-only 403, replay 200 incl. after closure, pending `intent_changed` invalidation)
+- [x] T011 [P] [US1] Failing API tests for accept in backend/tests/api/test_intents_accept.py (owner-only 403, replay 200 while its proposal pending/confirmed, reaccept after reject in active event creates next version with fresh accepter consent, 409 only on closure/inactive-intent/unavailable-garment, `INTENT_NOT_ACTIVE`/`CLOTHING_*`)
+- [x] T012 [P] [US1] Failing API tests for decline in backend/tests/api/test_intents_decline.py (owner-only 403, replay 200 incl. after closure, pending `intent_changed` invalidation)
 
 ### Implementation for US1b
 
-- [ ] T013 [US1] Implement accept (`POST /intents/{id}/accept`) with replay-while-pending/confirmed and reaccept-after-reject new-version path in backend/app/services/intent.py, backend/app/services/proposal.py
-- [ ] T014 [US1] Implement decline (`POST /intents/{id}/decline`) in backend/app/services/intent.py, backend/app/api/routers/intents.py
+- [x] T013 [US1] Implement accept (`POST /intents/{id}/accept`) with replay-while-pending/confirmed and reaccept-after-reject new-version path in backend/app/services/intent.py, backend/app/services/proposal.py
+- [x] T014 [US1] Implement decline (`POST /intents/{id}/decline`) in backend/app/services/intent.py, backend/app/api/routers/intents.py
 
 **Checkpoint**: US1 + US1b green together
 
