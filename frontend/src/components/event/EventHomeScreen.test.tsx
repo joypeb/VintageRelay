@@ -205,12 +205,12 @@ describe('registration confirmation', () => {
     localStorage.clear();
   });
 
-  it('shows a status when registered is 1', () => {
+  it('does not show a registration status even when registered is 1', () => {
     useSearchParams.mockReturnValue(new URLSearchParams('registered=1'));
     renderWithClient(<EventHomeScreen eventId="e1" />);
-    expect(screen.getByText('Clothing registered.')).toHaveAttribute('role', 'status');
+    expect(screen.queryByText('Clothing registered.')).not.toBeInTheDocument();
   });
-  it('keeps the event header and registration confirmation above populated clothing', () => {
+  it('keeps the event header above populated clothing without a registration confirmation', () => {
     const garment = {
       id: 'c1', eventId: 'e1', owner: { participantId: 'p1', displayName: 'Alex', isOrganizer: false },
       isMine: false, photos: [{ id: 'photo1', url: '/photo.jpg' }], category: 'outer',
@@ -225,16 +225,14 @@ describe('registration confirmation', () => {
     renderWithClient(<EventHomeScreen eventId="e1" />);
 
     const heading = screen.getByRole('heading', { name: event.name });
-    const confirmation = screen.getByText('Clothing registered.');
     expect(heading).toBeVisible();
-    expect(confirmation).toBeVisible();
+    expect(screen.queryByText('Clothing registered.')).not.toBeInTheDocument();
     const card = screen.getByRole('link', { name: /Green jacket/i });
     expect(card).toBeVisible();
     expect(card).toHaveAttribute('href', routes.itemDetail('e1', garment.id));
     expect(heading.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(confirmation.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
-  it.each(['registered=0', ''])('does not show a registration status for %s', (params) => {
+  it.each(['registered=0', '', 'registered=1'])('does not show a registration status for %s', (params) => {
     useSearchParams.mockReturnValue(new URLSearchParams(params));
     renderWithClient(<EventHomeScreen eventId="e1" />);
     expect(screen.queryByText('Clothing registered.')).not.toBeInTheDocument();

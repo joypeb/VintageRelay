@@ -144,6 +144,25 @@ export function buildRegisterClothingBody(
   return body;
 }
 
+export function buildUpdateClothingBody(
+  draft: ClothingDraft,
+  photoIds: string[],
+): RegisterClothingBody {
+  const measurements: Partial<Record<MeasurementField, number>> = {};
+  for (const [field, raw] of Object.entries(draft.measurements)) {
+    const value = raw?.trim() ?? '';
+    if (value === '') continue;
+    measurements[field as MeasurementField] = Number(value);
+  }
+  return {
+    photoIds,
+    category: draft.category as Exclude<ClothingCategoryValue, ''>,
+    title: draft.title.trim(),
+    description: draft.description.trim(),
+    measurements,
+  };
+}
+
 const CLOTHING_FORM_ERROR = 'Check your entries and try again.';
 
 const MEASUREMENT_MESSAGE = 'Enter a number from 0.1 to 120.';

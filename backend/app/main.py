@@ -70,6 +70,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             ("/api/v1/events/{event_id}/close", "post"),
             ("/api/v1/photos/{photo_id}", "get"),
             ("/api/v1/clothing/{clothing_id}", "get"),
+            ("/api/v1/clothing/{clothing_id}", "delete"),
         ):
             responses = schema["paths"][path][method]["responses"]
             validation_ref = (

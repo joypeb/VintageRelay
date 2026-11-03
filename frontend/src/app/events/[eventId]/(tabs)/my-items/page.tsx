@@ -1,6 +1,6 @@
-import { MyItemsPlaceholderScreen } from '@/components/clothing/MyItemsPlaceholderScreen';
+import { MyItemsList } from '@/components/clothing/MyItemsList';
 
 export default async function MyItemsPage({ params }: { params: Promise<{ eventId: string }> }) {
   const { eventId } = await params;
-  return <MyItemsPlaceholderScreen eventId={eventId} />;
+  return <MyItemsList eventId={eventId} />;
 }

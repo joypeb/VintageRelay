@@ -104,6 +104,10 @@ Log `INFO` event `clothing_withdrawn` with `extra`: `clothing_id`, `invalidated_
 
 Idempotent. Repeated withdrawals return `204`.
 
+## 017 Deferral Note (implemented)
+
+Feature 017 implements PATCH/DELETE with the guards above but defers PATCH step 5 (analysis stale/pending restart → 018) and PATCH steps 6–7 plus DELETE steps 6–7 (intent/proposal invalidation and cycle recalculation → 020). Invalidation counts are logged as 0. The confirmed checks (`CLOTHING_ALREADY_CONFIRMED`) are kept. 018 must re-enable the analysis step; 020 must re-enable invalidation and recalculation.
+
 ## Open Decisions
 
 - Whether withdrawn garments can be restored (not supported in this draft).

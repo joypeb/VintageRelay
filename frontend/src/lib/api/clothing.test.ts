@@ -7,13 +7,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { apiFetch } from '@/lib/api/client';
 import {
+  deleteClothing,
   getClothing,
   listClothing,
   registerClothing,
   shouldRetryClothingQuery,
+  updateClothing,
   useClothingListQuery,
   useClothingQuery,
 } from '@/lib/api/clothing';
+import { queryKeys } from '@/lib/api/query-keys';
 import { renderWithClient } from '@/test/render';
 
 vi.mock('@/lib/api/client', () => ({ apiFetch: vi.fn() }));
@@ -209,5 +212,94 @@ describe('shouldRetryClothingQuery', () => {
     ['retry budget exhausted', 3, new ApiError(0, 'NETWORK_ERROR', 'Network error'), false],
   ])('handles %s', (_name, failureCount, error, expected) => {
     expect(shouldRetryClothingQuery(failureCount, error)).toBe(expected);
+  });
+});
+
+describe('listClothing ownership', () => {
+  it('requests own garments with ownership=mine', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(clothingList);
+    await expect(listClothing('e1', 'mine')).resolves.toEqual(clothingList);
+    expect(vi.mocked(apiFetch).mock.calls[0]?.slice(0, 2)).toEqual([
+      'e1',
+      '/events/e1/clothing?ownership=mine',
+    ]);
+    expect(apiFetch).toHaveBeenCalledOnce();
+  });
+
+  it('requests own garments with an encoded event ID', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(clothingList);
+    await expect(listClothing('a/b c', 'mine')).resolves.toEqual(clothingList);
+    expect(vi.mocked(apiFetch).mock.calls[0]?.slice(0, 2)).toEqual([
+      'a/b c',
+      '/events/a%2Fb%20c/clothing?ownership=mine',
+    ]);
+  });
+});
+
+describe('updateClothing', () => {
+  const updateBody = {
+    photoIds: ['p1', 'p2'],
+    category: 'top' as const,
+    title: 'Jacket',
+    description: 'Green',
+    measurements: { chest: 21.5 },
+  };
+
+  it('sends PATCH to the encoded clothing ID and returns the parsed clothing', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(clothing);
+    await expect(updateClothing('event/session', 'a/b c', updateBody)).resolves.toEqual(clothing);
+    const calls = vi.mocked(apiFetch).mock.calls[0];
+    expect(calls?.slice(0, 2)).toEqual(['event/session', '/clothing/a%2Fb%20c']);
+    expect(calls?.[2]).toMatchObject({ method: 'PATCH', body: JSON.stringify(updateBody) });
+    expect(apiFetch).toHaveBeenCalledOnce();
+  });
+
+  it('rejects a malformed response with an unknown error', async () => {
+    vi.mocked(apiFetch).mockResolvedValue({ id: 'c1' });
+    const error = await updateClothing('e1', 'c1', updateBody).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 200, code: 'UNKNOWN_ERROR' });
+  });
+
+  it.each([
+    new ApiError(0, 'NETWORK_ERROR', 'Network error'),
+    new ApiError(409, 'EVENT_CLOSED', 'Event closed'),
+    new ApiError(409, 'CLOTHING_ALREADY_CONFIRMED', 'Confirmed'),
+  ])('rethrows API errors unchanged', async (error) => {
+    vi.mocked(apiFetch).mockRejectedValue(error);
+    await expect(updateClothing('e1', 'c1', updateBody)).rejects.toBe(error);
+  });
+});
+
+describe('deleteClothing', () => {
+  it('sends DELETE to the encoded clothing ID', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(undefined);
+    await expect(deleteClothing('event/session', 'a/b c')).resolves.toBeUndefined();
+    const calls = vi.mocked(apiFetch).mock.calls[0];
+    expect(calls?.slice(0, 2)).toEqual(['event/session', '/clothing/a%2Fb%20c']);
+    expect(calls?.[2]).toMatchObject({ method: 'DELETE' });
+    expect(apiFetch).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    new ApiError(0, 'NETWORK_ERROR', 'Network error'),
+    new ApiError(409, 'EVENT_CLOSED', 'Event closed'),
+    new ApiError(409, 'CLOTHING_ALREADY_CONFIRMED', 'Confirmed'),
+  ])('rethrows API errors unchanged', async (error) => {
+    vi.mocked(apiFetch).mockRejectedValue(error);
+    await expect(deleteClothing('e1', 'c1')).rejects.toBe(error);
+  });
+});
+
+describe('clothing list keys', () => {
+  it('separates mine and others lists', () => {
+    expect(queryKeys.clothingList('e1', 'mine')).not.toEqual(
+      queryKeys.clothingList('e1', 'others'),
+    );
+  });
+
+  it('includes ownership in the key', () => {
+    expect(JSON.stringify(queryKeys.clothingList('e1', 'mine'))).toContain('mine');
+    expect(JSON.stringify(queryKeys.clothingList('e1', 'others'))).toContain('others');
   });
 });
