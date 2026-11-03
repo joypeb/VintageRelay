@@ -1,9 +1,11 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Query, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.security import HTTPAuthorizationCredentials
 
+from app.ai.deps import get_analyzer
+from app.ai.protocols import ClothingAnalyzer
 from app.api.deps import (
     CurrentParticipant,
     DbDep,
@@ -19,6 +21,7 @@ from app.schemas.clothing import Clothing, ClothingCreate, ClothingList
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
 from app.services.clothing import ClothingService
+from app.services.clothing_analysis import run_clothing_analysis
 from app.services.photo import PhotoService
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -133,12 +136,18 @@ def upload_photo(
 def register_clothing(
     event_id: str,
     body: ClothingCreate,
+    background_tasks: BackgroundTasks,
     db: DbDep,
     settings: SettingsDep,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+    analyzer: Annotated[ClothingAnalyzer, Depends(get_analyzer)],
 ) -> Clothing:
     participant = get_current_participant(event_id, db, credentials)
-    return ClothingService(db, settings).register(event_id, participant, body)
+    response = ClothingService(db, settings).register(event_id, participant, body)
+    background_tasks.add_task(
+        run_clothing_analysis, db, settings, analyzer, response.id, response.content_version
+    )
+    return response
 
 
 @router.get(

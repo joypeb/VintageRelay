@@ -26,5 +26,9 @@ class AIUnavailableError(RuntimeError):
     """Model call failed after retries (job marks the analysis failed)."""
 
 
+class AINotConfiguredError(AIUnavailableError):
+    """No API key configured; the job leaves the row pending (not attempted)."""
+
+
 class ClothingAnalyzer(Protocol):
     def analyze(self, request: AnalysisRequest) -> AnalysisResult: ...

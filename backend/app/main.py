@@ -13,6 +13,7 @@ from app.api.routers import clothing, entry_codes, events, photos
 from app.core.config import Settings, get_settings
 from app.core.db import Db
 from app.core.logging import disable_access_log, request_context, setup_logging
+from app.services.clothing_analysis import mark_pending_failed
 
 
 def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAPI:
@@ -24,11 +25,16 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
         disable_access_log()
         os.makedirs(settings.photo_dir, exist_ok=True)
         if db is not None:
+            mark_pending_failed(db)
             yield
             return
         database = Db(settings.database_url)
         app.state.db = database
         try:
+            api_key = settings.ai_api_key.get_secret_value() if settings.ai_api_key else ""
+            if not api_key:
+                raise RuntimeError("AI_API_KEY is not configured.")
+            mark_pending_failed(database)
             yield
         finally:
             database.dispose()
