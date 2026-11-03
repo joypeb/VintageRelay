@@ -75,7 +75,7 @@ export function MyItemsList({ eventId }: { eventId: string }) {
         {registered ? (
           // Banner doesn't create a live region, so a wrapper announces the outcome.
           <div role="status">
-            <Banner status="success" title="Clothing registered." />
+            <Banner status="success" title="Item registered." />
           </div>
         ) : null}
         <EmptyState
@@ -101,7 +101,7 @@ export function MyItemsList({ eventId }: { eventId: string }) {
         <div role="status">
           <Banner
             status="success"
-            title="Clothing registered."
+            title="Item registered."
             description={items[0] ? `Newest item: ${items[0].title}` : undefined}
           />
         </div>

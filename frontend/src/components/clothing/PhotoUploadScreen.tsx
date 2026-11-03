@@ -542,7 +542,7 @@ export function PhotoUploadScreen({ eventId, initialPhotos }: PhotoUploadScreenP
   if (closed) {
     return (
       <VStack gap={4} padding={6}>
-        <Heading level={1}>Register clothing</Heading>
+        <Heading level={1}>Register item</Heading>
         <Text type="body">Step 1 of 2: Photos</Text>
         {renderFileControl(true)}
         <Text type="body">
@@ -561,7 +561,7 @@ export function PhotoUploadScreen({ eventId, initialPhotos }: PhotoUploadScreenP
   if (queue.step === 2) {
     return (
       <VStack gap={4} padding={6}>
-        <Heading level={1}>Register clothing</Heading>
+        <Heading level={1}>Register item</Heading>
         <Text type="body">Step 2 of 2: Details</Text>
         <ClothingDetailsForm
           draft={draft}
@@ -608,7 +608,7 @@ export function PhotoUploadScreen({ eventId, initialPhotos }: PhotoUploadScreenP
 
   return (
     <VStack gap={4} padding={6}>
-      <Heading level={1}>Register clothing</Heading>
+      <Heading level={1}>Register item</Heading>
       <Text type="body">Step 1 of 2: Photos</Text>
       {renderFileControl(atLimit)}
       <Text type="body">

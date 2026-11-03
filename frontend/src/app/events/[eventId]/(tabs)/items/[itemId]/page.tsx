@@ -2,9 +2,14 @@ import { ClothingDetailScreen } from '@/components/clothing/ClothingDetailScreen
 
 export default async function ItemDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ eventId: string; itemId: string }>;
+  searchParams?: Promise<{ from?: string | string[] }>;
 }) {
   const { eventId, itemId } = await params;
-  return <ClothingDetailScreen eventId={eventId} clothingId={itemId} />;
+  const query = searchParams === undefined ? undefined : await searchParams;
+  const raw = query?.from;
+  const from = Array.isArray(raw) ? raw[0] : raw;
+  return <ClothingDetailScreen eventId={eventId} clothingId={itemId} from={from} />;
 }
