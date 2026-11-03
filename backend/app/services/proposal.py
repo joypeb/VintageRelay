@@ -1,26 +1,231 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings
+from app.core.db import Db
+from app.domain.enums import ClothingCategory, ClothingStatus, EventStatus
 from app.domain.errors import (
     AppError,
     ClothingAlreadyConfirmedError,
     ClothingNotAvailableError,
     IntentNotActiveError,
+    NotFoundError,
 )
 from app.domain.matching import cycle_key
+from app.domain.photos import photo_url
 from app.models.clothing import Clothing as ClothingModel
+from app.models.event import Event
 from app.models.exchange_intent import ExchangeIntent
+from app.models.participant import Participant
+from app.models.photo import Photo as PhotoModel
 from app.models.trade_participant import TradeParticipant
 from app.models.trade_proposal import TradeProposal
-from app.schemas.proposal import Proposal
+from app.repositories import event as event_repo
+from app.repositories import photo as photo_repo
+from app.schemas.intent import ClothingSummary, IntentOwner
+from app.schemas.proposal import Proposal, ProposalList, ProposalParticipant
 
 
-def to_schema(proposal: TradeProposal) -> Proposal:
-    return Proposal(id=proposal.id, status=proposal.status, version=proposal.version)
+def build_proposal(
+    s: Session, settings: Settings, proposal: TradeProposal, caller: Participant
+) -> Proposal:
+    event = s.get(Event, proposal.event_id)
+    if event is None:
+        raise NotFoundError()
+    parts = list(
+        s.scalars(select(TradeParticipant).where(TradeParticipant.proposal_id == proposal.id))
+    )
+    mine = next((part for part in parts if part.participant_id == caller.id), None)
+    if mine is None:
+        raise NotFoundError()
+    ordered = _order_from_caller(parts, mine)
+    clothing_ids = list(
+        {code for part in ordered for code in (part.offered_clothing_id, part.received_clothing_id)}
+    )
+    clothes: dict[str, ClothingModel] = (
+        {
+            row.id: row
+            for row in s.scalars(select(ClothingModel).where(ClothingModel.id.in_(clothing_ids)))
+        }
+        if clothing_ids
+        else {}
+    )
+    person_ids = {part.participant_id for part in ordered} | {
+        clothing.owner_id for clothing in clothes.values()
+    }
+    people: dict[str, Participant] = (
+        {
+            row.id: row
+            for row in s.scalars(select(Participant).where(Participant.id.in_(sorted(person_ids))))
+        }
+        if person_ids
+        else {}
+    )
+    photo_map = photo_repo.photos_for(s, clothing_ids)
+    items = [
+        _build_participant(part, people, clothes, photo_map, event, settings, caller.id)
+        for part in ordered
+    ]
+    event_active = event.status != EventStatus.CLOSED
+    return Proposal(
+        id=proposal.id,
+        event_id=proposal.event_id,
+        version=proposal.version,
+        status=proposal.status,
+        end_reason=proposal.end_reason,
+        cycle_size=len(ordered),
+        participants=items,
+        my_response=mine.response,
+        can_consent=proposal.status == "pending" and mine.response == "pending" and event_active,
+        can_reject=proposal.status == "pending" and mine.response != "rejected" and event_active,
+        can_cancel=proposal.status == "confirmed" and event_active,
+        created_at=proposal.created_at,
+        confirmed_at=proposal.confirmed_at,
+        cancelled_at=proposal.cancelled_at,
+        ended_at=proposal.ended_at,
+    )
+
+
+def list_proposals(
+    db: Db,
+    settings: Settings,
+    event_id: str,
+    participant: Participant,
+    statuses: list[str] | None,
+    clothing_id: str | None,
+) -> ProposalList:
+    with db.read() as s:
+        event = event_repo.get(s, event_id)
+        if event is None or participant.event_id != event.id:
+            raise NotFoundError()
+        stmt = (
+            select(TradeProposal)
+            .join(TradeParticipant, TradeParticipant.proposal_id == TradeProposal.id)
+            .where(
+                TradeProposal.event_id == event.id,
+                TradeParticipant.participant_id == participant.id,
+            )
+        )
+        if statuses:
+            stmt = stmt.where(TradeProposal.status.in_(statuses))
+        if clothing_id is not None:
+            stmt = stmt.where(
+                or_(
+                    TradeParticipant.offered_clothing_id == clothing_id,
+                    TradeParticipant.received_clothing_id == clothing_id,
+                )
+            )
+        proposals = list(s.scalars(stmt.order_by(TradeProposal.created_at.desc())))
+        items = [build_proposal(s, settings, proposal, participant) for proposal in proposals]
+    return ProposalList(items=items)
+
+
+def get_proposal(
+    db: Db, settings: Settings, participant: Participant, proposal_id: str
+) -> Proposal:
+    with db.read() as s:
+        proposal = s.get(TradeProposal, proposal_id)
+        if proposal is None or proposal.event_id != participant.event_id:
+            raise NotFoundError()
+        mine = s.scalar(
+            select(TradeParticipant).where(
+                TradeParticipant.proposal_id == proposal.id,
+                TradeParticipant.participant_id == participant.id,
+            )
+        )
+        if mine is None:
+            raise NotFoundError()
+        return build_proposal(s, settings, proposal, participant)
+
+
+def _order_from_caller(
+    parts: list[TradeParticipant], mine: TradeParticipant
+) -> list[TradeParticipant]:
+    ordered = [mine]
+    seen = {mine.participant_id}
+    current = mine
+    while len(ordered) < len(parts):
+        nxt = next(
+            (
+                part
+                for part in parts
+                if part.participant_id not in seen
+                and part.offered_clothing_id == current.received_clothing_id
+            ),
+            None,
+        )
+        if nxt is None:
+            ordered.extend(
+                sorted(
+                    (part for part in parts if part.participant_id not in seen),
+                    key=lambda part: part.participant_id,
+                )
+            )
+            break
+        ordered.append(nxt)
+        seen.add(nxt.participant_id)
+        current = nxt
+    return ordered
+
+
+def _build_participant(
+    part: TradeParticipant,
+    people: dict[str, Participant],
+    clothes: dict[str, ClothingModel],
+    photo_map: dict[str, list[PhotoModel]],
+    event: Event,
+    settings: Settings,
+    caller_id: str,
+) -> ProposalParticipant:
+    person = people.get(part.participant_id)
+    offered = clothes.get(part.offered_clothing_id)
+    received = clothes.get(part.received_clothing_id)
+    if person is None or offered is None or received is None:
+        raise NotFoundError()
+    return ProposalParticipant(
+        participant=IntentOwner(
+            participant_id=person.id,
+            display_name=person.display_name,
+            is_organizer=person.id == event.organizer_participant_id,
+        ),
+        is_me=person.id == caller_id,
+        offered_clothing=_build_summary(offered, people, photo_map, event, settings),
+        received_clothing=_build_summary(received, people, photo_map, event, settings),
+        response=part.response,
+        responded_at=part.responded_at,
+    )
+
+
+def _build_summary(
+    clothing: ClothingModel,
+    people: dict[str, Participant],
+    photo_map: dict[str, list[PhotoModel]],
+    event: Event,
+    settings: Settings,
+) -> ClothingSummary:
+    owner = people.get(clothing.owner_id)
+    if owner is None:
+        raise NotFoundError()
+    photos = photo_map.get(clothing.id, [])
+    first = photos[0] if photos else None
+    return ClothingSummary(
+        id=clothing.id,
+        owner=IntentOwner(
+            participant_id=owner.id,
+            display_name=owner.display_name,
+            is_organizer=owner.id == event.organizer_participant_id,
+        ),
+        photo_url=photo_url(settings.app_base_url, first.id) if first else "",
+        category=ClothingCategory(clothing.category),
+        title=clothing.title,
+        description=clothing.description,
+        status=ClothingStatus(clothing.status),
+        content_version=clothing.content_version,
+    )
 
 
 def ensure_two_person_proposal(

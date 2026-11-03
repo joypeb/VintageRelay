@@ -205,7 +205,7 @@ class IntentService:
             if intent.accepted_proposal_id is not None:
                 existing = s.get(TradeProposal, intent.accepted_proposal_id)
                 if existing is not None and existing.status in ("pending", "confirmed"):
-                    return proposal_service.to_schema(existing)
+                    return proposal_service.build_proposal(s, self.settings, existing, participant)
             event = event_repo.get(s, intent.event_id)
             if event is None:
                 raise NotFoundError()
@@ -269,7 +269,7 @@ class IntentService:
             else:
                 intent.accepted_proposal_id = proposal.id
                 s.flush()
-                response = proposal_service.to_schema(proposal)
+                response = proposal_service.build_proposal(s, self.settings, proposal, participant)
                 proposal_id = proposal.id
                 pending_error = None
         if pending_error is not None:
