@@ -257,7 +257,7 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
 
   function renderPanel() {
     if (tab === 'received') {
-      if (receivedQuery.isPending) return <Text type="body">Loading requests…</Text>;
+      if (receivedQuery.isPending || sentQuery.isPending) return <Text type="body">Loading requests…</Text>;
       if (receivedQuery.error) {
         return (
           <VStack gap={2}>

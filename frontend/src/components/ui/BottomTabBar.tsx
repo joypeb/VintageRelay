@@ -46,7 +46,7 @@ export function BottomTabBar({ eventId }: { eventId: string }) {
   });
   const proposalsQuery = useProposalsQuery(eventId, { status: 'pending', enabled, closed });
   const badge =
-    enabled && receivedQuery.data && proposalsQuery.data
+    enabled && receivedQuery.data && sentQuery.data && proposalsQuery.data
       ? countTradesBadge(
           visibleReceivedIntents(sentQuery.data?.items ?? [], receivedQuery.data.items),
           proposalsQuery.data.items,
