@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -22,6 +23,7 @@ from app.domain.errors import (
 )
 from app.models.event import Event
 from app.models.participant import Participant
+from app.models.trade_proposal import TradeProposal
 from app.repositories import clothing as clothing_repo
 from app.repositories import event as event_repo
 from app.repositories import participant as participant_repo
@@ -165,8 +167,15 @@ class EventService:
             stats = EventStats(
                 participant_count=participant_repo.count_by_event(s, event.id),
                 available_clothing_count=clothing_repo.count_available(s, event.id),
-                # TODO(feature 06/11): count from clothing/proposals
-                confirmed_exchange_count=0,
+                confirmed_exchange_count=s.scalar(
+                    select(func.count())
+                    .select_from(TradeProposal)
+                    .where(
+                        TradeProposal.event_id == event.id,
+                        TradeProposal.status == "confirmed",
+                    )
+                )
+                or 0,
             )
         return build_event_read(event, actor, stats, self.settings)
 
@@ -182,8 +191,25 @@ class EventService:
             event = self._organizer_event(s, actor, event_id)
             if event.status == EventStatus.CLOSED:
                 return self._read(s, event, actor)
-            if event_repo.mark_closed(s, event_id, self.clock()) != 1:
+            now = self.clock()
+            if event_repo.mark_closed(s, event_id, now) != 1:
                 raise InternalError()
+            pending = list(
+                s.scalars(
+                    select(TradeProposal).where(
+                        TradeProposal.event_id == event_id,
+                        TradeProposal.status == "pending",
+                    )
+                )
+            )
+            for proposal in pending:
+                proposal.status = "invalidated"
+                proposal.end_reason = "event_closed"
+                proposal.ended_at = now
+            if pending:
+                s.flush()
+            invalidated_proposal_count = len(pending)
+            # close is invalidate-only: never recalculate or create new versions.
             s.refresh(event)
             result = self._read(s, event, actor)
         logger.info(
@@ -191,7 +217,7 @@ class EventService:
             extra={
                 "event_id": event_id,
                 "participant_id": actor.id,
-                "invalidated_proposal_count": 0,
+                "invalidated_proposal_count": invalidated_proposal_count,
             },
         )
         return result
