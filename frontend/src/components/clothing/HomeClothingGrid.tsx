@@ -17,7 +17,7 @@ import { ApiError } from '@/lib/api/api-error';
 import { useClothingListQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
-import { MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
+import { CATEGORY_OPTIONS, MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
 import type { MeasurementField } from '@/lib/validation/clothing-form';
 import type { Clothing } from '@/types/clothing';
 
@@ -38,14 +38,16 @@ const SIZE_FALLBACK_ORDER: MeasurementField[] = [
 ];
 
 function formatCardMeta(item: Clothing): string {
+  const categoryLabel =
+    CATEGORY_OPTIONS.find((option) => option.value === item.category)?.label ?? item.category;
   const sizeLabel = item.analysis?.features?.sizeLabel?.trim();
-  if (sizeLabel) return `${item.category} · ${sizeLabel} · ${item.owner.displayName}`;
+  if (sizeLabel) return `${categoryLabel} · ${sizeLabel} · ${item.owner.displayName}`;
   const fallback = SIZE_FALLBACK_ORDER.map((field) => ({
     field,
     value: item.measurements?.[field],
   })).find((entry): entry is { field: MeasurementField; value: number } => typeof entry.value === 'number');
-  if (fallback) return `${item.category} · ${MEASUREMENT_LABELS[fallback.field]} ${fallback.value} in · ${item.owner.displayName}`;
-  return `${item.category} · ${item.owner.displayName}`;
+  if (fallback) return `${categoryLabel} · ${MEASUREMENT_LABELS[fallback.field]} ${fallback.value} in · ${item.owner.displayName}`;
+  return `${categoryLabel} · ${item.owner.displayName}`;
 }
 
 export function ClothingCard({

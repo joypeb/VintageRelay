@@ -35,6 +35,16 @@ const MEASUREMENT_ORDER: MeasurementField[] = [
 
 const subscribe = () => () => {};
 
+// Anchored so /events/{id}/search-anything cannot pass as a same-event search return.
+function isSameEventSearchRef(value: string, searchPath: string): boolean {
+  return (
+    value === searchPath ||
+    value.startsWith(`${searchPath}?`) ||
+    value.startsWith(`${searchPath}#`) ||
+    value.startsWith(`${searchPath}/`)
+  );
+}
+
 function resolveBackHref(eventId: string, from: string | null | undefined): string {
   const searchPath = routes.search(eventId);
   const candidates: Array<string | null | undefined> = [from];
@@ -54,13 +64,13 @@ function resolveBackHref(eventId: string, from: string | null | undefined): stri
     } catch {
       // keep the raw value when decoding fails
     }
-    if (decoded.startsWith(`/events/${eventId}/search`)) return decoded;
+    if (isSameEventSearchRef(decoded, searchPath)) return decoded;
   }
   if (typeof window !== 'undefined' && typeof document !== 'undefined' && document.referrer !== '') {
     try {
       const url = new URL(document.referrer);
       const ref = `${url.pathname}${url.search}`;
-      if (ref.startsWith(`/events/${eventId}/search`)) return ref;
+      if (isSameEventSearchRef(ref, searchPath)) return ref;
     } catch {
       // ignore malformed referrers
     }

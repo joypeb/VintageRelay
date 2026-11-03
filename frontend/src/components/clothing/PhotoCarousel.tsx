@@ -198,6 +198,7 @@ export function PhotoCarousel<T extends { key: string }>({
         </div>
       ) : null}
       {count >= 2 ? (
+        // Touch swipe hint skipped: Astryx Pagination dots need interactive paging wiring beyond a 2-3 line visual.
         <Text type="body">
           {clampedIndex + 1} / {count}
         </Text>
