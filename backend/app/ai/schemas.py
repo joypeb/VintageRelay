@@ -43,6 +43,27 @@ def _clean_str_list(value: object, limit: int | None) -> object:
     return cleaned[:limit] if limit is not None else cleaned
 
 
+class SearchMeasurement(BaseModel):
+    """One raw measurement range from search text (inches)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    min: float
+    max: float
+
+
+class SearchInterpretation(BaseModel):
+    """Raw validated model output for search text; strict schema sent."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category: str | None
+    colors: list[str]
+    measurements: list[SearchMeasurement]
+    unrecognized: list[str]
+
+
 class Uncertainty(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
