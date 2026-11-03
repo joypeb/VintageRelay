@@ -85,11 +85,11 @@
 
 ### Tests for US1c (REQUIRED — write first) ⚠️
 
-- [ ] T015 [P] [US1] Failing API tests for proposal reads in backend/tests/api/test_proposals_reads.py (participant-only 404, filters, newest-first ordering per v1 decision)
+- [x] T015 [P] [US1] Failing API tests for proposal reads in backend/tests/api/test_proposals_reads.py (participant-only 404, filters, newest-first ordering per v1 decision)
 
 ### Implementation for US1c
 
-- [ ] T016 [US1] Implement proposal reads (`GET /events/{id}/proposals`, `GET /proposals/{id}`) in backend/app/services/proposal.py, backend/app/schemas/proposal.py, backend/app/api/routers/proposals.py (register in backend/app/main.py)
+- [x] T016 [US1] Implement proposal reads (`GET /events/{id}/proposals`, `GET /proposals/{id}`) in backend/app/services/proposal.py, backend/app/schemas/proposal.py, backend/app/api/routers/proposals.py (register in backend/app/main.py)
 
 **Checkpoint**: Reads green; US1 request→accept→read path complete
 
