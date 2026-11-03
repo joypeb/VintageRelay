@@ -427,3 +427,68 @@ def test_downgrade_removes_clothing_category_title_and_measurements(migrated_dat
     assert added_columns.isdisjoint(
         column["name"] for column in inspect(engine).get_columns("clothes")
     )
+
+
+def test_migration_creates_clothing_analyses_table(migrated_database):
+    _, engine = migrated_database
+    inspector = inspect(engine)
+
+    assert "clothing_analyses" in inspector.get_table_names()
+    assert {column["name"] for column in inspector.get_columns("clothing_analyses")} == {
+        "id",
+        "clothing_id",
+        "content_version",
+        "status",
+        "features",
+        "uncertainties",
+        "model_info",
+        "updated_at",
+    }
+    assert any(
+        constraint["column_names"] == ["clothing_id"]
+        for constraint in inspector.get_unique_constraints("clothing_analyses")
+    )
+    assert any(
+        fk["constrained_columns"] == ["clothing_id"]
+        and fk["referred_table"] == "clothes"
+        and fk["referred_columns"] == ["id"]
+        for fk in inspector.get_foreign_keys("clothing_analyses")
+    )
+
+
+def insert_analysis_row(connection, analysis_id, clothing_id, content_version, status, now):
+    connection.execute(
+        text(
+            "INSERT INTO clothing_analyses (id, clothing_id, content_version, status, "
+            "features, uncertainties, model_info, updated_at) VALUES "
+            "(:id, :clothing_id, :content_version, :status, "
+            "NULL, '[]', NULL, :now)"
+        ),
+        {
+            "id": analysis_id,
+            "clothing_id": clothing_id,
+            "content_version": content_version,
+            "status": status,
+            "now": now,
+        },
+    )
+
+
+def test_migration_rejects_second_analysis_row_for_same_garment(migrated_database):
+    _, engine = migrated_database
+
+    now = seed_clothing_foreign_keys(engine)
+    with engine.begin() as connection:
+        insert_clothing(connection, "clothing-1", "available", now)
+        insert_analysis_row(connection, "analysis-1", "clothing-1", 1, "pending", now)
+    with pytest.raises(IntegrityError), engine.begin() as connection:
+        insert_analysis_row(connection, "analysis-2", "clothing-1", 2, "pending", now)
+
+
+def test_downgrade_removes_clothing_analyses_table(migrated_database):
+    cfg, engine = migrated_database
+
+    assert "clothing_analyses" in inspect(engine).get_table_names()
+    command.downgrade(cfg, "e4f1a2b3c5d6")
+
+    assert "clothing_analyses" not in inspect(engine).get_table_names()

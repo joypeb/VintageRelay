@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: Literal["text", "json"] = "text"
     photo_dir: str = "data/photos"
+    ai_api_key: SecretStr | None = None
+    ai_api_base_url: str = "https://api.meta.ai/v1"
+    ai_model_id: str = "muse-spark-1.3"
+    ai_analysis_timeout_seconds: float = 30.0
+    ai_slot_wait_seconds: float = 2.0
 
     @field_validator("app_base_url")
     @classmethod
