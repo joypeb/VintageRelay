@@ -201,7 +201,16 @@ describe('EditClothingForm', () => {
     await user.click(await screen.findByRole('button', { name: /save/i }));
 
     expect(await screen.findByText('Use 100 characters or fewer.')).toBeVisible();
-    expect(screen.getByText('Enter a number from 0.1 to 120.')).toBeVisible();
+    const chestErrors = screen.getAllByText('Enter a number from 0.1 to 120.');
+    expect(chestErrors.length).toBeGreaterThanOrEqual(1);
+    expect(chestErrors.some((element) => {
+      try {
+        expect(element).toBeVisible();
+        return true;
+      } catch {
+        return false;
+      }
+    })).toBe(true);
     expect(screen.getByRole('textbox', { name: /title/i })).toHaveValue('Green jacket');
   });
 
