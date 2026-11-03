@@ -123,11 +123,11 @@
 
 ### Tests for US3 (REQUIRED — write first) ⚠️
 
-- [ ] T021 [P] [US3] Failing 3-person tests in backend/tests/api/test_proposals_three_person.py (auto-create on loop close, cycleKey reuse, suppression after reject until change, unanimous confirm)
+- [x] T021 [P] [US3] Failing 3-person tests in backend/tests/api/test_proposals_three_person.py (auto-create on loop close, cycleKey reuse, suppression after reject until change, unanimous confirm)
 
 ### Implementation for US3
 
-- [ ] T022 [US3] Extend generation to 3-person cycles via `domain/matching.py` in backend/app/services/proposal.py (no new endpoints)
+- [x] T022 [US3] Extend generation to 3-person cycles via `domain/matching.py` in backend/app/services/proposal.py (no new endpoints)
 
 **Checkpoint**: US1–US3 backend green (2-person + 3-person confirm)
 
