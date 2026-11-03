@@ -60,6 +60,13 @@ describe('EstimatedByAI', () => {
     expect(screen.getByText('Check in person for a back logo.')).toBeVisible();
   });
 
+  it('uses registration-neutral helper text while analysis is pending', () => {
+    renderWithClient(<EstimatedByAI analysis={{ ...failedAnalysis, status: 'pending' }} />);
+
+    expect(screen.getByText('Analysis runs in the background.', { exact: true })).toBeVisible();
+    expect(screen.queryByText(/Registration is complete/i)).not.toBeInTheDocument();
+  });
+
   it('renders nothing when analysis failed', () => {
     const { container } = renderWithClient(<EstimatedByAI analysis={failedAnalysis} />);
 

@@ -1,4 +1,5 @@
 import { HStack } from '@astryxdesign/core/HStack';
+import { StackItem } from '@astryxdesign/core/Stack';
 
 import { BottomTabBar } from '@/components/ui/BottomTabBar';
 import { EventHeaderMenuSlot } from '@/components/ui/EventHeaderMenu';
@@ -19,7 +20,8 @@ export default async function EventTabsLayout({
       <HStack as="header" hAlign="end" className="empty:hidden">
         <EventHeaderMenuSlot eventId={eventId} />
       </HStack>
-      {children}
+      {/* Grows to push the tab bar to the viewport bottom on short pages. */}
+      <StackItem size="fill">{children}</StackItem>
       <BottomTabBar eventId={eventId} />
     </>
   );

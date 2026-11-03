@@ -110,6 +110,39 @@ describe('MyItemsList', () => {
     }
   });
 
+  it.each([
+    ['available', 'Available'],
+    ['withdrawn', 'Withdrawn'],
+  ] as const)('shows a separate analysis state in a %s row link', (status, label) => {
+    const item = makeItem({
+      id: 'pending',
+      title: 'Pending jacket',
+      status,
+      analysis: {
+        contentVersion: 1,
+        status: 'pending',
+        features: null,
+        uncertainties: [],
+        modelInfo: null,
+        updatedAt: '2026-11-04T00:00:00Z',
+      },
+    });
+    query({ data: { items: [item], nextCursor: null } });
+    renderWithClient(<MyItemsList eventId="e1" />);
+
+    const link = screen.getByRole('link', { name: /Pending jacket/i });
+    expect(link).toHaveAttribute('href', myItemDetail('e1', item.id));
+    expect(within(link).getByRole('img', { name: item.title })).toBeVisible();
+    expect(within(link).getByText(item.title)).toBeVisible();
+    const statusLabel = within(link).getByText(label, { exact: true });
+    const analyzing = within(link).getByText('AI analyzing…', { exact: true });
+    expect(statusLabel).toBeVisible();
+    expect(analyzing).toBeVisible();
+    expect(statusLabel).not.toBe(analyzing);
+    expect(link).not.toHaveTextContent('Registration is complete; analysis runs in the background.');
+    expect(link).not.toHaveTextContent('Analysis runs in the background.');
+  });
+
   it('sorts rows newest first even when the response is oldest first', () => {
     query({ data: { items: [olderWithdrawn, middleConfirmed, newerAvailable], nextCursor: null } });
     renderWithClient(<MyItemsList eventId="e1" />);

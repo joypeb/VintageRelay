@@ -13,7 +13,7 @@ export function EstimatedByAI({ analysis }: { analysis: ClothingAnalysis | null 
     return (
       <div role="status">
         <Text type="body">AI analyzing…</Text>
-        <Text type="body">Registration is complete; analysis runs in the background.</Text>
+        <Text type="body">Analysis runs in the background.</Text>
       </div>
     );
   }
