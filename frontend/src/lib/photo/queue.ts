@@ -6,7 +6,7 @@ export type PhotoItemStatus = 'waiting' | 'preparing' | 'uploading' | 'ready' | 
 
 export type PhotoItem = {
   key: string;
-  file: File;
+  file?: File;
   previewUrl: string;
   status: PhotoItemStatus;
   photo?: Photo;
@@ -39,6 +39,21 @@ export type PhotoQueueAction =
   | { type: 'displayFailed'; key: string }
   | { type: 'next' }
   | { type: 'back' };
+
+export function initialReadyPhotos(serverPhotos: { id: string; url: string }[]): PhotoItem[] {
+  return serverPhotos.map((photo) => ({
+    key: photo.id,
+    previewUrl: photo.url,
+    status: 'ready' as const,
+    photo: {
+      id: photo.id,
+      url: photo.url,
+      contentType: 'image/jpeg' as const,
+      sizeBytes: 0,
+      createdAt: '1970-01-01T00:00:00Z',
+    },
+  }));
+}
 
 export function nextToStart(state: C2State): PhotoItem | null {
   if (state.items.some((item) => item.status === 'preparing' || item.status === 'uploading')) {

@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger';
 import { compressPhoto } from '@/lib/photo/compress';
 import {
   canProceed,
-  initialPhotoQueueState,
+  initialReadyPhotos,
   nextToStart,
   photoQueueReducer,
 } from '@/lib/photo/queue';
@@ -46,6 +46,7 @@ import type { Event } from '@/types/event';
 
 type PhotoUploadScreenProps = {
   eventId: string;
+  initialPhotos?: { id: string; url: string }[];
 };
 
 const subscribe = () => () => {};
@@ -75,7 +76,7 @@ function FocusedAlert({ message, id }: FocusedAlertProps) {
   );
 }
 
-export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
+export function PhotoUploadScreen({ eventId, initialPhotos }: PhotoUploadScreenProps) {
   const isMounted = useSyncExternalStore(
     subscribe,
     () => true,
@@ -90,7 +91,15 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [queue, dispatch] = useReducer(photoQueueReducer, initialPhotoQueueState);
+  const [queue, dispatch] = useReducer(
+    photoQueueReducer,
+    initialPhotos ?? [],
+    (photos) => ({
+      step: 1 as const,
+      items: initialReadyPhotos(photos),
+      lastSkipped: 0,
+    }),
+  );
   const [draft, setDraft] = useState<ClothingDraft>(EMPTY_DRAFT);
   const [fieldErrors, setFieldErrors] = useState<ClothingFieldErrors>({});
   const [registerOutcome, setRegisterOutcome] = useState<RegisterOutcome>('idle');
@@ -159,13 +168,15 @@ export function PhotoUploadScreen({ eventId }: PhotoUploadScreenProps) {
     inFlightRef.current.add(next.key);
     const run = async () => {
       try {
-        const needsCompress = next.file.size > MAX_PHOTO_BYTES;
-        let fileToUpload = next.file;
+        const sourceFile = next.file;
+        if (!sourceFile) return;
+        const needsCompress = sourceFile.size > MAX_PHOTO_BYTES;
+        let fileToUpload = sourceFile;
         if (needsCompress) {
           dispatch({ type: 'start', key: next.key, status: 'preparing' });
           let compressed: Awaited<ReturnType<typeof compressPhoto>>;
           try {
-            compressed = await compressPhoto(next.file);
+            compressed = await compressPhoto(sourceFile);
           } catch {
             compressed = {
               ok: false,

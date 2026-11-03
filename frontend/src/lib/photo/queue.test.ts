@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canProceed,
   initialPhotoQueueState,
+  initialReadyPhotos,
   nextToStart,
   photoQueueReducer,
 } from '@/lib/photo/queue';
@@ -109,5 +110,34 @@ describe('photo queue', () => {
     const back = photoQueueReducer(next, { type: 'back' });
     expect(back.step).toBe(1);
     expect(back.items).toEqual(allReady.items);
+  });
+});
+
+describe('initialReadyPhotos', () => {
+  const serverPhotos = [
+    { id: 'p1', url: 'https://example.com/p1.jpg' },
+    { id: 'p2', url: 'https://example.com/p2.jpg' },
+  ];
+
+  it('returns ready items preserving order and urls without files', () => {
+    const items = initialReadyPhotos(serverPhotos);
+    expect(items).toHaveLength(2);
+    expect(items.map((item) => item.status)).toEqual(['ready', 'ready']);
+    expect(items.map((item) => item.previewUrl)).toEqual([
+      'https://example.com/p1.jpg',
+      'https://example.com/p2.jpg',
+    ]);
+    expect(items.map((item) => item.photo?.id)).toEqual(['p1', 'p2']);
+    expect(items.map((item) => item.photo?.url)).toEqual([
+      'https://example.com/p1.jpg',
+      'https://example.com/p2.jpg',
+    ]);
+    for (const item of items) {
+      expect(item.file).toBeUndefined();
+    }
+  });
+
+  it('returns an empty list when there are no server photos', () => {
+    expect(initialReadyPhotos([])).toEqual([]);
   });
 });

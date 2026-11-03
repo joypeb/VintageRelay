@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRegisterClothingBody,
+  buildUpdateClothingBody,
   codePointLength,
   mapClothingServerFieldErrors,
   measurementFieldsFor,
@@ -168,5 +169,76 @@ describe('mapClothingServerFieldErrors', () => {
       formError: 'Check your entries and try again.',
       photoProblem: false,
     });
+  });
+});
+
+describe('buildUpdateClothingBody', () => {
+  it('builds a trimmed request with the whole photo list in order', () => {
+    expect(
+      buildUpdateClothingBody(
+        {
+          ...draft,
+          title: ' Jacket ',
+          description: ' Green ',
+          category: 'top',
+          measurements: { chest: '21.5', sleeve: '' },
+        },
+        ['p2', 'p1'],
+      ),
+    ).toEqual({
+      photoIds: ['p2', 'p1'],
+      category: 'top',
+      title: 'Jacket',
+      description: 'Green',
+      measurements: { chest: 21.5 },
+    });
+  });
+
+  it('replaces measurements as a whole object without leftover fields', () => {
+    const body = buildUpdateClothingBody(
+      { ...draft, category: 'top', measurements: { chest: '21.5' } },
+      ['p1'],
+    );
+    expect(body.photoIds).toEqual(['p1']);
+    expect(body.measurements).toEqual({ chest: 21.5 });
+  });
+
+  it('clears measurements as a whole object when none are entered', () => {
+    const body = buildUpdateClothingBody({ ...draft, measurements: {} }, ['p1']);
+    expect(body.photoIds).toEqual(['p1']);
+    expect(body.measurements ?? {}).toEqual({});
+  });
+});
+
+describe('mapClothingServerFieldErrors for edit', () => {
+  it('maps an already-attached photo problem to a photo problem', () => {
+    expect(
+      mapClothingServerFieldErrors({ fields: [{ field: 'photoIds', reason: 'already_attached' }] }),
+    ).toEqual({ fieldErrors: {}, formError: null, photoProblem: true });
+  });
+
+  it('maps measurement problems to field errors for validation failures', () => {
+    expect(
+      mapClothingServerFieldErrors({
+        fields: [{ field: 'measurements.chest', reason: 'invalid' }],
+      }),
+    ).toEqual({
+      fieldErrors: { chest: 'Enter a number from 0.1 to 120.' },
+      formError: null,
+      photoProblem: false,
+    });
+  });
+
+  it('uses a form error for confirmed and closed conflicts', () => {
+    for (const details of [
+      { fields: [{ field: 'unknown', reason: 'invalid' }] },
+      null,
+      {},
+    ]) {
+      expect(mapClothingServerFieldErrors(details)).toMatchObject({
+        formError: 'Check your entries and try again.',
+        photoProblem: false,
+      });
+    }
   });
 });
