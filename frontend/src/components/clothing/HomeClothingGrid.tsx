@@ -17,12 +17,36 @@ import { ApiError } from '@/lib/api/api-error';
 import { useClothingListQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
+import { MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
+import type { MeasurementField } from '@/lib/validation/clothing-form';
 import type { Clothing } from '@/types/clothing';
 
 const subscribe = () => () => {};
 
 // A downward drag of at least this far from the top edge refreshes the list.
 const PULL_TO_REFRESH_PX = 80;
+
+const SIZE_FALLBACK_ORDER: MeasurementField[] = [
+  'totalLength',
+  'chest',
+  'shoulder',
+  'sleeve',
+  'waist',
+  'hem',
+  'inseam',
+  'thigh',
+];
+
+function formatCardMeta(item: Clothing): string {
+  const sizeLabel = item.analysis?.features?.sizeLabel?.trim();
+  if (sizeLabel) return `${item.category} · ${sizeLabel} · ${item.owner.displayName}`;
+  const fallback = SIZE_FALLBACK_ORDER.map((field) => ({
+    field,
+    value: item.measurements?.[field],
+  })).find((entry): entry is { field: MeasurementField; value: number } => typeof entry.value === 'number');
+  if (fallback) return `${item.category} · ${MEASUREMENT_LABELS[fallback.field]} ${fallback.value} in · ${item.owner.displayName}`;
+  return `${item.category} · ${item.owner.displayName}`;
+}
 
 export function ClothingCard({
   eventId,
@@ -47,6 +71,9 @@ export function ClothingCard({
         </AspectRatio>
         <Text type="body" maxLines={2}>
           {item.title}
+        </Text>
+        <Text type="supporting" maxLines={1}>
+          {formatCardMeta(item)}
         </Text>
         {badge}
       </Link>
