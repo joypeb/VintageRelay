@@ -8,6 +8,9 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/app.db
       APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      # Meta Model API key for clothing analysis (018) and search (019).
+      # Export AI_API_KEY in your shell before `docker compose up`.
+      AI_API_KEY: ${AI_API_KEY:-}
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     volumes:
