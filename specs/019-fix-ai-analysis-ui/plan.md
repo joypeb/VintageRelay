@@ -87,3 +87,19 @@ docs/plans/api/07-edit-withdraw-clothing.md, specs/018 contract note # docs for 
 ## Complexity Tracking
 
 None.
+
+## Manual Verification Record (T017/T018, 2026-11-03)
+
+Environment: worktree backend (real `muse-spark-1.3` key via env, isolated DB) + worktree frontend; browser at 360×780 and 390×844.
+
+- Real model: four registrations through the worktree backend all reached `done` (vocabulary colors `navy/white/red`, pattern `striped`, 3–4 "Check in person" notes); latency ~17 s (SC-001).
+- C1 (360 px): status labels fully visible ("Available", "Withdrawn"); 100-char title clamps to 2 lines; thumbnails stay 48 px; pending row shows "AI analyzing…" next to the status only; withdrawn row shows no analyzing state (SC-004).
+- Withdraw while pending: DB row `failed`; with no pending items C1 made 0 list requests in 16 s (SC-003).
+- Tab bar at viewport bottom on short pages, active and closed events (banner on top) (FR-010).
+- C4 (390×844, 200-char description, 2 measurements, done analysis): category/status tokens content-width; Edit/Delete directly after measurements and before "Estimated by AI"; colors/tags as chips; notes as a bulleted list (SC-005, FR-011..FR-014).
+- Edit: "Edit item" heading (FR-015). Delete dialog: after the open animation, `opacity 1`, `:modal` true, blurred backdrop — the earlier "see-through" report was a mid-animation capture; no change needed (FR-017).
+- C1 at 430×932: same as 360 px (labels full, long title 2 lines, thumbnails 48 px).
+- Mixed pending: garment A pending + garment B withdrawn while pending → B shows "Withdrawn" with no analyzing state and DB `failed`; C1 kept polling while A was pending, made one more request that observed A `done`, then 0 requests over the next 16 s.
+- Long pages (C4, scrolled): sticky tab bar stays at the viewport bottom without covering the last content.
+- `pnpm build` (with `NEXT_PUBLIC_API_BASE_URL`) passes; `astryx doctor --built frontend`: 0 fail, 4 warn (pre-existing: theme module/font imports and classNames across older files, e.g. the `(tabs)/layout.tsx` header `className="empty:hidden"` from 015).
+- Out of scope, observed: C1 "Register item" stays enabled on a closed event (017 FR-020 gap).
