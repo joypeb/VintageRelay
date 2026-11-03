@@ -11,6 +11,12 @@ type IntentLike = {
   acceptedProposalId: string | null;
 };
 
+type MirrorIntentLike = {
+  acceptedProposalId: string | null;
+  offeredClothing: { id: string };
+  wantedClothing: { id: string };
+};
+
 export type GroupedProposals<T extends ProposalLike> = {
   awaitingMyConsent: T[];
   threePersonFound: T[];
@@ -47,6 +53,21 @@ export function groupProposals<T extends ProposalLike>(proposals: readonly T[]):
   confirmed.sort(byNewest);
   history.sort(byNewest);
   return { awaitingMyConsent, threePersonFound, confirmed, history };
+}
+
+export function visibleReceivedIntents<T extends MirrorIntentLike>(
+  sent: readonly T[],
+  received: readonly T[],
+): T[] {
+  return received.filter(
+    (intent) =>
+      !sent.some(
+        (other) =>
+          other.acceptedProposalId != null &&
+          other.offeredClothing.id === intent.wantedClothing.id &&
+          other.wantedClothing.id === intent.offeredClothing.id,
+      ),
+  );
 }
 
 export function countTradesBadge(

@@ -5,6 +5,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
+import { HStack } from '@astryxdesign/core/HStack';
 import { Heading } from '@astryxdesign/core/Heading';
 import { List, ListItem } from '@astryxdesign/core/List';
 import { Skeleton } from '@astryxdesign/core/Skeleton';
@@ -25,7 +26,7 @@ import { useProposalsQuery } from '@/lib/api/proposals';
 import { getEventScreenState, isClosed } from '@/lib/event';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
-import { groupProposals } from '@/lib/trades';
+import { groupProposals, visibleReceivedIntents } from '@/lib/trades';
 import type { Intent } from '@/types/intent';
 import type { Proposal } from '@/types/proposal';
 
@@ -40,6 +41,21 @@ function intentStatusLabel(intent: Intent): string {
   if (intent.status === 'declined') return 'Declined';
   if (intent.status === 'withdrawn') return 'Withdrawn';
   return 'Invalidated';
+}
+
+function TradePhoto({ url, alt }: { url: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!url || failed) {
+    return <Text type="body">Photo unavailable</Text>;
+  }
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="h-12 w-12 shrink-0 object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Intent; closed: boolean }) {
@@ -72,6 +88,7 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
         description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent)}`}
+        startContent={<TradePhoto url={intent.offeredClothing.photoUrl} alt={intent.offeredClothing.title} />}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -135,6 +152,7 @@ function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent;
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
         description={intentStatusLabel(intent)}
+        startContent={<TradePhoto url={intent.offeredClothing.photoUrl} alt={intent.offeredClothing.title} />}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -159,11 +177,20 @@ function ProposalRow({ eventId, proposal }: { eventId: string; proposal: Proposa
   const summary = proposal.participants
     .map((p) => `${p.participant.displayName} gives ${p.offeredClothing.title}`)
     .join(' · ');
+  const first = proposal.participants[0];
   return (
     <ListItem
       label={`Version ${proposal.version} · ${proposal.status}`}
       description={`${summary} · Your response: ${proposal.myResponse}`}
       href={routes.tradeDetail(eventId, proposal.id)}
+      startContent={
+        first ? (
+          <HStack gap={2}>
+            <TradePhoto url={first.offeredClothing.photoUrl} alt={first.offeredClothing.title} />
+            <TradePhoto url={first.receivedClothing.photoUrl} alt={first.receivedClothing.title} />
+          </HStack>
+        ) : undefined
+      }
     />
   );
 }
@@ -241,7 +268,10 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
           </VStack>
         );
       }
-      const items = receivedQuery.data?.items ?? [];
+      const items = visibleReceivedIntents(
+        sentQuery.data?.items ?? [],
+        receivedQuery.data?.items ?? [],
+      );
       if (items.length === 0) {
         return (
           <EmptyState

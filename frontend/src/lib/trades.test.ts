@@ -1,12 +1,40 @@
 import { describe, expect, it } from 'vitest';
 
-import { countTradesBadge, groupProposals } from '@/lib/trades';
+import { countTradesBadge, groupProposals, visibleReceivedIntents } from '@/lib/trades';
 
 const proposal = (id: string, status: string, myResponse: string, cycleSize: number, createdAt: string) =>
   ({ id, status, myResponse, cycleSize, createdAt });
 const intent = (status: string, acceptedProposalId: string | null) => ({ status, acceptedProposalId });
+const request = (offered: string, wanted: string, acceptedProposalId: string | null) => ({
+  ...intent('active', acceptedProposalId),
+  offeredClothing: { id: offered },
+  wantedClothing: { id: wanted },
+});
 
 describe('trade lists', () => {
+  it('hides a received request mirroring an accepted sent request', () => {
+    const sent = request('shirt', 'jacket', 'p1');
+    const mirror = request('jacket', 'shirt', null);
+    const other = request('coat', 'shirt', null);
+
+    expect(visibleReceivedIntents([sent], [mirror, other])).toEqual([other]);
+  });
+
+  it('excludes hidden mirrors from the trades badge', () => {
+    const sent = request('shirt', 'jacket', 'p1');
+    const mirror = request('jacket', 'shirt', null);
+    const other = request('coat', 'shirt', null);
+
+    expect(countTradesBadge(visibleReceivedIntents([sent], [mirror, other]), [])).toBe(1);
+  });
+
+  it('keeps an independent counter-request when neither request was accepted', () => {
+    const sent = request('shirt', 'jacket', null);
+    const counter = request('jacket', 'shirt', null);
+
+    expect(visibleReceivedIntents([sent], [counter])).toEqual([counter]);
+  });
+
   it('groups proposals by state and sorts each group newest first', () => {
     const awaitingOld = proposal('await-old', 'pending', 'pending', 2, '2026-11-01T00:00:00Z');
     const awaitingNew = proposal('await-new', 'pending', 'pending', 2, '2026-11-03T00:00:00Z');

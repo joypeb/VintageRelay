@@ -11,7 +11,7 @@ import { useIntentsQuery } from '@/lib/api/intents';
 import { useProposalsQuery } from '@/lib/api/proposals';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
-import { countTradesBadge } from '@/lib/trades';
+import { countTradesBadge, visibleReceivedIntents } from '@/lib/trades';
 
 export type BottomTabId = 'home' | 'search' | 'trades' | 'my-items';
 
@@ -39,10 +39,18 @@ export function BottomTabBar({ eventId }: { eventId: string }) {
     enabled,
     closed,
   });
+  const sentQuery = useIntentsQuery(eventId, {
+    direction: 'sent',
+    enabled,
+    closed,
+  });
   const proposalsQuery = useProposalsQuery(eventId, { status: 'pending', enabled, closed });
   const badge =
     enabled && receivedQuery.data && proposalsQuery.data
-      ? countTradesBadge(receivedQuery.data.items, proposalsQuery.data.items)
+      ? countTradesBadge(
+          visibleReceivedIntents(sentQuery.data?.items ?? [], receivedQuery.data.items),
+          proposalsQuery.data.items,
+        )
       : 0;
 
   // Link navigation drives the selected value from the pathname; the manage
