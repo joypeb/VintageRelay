@@ -33,7 +33,10 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
         try:
             api_key = settings.ai_api_key.get_secret_value() if settings.ai_api_key else ""
             if not api_key:
-                raise RuntimeError("AI_API_KEY is not configured.")
+                raise RuntimeError(
+                    "AI_API_KEY is not configured. "
+                    "Set it in the backend environment (compose.yaml passes it through)."
+                )
             mark_pending_failed(database)
             yield
         finally:
