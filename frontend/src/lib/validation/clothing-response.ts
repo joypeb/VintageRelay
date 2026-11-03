@@ -35,7 +35,7 @@ const measurementsSchema = z.object({
   thigh: measurementValue,
 });
 
-const analysisColorSchema = z.enum([
+export const clothingColorSchema = z.enum([
   'black',
   'white',
   'gray',
@@ -53,7 +53,7 @@ const analysisColorSchema = z.enum([
 ]);
 
 const analysisFeaturesSchema = z.object({
-  colors: z.array(analysisColorSchema).max(3),
+  colors: z.array(clothingColorSchema).max(3),
   pattern: z.enum(['solid', 'striped', 'checked', 'floral', 'graphic', 'other']).nullable(),
   materialEstimate: z.string().min(1).nullable(),
   styleTags: z.array(z.string().min(1)).max(8),
@@ -82,7 +82,9 @@ const analysisSchema = z.object({
   updatedAt: timestamp,
 });
 
-const clothingItemSchema = z.object({
+export const clothingCategorySchema = z.enum(['top', 'outer', 'bottom', 'other']);
+
+export const clothingItemSchema = z.object({
   id: z.string().min(1),
   eventId: z.string().min(1),
   owner: z.object({
@@ -99,7 +101,7 @@ const clothingItemSchema = z.object({
       }),
     )
     .min(1),
-  category: z.enum(['top', 'outer', 'bottom', 'other']),
+  category: clothingCategorySchema,
   title: z.string().min(1),
   description: z.string().min(1),
   measurements: measurementsSchema.nullable(),

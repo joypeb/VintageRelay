@@ -4,6 +4,8 @@ export const queryKeys = {
     ['events', eventId, 'clothing', 'list', ownership] as const,
   clothing: (eventId: string, clothingId: string) =>
     ['events', eventId, 'clothing', clothingId] as const,
+  clothingSearch: (eventId: string, params: string) =>
+    ['events', eventId, 'clothing', 'search', params] as const,
   entryCodePreview: (code: string) => ['entry-codes', code] as const,
   entryCodePreviews: () => ['entry-codes'] as const,
 };
@@ -16,4 +18,5 @@ export const mutationKeys = {
     ['events', eventId, 'clothing', clothingId, 'update'] as const,
   deleteClothing: (eventId: string, clothingId: string) =>
     ['events', eventId, 'clothing', clothingId, 'delete'] as const,
+  interpretSearch: (eventId: string) => ['events', eventId, 'search', 'interpretation'] as const,
 };
