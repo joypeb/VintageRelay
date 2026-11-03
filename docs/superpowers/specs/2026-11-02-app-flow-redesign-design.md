@@ -35,7 +35,7 @@ Why: the earlier plan (hidden intents, preference text, AI-ranked recommendation
 
 - `AGENTS.md`: English UI/docs, TDD, Spec Kit delegation, review before commit.
 - `docs/rules/dev/common/api-contract.md` stays the sole API contract; `PUT` is forbidden; existing error codes reused where possible (`AI_UNAVAILABLE` 503 already exists).
-- Model calls only from the backend with `META_API_KEY` (`tech-stack.md`).
+- Model calls only from the backend with `AI_API_KEY` (`tech-stack.md`).
 - Exchange rules unchanged: one-for-one, a garment confirmed in at most one exchange, all participants consent to the same proposal version, cancel before close.
 
 ## 4. Decided by the User

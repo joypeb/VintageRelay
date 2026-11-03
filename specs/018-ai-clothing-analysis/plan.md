@@ -31,7 +31,7 @@ Add `clothing_analyses` table + migration; build `backend/app/ai/` (protocol, ht
 ## Day-One Real-Model Check (recorded 2026-11-04)
 
 - Surface probe (no key): `POST https://api.meta.ai/v1/chat/completions` with dummy bearer → `{"code":"invalid_api_key",...,"type":"authentication_error"}`. Route live at auth stage only — this proves base-URL liveness, not image input, `json_schema` compliance, or latency. The authenticated image + structured-output call (T002/T018 gate, SC-005) is still required with the operator key.
-- Authenticated image + structured-output call: pending operator `AI_API_KEY` (key absent from this shell; env never dumped). Run at T018: base64 photo + `response_format json_schema`, record colors/latency only.
+- Authenticated image + structured-output call: BLOCKED in this environment (no `AI_API_KEY` present; env never dumped per operator instruction). T018 gate moves to the operator run: set `AI_API_KEY`, register a photo garment, confirm pending→done with vocab colors, record latency here.
 
 ## Constitution Check
 

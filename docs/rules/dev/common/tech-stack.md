@@ -59,7 +59,7 @@ cd frontend && pnpm add zod         # Add a frontend dependency
 
 | Location | File | Example keys |
 |---|---|---|
-| backend | `backend/.env` | `DATABASE_URL`, `META_API_KEY`, `CORS_ORIGINS`, `LOG_LEVEL`, `APP_BASE_URL` (proposed; public frontend origin for `entryUrl`) |
+| backend | `backend/.env` | `DATABASE_URL`, `AI_API_KEY`, `CORS_ORIGINS`, `LOG_LEVEL`, `APP_BASE_URL` (proposed; public frontend origin for `entryUrl`) |
 | frontend | `frontend/.env.local` | `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_APP_URL` (must equal backend `APP_BASE_URL`) |
 
 ## 5. Secrets
