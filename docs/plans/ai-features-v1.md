@@ -146,7 +146,7 @@ Turns search text into `SearchConditions` (S1). Synchronous. The frontend then c
 **Processing:**
 
 1. Verify the caller belongs to the event.
-2. Call the model with the text only (no garment data).
+2. Call the model with the text only (no garment data), using `reasoning_effort: "minimal"` because extraction needs no deep reasoning (default effort measured 12–15 s vs ~4 s with the same output).
 3. Server validation: drop colors outside the vocabulary and measurement names outside `Measurements`, moving the original phrase to `unrecognized`; drop ranges with `min > max` or values outside `(0, 120]`; when `min == max` (a single stated value), widen to `max(value − 1, 0.1)`..`min(value + 1, 120)`; unknown category words also move to `unrecognized`.
 4. No caching and no persistence.
 

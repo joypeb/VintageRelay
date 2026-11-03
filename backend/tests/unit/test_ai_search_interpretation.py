@@ -108,6 +108,8 @@ def test_interpret_search_sends_quoted_text_only_and_uses_configured_timeout(mon
     payload = json.loads(request.content)
     assert payload["response_format"]["type"] == "json_schema"
     assert payload["response_format"]["json_schema"]["strict"] is True
+    # Extraction needs no deep reasoning; default effort costs 12-15s per call.
+    assert payload["reasoning_effort"] == "minimal"
     message = next(message for message in payload["messages"] if message["role"] == "user")
     content = message["content"]
     if isinstance(content, list):

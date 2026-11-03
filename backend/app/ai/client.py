@@ -168,6 +168,8 @@ class HttpxChatCompletionsClient(ClothingAnalyzer):
         return {
             "model": self.model_id,
             "temperature": TEMPERATURE,
+            # Plain extraction; default reasoning tripled latency (12-15s vs ~4s) with same output.
+            "reasoning_effort": "minimal",
             "messages": [
                 {"role": "system", "content": SEARCH_SYSTEM_PROMPT},
                 {
