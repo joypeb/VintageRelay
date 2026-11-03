@@ -142,7 +142,10 @@ export function SearchScreen({ eventId }: { eventId: string }) {
   }
 
   const hasChips =
-    conditions.category !== null || conditions.colors.length > 0 || measurementEntries.length > 0;
+    conditions.category !== null ||
+    conditions.colors.length > 0 ||
+    measurementEntries.length > 0 ||
+    conditions.keywords.length > 0;
 
   function renderResults() {
     if (ranked.isPending) {
@@ -243,6 +246,13 @@ export function SearchScreen({ eventId }: { eventId: string }) {
               key={color}
               label={colorLabel(color)}
               onRemove={() => handleRemove({ kind: 'color', color })}
+            />
+          ))}
+          {conditions.keywords.map((keyword) => (
+            <Token
+              key={`keyword-${keyword}`}
+              label={keyword}
+              onRemove={() => handleRemove({ kind: 'keyword', keyword })}
             />
           ))}
           {measurementEntries.map(([name, range]) => {

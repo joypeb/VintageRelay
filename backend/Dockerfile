@@ -20,10 +20,11 @@ COPY alembic/ ./alembic/
 COPY alembic.ini ./
 RUN uv sync --locked --no-dev
 
-# Use the project virtual environment and keep the SQLite file on the mounted
-# /data volume so it survives container replacement.
+# Use the project virtual environment and keep the SQLite file and photos on
+# the mounted /data volume so they survive container replacement.
 ENV PATH="/app/.venv/bin:$PATH" \
-    DATABASE_URL=sqlite:////data/app.db
+    DATABASE_URL=sqlite:////data/app.db \
+    PHOTO_DIR=/data/photos
 
 RUN mkdir -p /data
 

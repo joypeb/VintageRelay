@@ -9,6 +9,7 @@ export type SearchConditions = {
   category: ClothingCategory | null;
   colors: ClothingColor[];
   measurements: Partial<Record<keyof ClothingMeasurements, MeasurementRange>>;
+  keywords: string[];
   unrecognized: string[];
 };
 

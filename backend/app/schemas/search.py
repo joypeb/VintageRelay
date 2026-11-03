@@ -6,6 +6,8 @@ from app.domain.enums import ClothingCategory
 from app.schemas.clothing import Clothing
 from app.schemas.common import ApiModel
 
+MAX_KEYWORD_LENGTH = 40
+
 
 class MeasurementRange(ApiModel):
     min: float | None = None
@@ -16,6 +18,7 @@ class SearchConditions(ApiModel):
     category: ClothingCategory | None = None
     colors: list[str] = Field(default_factory=list)
     measurements: dict[str, MeasurementRange] = Field(default_factory=dict)
+    keywords: list[str] = Field(default_factory=list)
     unrecognized: list[str] = Field(default_factory=list)
 
 

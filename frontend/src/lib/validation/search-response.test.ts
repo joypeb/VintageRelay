@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { ApiError } from '@/lib/api/api-error';
 import { parseSearchConditions, parseSearchResults } from '@/lib/validation/search-response';
 
-const conditions = { category: 'outer', colors: ['green', 'navy'], measurements: { chest: { min: 20, max: 24 } }, unrecognized: ['vintage'] };
+const conditions = { category: 'outer', colors: ['green', 'navy'], measurements: { chest: { min: 20, max: 24 } }, keywords: ['workwear'], unrecognized: ['vintage'] };
 const clothing = {
   id: 'c1', eventId: 'e1', owner: { participantId: 'p1', displayName: 'Alex', isOrganizer: true },
   isMine: false, photos: [{ id: 'photo1', url: 'https://example.com/photo.jpg' }],
@@ -42,6 +42,7 @@ describe('parseSearchConditions', () => {
     ['wrong colors type', { ...conditions, colors: 'green' }],
     ['wrong measurement bound type', { ...conditions, measurements: { chest: { min: '20' } } }],
     ['range with no bounds', { ...conditions, measurements: { chest: { min: null, max: null } } }],
+    ['missing keywords', { ...conditions, keywords: undefined }],
     ['missing unrecognized', { ...conditions, unrecognized: undefined }],
   ])('rejects %s with an unexpected response error', (_label, body) => expectUnexpectedResponse(parseSearchConditions, body));
 });

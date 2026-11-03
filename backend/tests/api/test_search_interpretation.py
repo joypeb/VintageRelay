@@ -29,6 +29,7 @@ def test_interpretation_returns_validated_conditions(client, app, registration_c
                     SearchMeasurement(name="chest", min=21, max=21),
                     SearchMeasurement(name="collar", min=10, max=11),
                 ],
+                keywords=["Workwear"],
                 unrecognized=["vintage"],
             )
         ]
@@ -42,6 +43,7 @@ def test_interpretation_returns_validated_conditions(client, app, registration_c
         "category": "outer",
         "colors": ["green"],
         "measurements": {"chest": {"min": 20, "max": 22}},
+        "keywords": ["workwear"],
         "unrecognized": ["vintage", "chartreuse", "collar"],
     }
     assert fake.search_calls == ["green jacket"]

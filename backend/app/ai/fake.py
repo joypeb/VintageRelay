@@ -57,4 +57,6 @@ class FakeAnalyzer(ClothingAnalyzer):
                     raise next_item
                 raise AIUnavailableError("Fake analyzer failed.") from next_item
             return next_item
-        return SearchInterpretation(category=None, colors=[], measurements=[], unrecognized=[])
+        return SearchInterpretation(
+            category=None, colors=[], measurements=[], keywords=[], unrecognized=[]
+        )
