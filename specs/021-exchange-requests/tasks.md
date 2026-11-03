@@ -103,13 +103,13 @@
 
 ### Tests for US1d (REQUIRED — write first) ⚠️
 
-- [ ] T017 [P] [US1] Failing tests for consent/reject happy + conflict paths in backend/tests/api/test_proposals_consent_conflicts.py (version match, stale 409, replay rules incl. ended before/after closure, overlapping double-confirm, reject replay)
-- [ ] T018 [P] [US1] Failing tests for confirmation recheck failures in backend/tests/api/test_proposals_confirm_failures.py (per-code: `INTENT_NOT_ACTIVE`, `CLOTHING_NOT_AVAILABLE`, `CLOTHING_ALREADY_CONFIRMED` via conditional-update + unique paths; assert no consent/garment change, committed invalidated state, `is_confirmed` invariant)
-- [ ] T019 [P] [US1] Failing closure-vs-final-consent serialization test (separate SQLite connections; closure-first blocks confirm, confirm-first stays confirmed) in backend/tests/api/test_close_consent_serialization.py
+- [x] T017 [P] [US1] Failing tests for consent/reject happy + conflict paths in backend/tests/api/test_proposals_consent_conflicts.py (version match, stale 409, replay rules incl. ended before/after closure, overlapping double-confirm, reject replay)
+- [x] T018 [P] [US1] Failing tests for confirmation recheck failures in backend/tests/api/test_proposals_confirm_failures.py (per-code: `INTENT_NOT_ACTIVE`, `CLOTHING_NOT_AVAILABLE`, `CLOTHING_ALREADY_CONFIRMED` via conditional-update + unique paths; assert no consent/garment change, committed invalidated state, `is_confirmed` invariant)
+- [x] T019 [P] [US1] Failing closure-vs-final-consent serialization test (separate SQLite connections; closure-first blocks confirm, confirm-first stays confirmed) in backend/tests/api/test_close_consent_serialization.py
 
 ### Implementation for US1d
 
-- [ ] T020 [US1] Implement consent/reject/confirm (`POST /proposals/{id}/consents`, `/reject`) with version checks, `BEGIN IMMEDIATE` serialization, savepoint-rollback recheck mapping in backend/app/services/proposal.py
+- [x] T020 [US1] Implement consent/reject/confirm (`POST /proposals/{id}/consents`, `/reject`) with version checks, `BEGIN IMMEDIATE` serialization, savepoint-rollback recheck mapping in backend/app/services/proposal.py
 
 **Checkpoint**: Request → accept → consent → confirmed green incl. conflicts; contract §5-1 replay matrix covered
 
