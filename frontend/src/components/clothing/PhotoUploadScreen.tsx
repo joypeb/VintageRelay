@@ -397,7 +397,7 @@ export function PhotoUploadScreen({ eventId, initialPhotos }: PhotoUploadScreenP
     try {
       registerMutation.mutate(body, {
         onSuccess: () => {
-          router.replace(`${routes.eventHome(eventId)}?registered=1`);
+          router.replace(`${routes.myItems(eventId)}?registered=1`);
         },
         onError: handleRegisterError,
         onSettled: () => {

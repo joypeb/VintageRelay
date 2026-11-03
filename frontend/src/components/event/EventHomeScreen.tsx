@@ -1,7 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
-import { Suspense, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
@@ -18,16 +17,6 @@ import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
 
 const subscribe = () => () => {};
-
-function RegistrationStatus() {
-  const searchParams = useSearchParams();
-  if (searchParams.get('registered') !== '1') return null;
-  return (
-    <Text type="body" as="p" role="status">
-      Clothing registered.
-    </Text>
-  );
-}
 
 export function EventHomeScreen({ eventId }: { eventId: string }) {
   // localStorage is unavailable during SSR, so render nothing until the client has mounted.
@@ -80,12 +69,6 @@ export function EventHomeScreen({ eventId }: { eventId: string }) {
 
   return (
     <VStack gap={6} padding={6}>
-      {/* useSearchParams needs a Suspense boundary: this page is statically
-          prerendered, so the status reads the query only on the client. */}
-      <Suspense fallback={null}>
-        <RegistrationStatus />
-      </Suspense>
-      {/* shortcut: re-shows on manual reload of this URL; fine for the prototype */}
       <VStack gap={2}>
         <Heading level={1}>{event.name}</Heading>
         <Badge label={closed ? 'Closed' : 'Active'} variant={closed ? 'neutral' : 'success'} />

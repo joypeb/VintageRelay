@@ -1219,7 +1219,7 @@ describe('US4 details form', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeDisabled();
     await act(async () => resolve({ id: 'c1' }));
     await waitFor(() =>
-      expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/events/e1?registered=1'),
+      expect(mocks.replace).toHaveBeenCalledExactlyOnceWith('/events/e1/my-items?registered=1'),
     );
   });
 

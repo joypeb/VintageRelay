@@ -1,5 +1,7 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
+
 import { Badge } from '@astryxdesign/core/Badge';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
@@ -13,7 +15,14 @@ import { EventScreenStatus } from '@/components/event/EventScreenStatus';
 import { useMyItemsQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 
+const subscribe = () => () => {};
+
 export function MyItemsList({ eventId }: { eventId: string }) {
+  const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
+  const registered =
+    isMounted &&
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('registered') === '1';
   const { data, error, isPending, isFetching, refetch } = useMyItemsQuery(eventId);
 
   if (isPending) {
@@ -47,23 +56,36 @@ export function MyItemsList({ eventId }: { eventId: string }) {
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        title="No items yet"
-        description="Register your first item to start swapping."
-        actions={
-          <Button
-            label="Register item"
-            variant="primary"
-            size="lg"
-            href={routes.newItem(eventId)}
-          />
-        }
-      />
+      <VStack gap={4} padding={6}>
+        {registered ? (
+          <Text type="body" as="p" role="status">
+            Clothing registered.
+          </Text>
+        ) : null}
+        <EmptyState
+          title="No items yet"
+          description="Register your first item to start swapping."
+          actions={
+            <Button
+              label="Register item"
+              variant="primary"
+              size="lg"
+              href={routes.newItem(eventId)}
+            />
+          }
+        />
+      </VStack>
     );
   }
 
   return (
-    <List hasDividers>
+    <VStack gap={4} padding={6}>
+      {registered ? (
+        <Text type="body" as="p" role="status">
+          Clothing registered.
+        </Text>
+      ) : null}
+      <List hasDividers>
       {items.map((item) => {
         const photo = item.photos[0];
         return (
@@ -86,6 +108,7 @@ export function MyItemsList({ eventId }: { eventId: string }) {
           />
         );
       })}
-    </List>
+      </List>
+    </VStack>
   );
 }

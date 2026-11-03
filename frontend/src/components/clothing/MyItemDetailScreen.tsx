@@ -111,6 +111,9 @@ export function MyItemDetailScreen({
   const isConfirmed = clothing.status === 'confirmed';
   const isWithdrawn = clothing.status === 'withdrawn';
   const isClosed = event?.status === 'closed';
+  const showSaved =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('saved') === '1';
   // Confirmed garments need cancellation via Trades, withdrawn ones are gone,
   // and closed events allow no changes at all.
   const locked = isConfirmed || isWithdrawn || isClosed === true;
@@ -147,6 +150,11 @@ export function MyItemDetailScreen({
       >
         Back
       </Link>
+      {showSaved ? (
+        <Text type="body" as="p" role="status">
+          Saved.
+        </Text>
+      ) : null}
       <PhotoCarousel
         items={items}
         renderMedia={(item, index) =>
