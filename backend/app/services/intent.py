@@ -258,6 +258,7 @@ class IntentService:
                 {offered.id: offered, wanted.id: wanted},
                 now,
             )
+            self._recalculate_cycles(s, event, reverse, now)
             try:
                 proposal_service.try_confirm_if_unanimous(s, proposal, now)
             except AppError as exc:
