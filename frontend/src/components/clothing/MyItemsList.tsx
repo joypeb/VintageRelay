@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { Badge } from '@astryxdesign/core/Badge';
+import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { List, ListItem } from '@astryxdesign/core/List';
@@ -16,6 +17,19 @@ import { useMyItemsQuery } from '@/lib/api/clothing';
 import { routes } from '@/lib/routes';
 
 const subscribe = () => () => {};
+
+function statusVariant(status: string): 'success' | 'info' | 'neutral' {
+  if (status === 'available') return 'success';
+  if (status === 'confirmed') return 'info';
+  return 'neutral';
+}
+
+function statusLabel(status: string): string {
+  if (status === 'available') return 'Available';
+  if (status === 'confirmed') return 'Confirmed';
+  if (status === 'withdrawn') return 'Withdrawn';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
 export function MyItemsList({ eventId }: { eventId: string }) {
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
@@ -58,9 +72,10 @@ export function MyItemsList({ eventId }: { eventId: string }) {
     return (
       <VStack gap={4} padding={6}>
         {registered ? (
-          <Text type="body" as="p" role="status">
-            Clothing registered.
-          </Text>
+          // Banner doesn't create a live region, so a wrapper announces the outcome.
+          <div role="status">
+            <Banner status="success" title="Clothing registered." />
+          </div>
         ) : null}
         <EmptyState
           title="No items yet"
@@ -81,10 +96,21 @@ export function MyItemsList({ eventId }: { eventId: string }) {
   return (
     <VStack gap={4} padding={6}>
       {registered ? (
-        <Text type="body" as="p" role="status">
-          Clothing registered.
-        </Text>
+        // Banner doesn't create a live region, so a wrapper announces the outcome.
+        <div role="status">
+          <Banner
+            status="success"
+            title="Clothing registered."
+            description={items[0] ? `Newest item: ${items[0].title}` : undefined}
+          />
+        </div>
       ) : null}
+      <Button
+        label="Register item"
+        variant="primary"
+        size="lg"
+        href={routes.newItem(eventId)}
+      />
       <List hasDividers>
       {items.map((item) => {
         const photo = item.photos[0];
@@ -102,7 +128,7 @@ export function MyItemsList({ eventId }: { eventId: string }) {
                   <Text type="body">Photo unavailable</Text>
                 )}
                 <Text type="body">{item.title}</Text>
-                <Badge label={item.status} variant="neutral" />
+                <Badge label={statusLabel(item.status)} variant={statusVariant(item.status)} />
               </Stack>
             }
           />

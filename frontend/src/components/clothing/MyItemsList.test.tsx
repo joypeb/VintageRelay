@@ -83,7 +83,13 @@ describe('MyItemsList', () => {
 
   it('shows own garments newest first with main photo, title, and status badge', () => {
     renderWithClient(<MyItemsList eventId="e1" />);
-    const links = screen.getAllByRole('link');
+    expect(screen.getByRole('link', { name: /Register item/i })).toHaveAttribute(
+      'href',
+      routes.newItem('e1'),
+    );
+    const links = screen
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href') !== routes.newItem('e1'));
     expect(links).toHaveLength(3);
     const [first, second, third] = links;
     if (!first || !second || !third) throw new Error('Expected three item rows');

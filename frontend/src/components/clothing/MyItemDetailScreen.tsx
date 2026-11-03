@@ -151,9 +151,10 @@ export function MyItemDetailScreen({
         Back
       </Link>
       {showSaved ? (
-        <Text type="body" as="p" role="status">
-          Saved.
-        </Text>
+        // Banner doesn't create a live region, so a wrapper announces the outcome.
+        <div role="status">
+          <Banner status="success" title="Saved." description={clothing.title} />
+        </div>
       ) : null}
       <PhotoCarousel
         items={items}
@@ -177,7 +178,7 @@ export function MyItemDetailScreen({
       <VStack gap={2}>
         <Badge label={categoryLabel} variant="neutral" />
         <Heading level={1}>{clothing.title}</Heading>
-        {isConfirmed ? <Badge label="Confirmed" variant="neutral" /> : null}
+        {isConfirmed ? <Badge label="Confirmed" variant="info" /> : null}
         {isWithdrawn ? <Badge label="Withdrawn" variant="neutral" /> : null}
         <Text type="body">{clothing.description}</Text>
         {isConfirmed ? (
@@ -229,7 +230,7 @@ export function MyItemDetailScreen({
         <DialogHeader title="Delete this item?" />
         <VStack gap={4} padding={6}>
           <Text type="body">
-            This withdraws your item from the exchange corner. This can&apos;t be undone.
+            {`Remove "${clothing.title}" from the exchange corner? This can't be undone. Pending requests are unaffected in this version.`}
           </Text>
           {deleteMutation.error && (
             // Banner doesn't create a live region, so a wrapper announces the error.
@@ -238,7 +239,7 @@ export function MyItemDetailScreen({
             </div>
           )}
           <Button
-            label="Withdraw"
+            label="Confirm removal"
             variant="destructive"
             size="lg"
             width="100%"
