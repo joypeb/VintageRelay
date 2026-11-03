@@ -173,6 +173,25 @@ describe('parseClothingItem analysis', () => {
     });
   });
 
+  it('parses done analysis with null token counts as the backend sends them', () => {
+    const backendDone = {
+      ...doneAnalysis,
+      modelInfo: { modelId: 'muse-spark-1.3', latencyMs: 17453, promptTokens: null, completionTokens: null },
+    };
+    expect(parseClothingItem({ ...clothing, analysis: backendDone })).toEqual({
+      ...clothing,
+      analysis: backendDone,
+    });
+  });
+
+  it('parses done analysis with null model metrics', () => {
+    const analysis = {
+      ...doneAnalysis,
+      modelInfo: { modelId: 'muse-spark-1.3', latencyMs: null, promptTokens: null, completionTokens: null },
+    };
+    expect(parseClothingItem({ ...clothing, analysis })).toEqual({ ...clothing, analysis });
+  });
+
   it('parses done analysis with empty colors and null estimates', () => {
     const emptyEstimates = {
       ...doneAnalysis,
