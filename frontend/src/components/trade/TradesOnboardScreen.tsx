@@ -46,7 +46,8 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
   const accept = useAcceptIntentMutation(eventId, intent.id);
   const decline = useDeclineIntentMutation(eventId, intent.id);
   const [error, setError] = useState<string | null>(null);
-  const actionable = intent.status === 'active' && !closed;
+  const accepted = intent.acceptedProposalId != null;
+  const actionable = intent.status === 'active' && !closed && !accepted;
 
   async function handleAccept() {
     setError(null);
@@ -76,6 +77,19 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
         <Text type="body" as="p">
           <span role="alert">{error}</span>
         </Text>
+      ) : null}
+      {accepted && intent.acceptedProposalId !== null ? (
+        <VStack gap={2}>
+          <Text type="body" as="p">
+            The next step is consent in Exchanges.
+          </Text>
+          <Button
+            label="View exchange"
+            size="md"
+            width="100%"
+            href={routes.tradeDetail(eventId, intent.acceptedProposalId)}
+          />
+        </VStack>
       ) : null}
       {actionable ? (
         <VStack gap={2}>
