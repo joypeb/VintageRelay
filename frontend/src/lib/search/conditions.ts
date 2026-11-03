@@ -28,6 +28,7 @@ const CATEGORIES: ClothingCategory[] = ['top', 'outer', 'bottom', 'other'];
 export type RemoveConditionTarget =
   | { kind: 'category' }
   | { kind: 'color'; color: ClothingColor }
+  | { kind: 'keyword'; keyword: string }
   | { kind: 'measurement'; name: keyof ClothingMeasurements };
 
 function isColor(value: string): value is ClothingColor {
@@ -68,6 +69,7 @@ export function toSearchParams(q: string, conditions: SearchConditions): URLSear
     if (range.min !== undefined) params.set(`${name}Min`, String(range.min));
     if (range.max !== undefined) params.set(`${name}Max`, String(range.max));
   }
+  for (const keyword of conditions.keywords) params.append('keyword', keyword);
   for (const phrase of conditions.unrecognized) params.append('unrecognized', phrase);
   return params;
 }
@@ -95,8 +97,14 @@ export function parseSearchParams(params: URLSearchParams): {
     if (max !== undefined) range.max = max;
     measurements[key] = range;
   }
+  const keywords: string[] = [];
+  for (const raw of params.getAll('keyword')) {
+    const keyword = raw.trim().toLowerCase();
+    // Mirrors the backend's 1-40 character keyword rule so URL edits cannot cause a 422.
+    if (keyword !== '' && keyword.length <= 40 && !keywords.includes(keyword)) keywords.push(keyword);
+  }
   const unrecognized = params.getAll('unrecognized').filter((phrase) => phrase.trim() !== '');
-  return { q, conditions: { category, colors, measurements, unrecognized } };
+  return { q, conditions: { category, colors, measurements, keywords, unrecognized } };
 }
 
 export function removeCondition(
@@ -108,6 +116,8 @@ export function removeCondition(
       return { ...conditions, category: null };
     case 'color':
       return { ...conditions, colors: conditions.colors.filter((color) => color !== target.color) };
+    case 'keyword':
+      return { ...conditions, keywords: conditions.keywords.filter((keyword) => keyword !== target.keyword) };
     case 'measurement': {
       const next = { ...conditions.measurements };
       delete next[target.name];
@@ -121,7 +131,9 @@ export function removeCondition(
 }
 
 export function conditionCount(conditions: SearchConditions): number {
-  return conditions.colors.length + Object.keys(conditions.measurements).length;
+  return (
+    conditions.colors.length + Object.keys(conditions.measurements).length + conditions.keywords.length
+  );
 }
 
 export function withCategory(

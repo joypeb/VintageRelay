@@ -145,6 +145,26 @@ def test_duplicate_color_counts_once_and_no_conditions_match_home_order(
     assert response.json()["items"][0]["matchCount"] == 1
 
 
+def test_keyword_matches_owner_text_once_case_insensitively(client, db, registration_context):
+    event, _, token, _, _ = registration_context
+    event_id = event["event"]["id"]
+    organizer = event["event"]["organizerParticipantId"]
+    plain = seed(db, event_id, organizer, "Plain tee")
+    denim = seed(db, event_id, organizer, "Denim chore coat")
+    response = client.get(
+        f"/api/v1/events/{event_id}/clothing/search",
+        headers=auth(token),
+        params=[("keyword", "DENIM"), ("keyword", "denim")],
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["conditionCount"] == 1
+    assert [(x["clothing"]["id"], x["matchCount"]) for x in body["items"]] == [
+        (denim, 1),
+        (plain, 0),
+    ]
+
+
 @pytest.mark.parametrize(
     ("params", "field"),
     [
@@ -154,6 +174,8 @@ def test_duplicate_color_counts_once_and_no_conditions_match_home_order(
         ({"chestMin": "0"}, "chestMin"),
         ({"totalLengthMax": "121"}, "totalLengthMax"),
         ({"chestMin": "30", "chestMax": "20"}, "chestMin"),
+        ({"keyword": "x" * 41}, "keyword"),
+        ({"keyword": " "}, "keyword"),
     ],
 )
 def test_invalid_query_returns_validation_error(client, registration_context, params, field):

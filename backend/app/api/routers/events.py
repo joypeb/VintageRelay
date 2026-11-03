@@ -22,6 +22,7 @@ from app.schemas.clothing import Clothing, ClothingCreate, ClothingList, Measure
 from app.schemas.event import EventCreate, EventRead, EventSession, ParticipantCreate
 from app.schemas.photo import Photo
 from app.schemas.search import (
+    MAX_KEYWORD_LENGTH,
     MeasurementRange,
     SearchConditions,
     SearchInterpretationRequest,
@@ -216,7 +217,21 @@ def parse_search_conditions(
     request: Request,
     category: Annotated[ClothingCategory | None, Query()] = None,
     color: Annotated[list[str] | None, Query()] = None,
+    keyword: Annotated[list[str] | None, Query()] = None,
 ) -> SearchConditions:
+    keywords = list(dict.fromkeys(value.strip().lower() for value in keyword or []))
+    for value in keywords:
+        if not 0 < len(value) <= MAX_KEYWORD_LENGTH:
+            raise RequestValidationError(
+                [
+                    {
+                        "loc": ("query", "keyword"),
+                        "msg": f"Must be 1 to {MAX_KEYWORD_LENGTH} characters.",
+                        "type": "value_error",
+                        "input": value,
+                    }
+                ]
+            )
     colors = list(dict.fromkeys(color or []))
     for value in colors:
         if value not in COLOR_VOCABULARY:
@@ -251,7 +266,9 @@ def parse_search_conditions(
                 ]
             )
         measurements[name] = MeasurementRange(min=parsed_min, max=parsed_max)
-    return SearchConditions(category=category, colors=colors, measurements=measurements)
+    return SearchConditions(
+        category=category, colors=colors, measurements=measurements, keywords=keywords
+    )
 
 
 @router.get(

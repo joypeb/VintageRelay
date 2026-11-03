@@ -40,6 +40,7 @@ const searchConditionsSchema = z.object({
     inseam: measurementRangeSchema.optional(),
     thigh: measurementRangeSchema.optional(),
   }),
+  keywords: z.array(z.string().min(1).max(40)),
   unrecognized: z.array(z.string().min(1)),
 });
 

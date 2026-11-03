@@ -11,11 +11,11 @@ def garment(name, **values):
     return Clothing(id=name, category=values.pop("category", "top"), content_version=2, **values)
 
 
-def analysis(status="done", version=2, colors=None):
+def analysis(status="done", version=2, colors=None, **features):
     return ClothingAnalysis(
         status=status,
         content_version=version,
-        features={"colors": colors or ["green"]},
+        features={"colors": colors or ["green"], **features},
         uncertainties=[],
         updated_at=datetime.now(UTC),
     )
@@ -104,3 +104,32 @@ def test_no_conditions_preserves_input_order_and_no_missing_flag():
         (second, 0, False),
     ]
     assert condition_count(conditions) == 0
+
+
+def test_each_keyword_scores_once_from_analysis_or_owner_text():
+    from app.services.search import condition_count, rank
+
+    tagged = garment("tagged", title="Jacket", description="Warm")
+    texted = garment("texted", title="Denim chore coat", description="Workwear classic")
+    neither = garment("neither", title="Tee", description="Plain")
+    rows = [
+        (neither, analysis()),
+        (texted, None),
+        (tagged, analysis(style_tags=["Workwear"], material_estimate="nylon")),
+    ]
+    conditions = SearchConditions(keywords=["workwear", "nylon", "denim"])
+    assert rank(rows, conditions) == [
+        (texted, 2, False),
+        (tagged, 2, False),
+        (neither, 0, False),
+    ]
+    assert condition_count(conditions) == 3
+
+
+def test_keywords_ignore_stale_analysis_but_still_match_owner_text():
+    from app.services.search import rank
+
+    item = garment("item", title="Nylon parka", description="Light")
+    row = analysis(version=1, style_tags=["workwear"])
+    conditions = SearchConditions(keywords=["workwear", "nylon"])
+    assert rank([(item, row)], conditions) == [(item, 1, False)]

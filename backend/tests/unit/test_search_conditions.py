@@ -9,6 +9,7 @@ def raw(**kwargs):
         category=kwargs.get("category"),
         colors=kwargs.get("colors", []),
         measurements=kwargs.get("measurements", []),
+        keywords=kwargs.get("keywords", []),
         unrecognized=kwargs.get("unrecognized", []),
     )
 
@@ -69,3 +70,10 @@ def test_empty_strings_are_dropped():
     assert result.colors == []
     assert result.measurements == {}
     assert result.unrecognized == ["oversized"]
+
+
+def test_keywords_are_lowercased_deduplicated_and_blank_or_overlong_dropped():
+    result = search.to_search_conditions(
+        raw(keywords=["Workwear", " denim ", "workwear", " ", "x" * 41])
+    )
+    assert result.keywords == ["workwear", "denim"]

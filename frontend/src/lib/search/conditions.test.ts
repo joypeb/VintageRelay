@@ -16,6 +16,7 @@ const conditions: SearchConditions = {
   category: 'top',
   colors: ['black', 'blue'],
   measurements: { chest: { min: 20, max: 30 }, totalLength: { max: 40 } },
+  keywords: ['workwear', 'denim'],
   unrecognized: ['soft fabric', 'vintage'],
 };
 
@@ -40,6 +41,7 @@ describe('search parameters', () => {
     expect(params.get('chestMin')).toBe('20');
     expect(params.get('chestMax')).toBe('30');
     expect(params.get('totalLengthMax')).toBe('40');
+    expect(params.getAll('keyword')).toEqual(['workwear', 'denim']);
     expect(params.getAll('unrecognized')).toEqual(['soft fabric', 'vintage']);
     expect(parseSearchParams(params)).toEqual({ q: 'blue jacket', conditions });
   });
@@ -54,9 +56,15 @@ describe('search parameters', () => {
         category: null,
         colors: ['red'],
         measurements: { chest: { max: 120 } },
+        keywords: [],
         unrecognized: [],
       },
     });
+  });
+
+  it('normalizes keywords and drops blank or overlong ones', () => {
+    const params = new URLSearchParams(`keyword=Denim&keyword=denim&keyword=%20&keyword=${'x'.repeat(41)}`);
+    expect(parseSearchParams(params).conditions.keywords).toEqual(['denim']);
   });
 
   it('collapses repeated colors', () => {
@@ -87,8 +95,15 @@ describe('condition editing', () => {
     });
   });
 
-  it('counts colors and measurement ranges, excluding category and unrecognized phrases', () => {
-    expect(conditionCount(conditions)).toBe(4);
+  it('removes only the selected keyword', () => {
+    expect(removeCondition(conditions, { kind: 'keyword', keyword: 'denim' })).toEqual({
+      ...conditions,
+      keywords: ['workwear'],
+    });
+  });
+
+  it('counts colors, measurement ranges and keywords, excluding category and unrecognized phrases', () => {
+    expect(conditionCount(conditions)).toBe(6);
   });
 
   it('drops measurement ranges unavailable for the new category', () => {

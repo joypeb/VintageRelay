@@ -16,6 +16,7 @@ from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
 from app.schemas.clothing import Measurements
 from app.schemas.search import (
+    MAX_KEYWORD_LENGTH,
     MeasurementRange,
     SearchConditions,
     SearchResultItem,
@@ -31,7 +32,9 @@ _MEASUREMENT_ATTRS = {
 
 
 def condition_count(conditions: SearchConditions) -> int:
-    return len(set(conditions.colors)) + len(conditions.measurements)
+    return (
+        len(set(conditions.colors)) + len(conditions.measurements) + len(set(conditions.keywords))
+    )
 
 
 _VALID_CATEGORIES = frozenset(item.value for item in ClothingCategory)
@@ -95,12 +98,36 @@ def to_search_conditions(raw: SearchInterpretation) -> SearchConditions:
             min_value = max(min_value - 1, 0.1)
             max_value = min(max_value + 1, 120)
         measurements[name] = MeasurementRange(min=min_value, max=max_value)
+    keywords = list(
+        dict.fromkeys(
+            cleaned
+            for cleaned in (keyword.strip().lower() for keyword in raw.keywords)
+            if 0 < len(cleaned) <= MAX_KEYWORD_LENGTH
+        )
+    )
     return SearchConditions(
         category=category,
         colors=colors,
         measurements=measurements,
+        keywords=keywords,
         unrecognized=unrecognized,
     )
+
+
+def _keyword_text(clothing: ClothingModel, analysis: ClothingAnalysisModel | None) -> str:
+    parts: list[object] = [clothing.title, clothing.description]
+    if (
+        analysis is not None
+        and analysis.status == "done"
+        and analysis.content_version == clothing.content_version
+        and isinstance(analysis.features, dict)
+    ):
+        features = analysis.features
+        parts += [features.get("pattern"), features.get("material_estimate")]
+        for key in ("style_tags", "visible_details"):
+            if isinstance(features.get(key), list):
+                parts += features[key]
+    return " ".join(part for part in parts if isinstance(part, str)).lower()
 
 
 def rank(
@@ -108,6 +135,7 @@ def rank(
     conditions: SearchConditions,
 ) -> list[tuple[ClothingModel, int, bool]]:
     colors = list(dict.fromkeys(conditions.colors))
+    keywords = list(dict.fromkeys(conditions.keywords))
     measurements = conditions.measurements
     filtered = [
         (clothing, analysis)
@@ -127,6 +155,10 @@ def rank(
             available = features.get("colors")
             available_set = set(available) if isinstance(available, list) else set()
             score += sum(1 for color in colors if color in available_set)
+        if keywords:
+            # shortcut: substring match ("coat" also hits "coating"); upgrade to tokens if noisy.
+            text = _keyword_text(clothing, analysis)
+            score += sum(1 for keyword in keywords if keyword in text)
         missing = False
         if measurements:
             hits = 0

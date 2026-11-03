@@ -61,6 +61,7 @@ class SearchInterpretation(BaseModel):
     category: str | None
     colors: list[str]
     measurements: list[SearchMeasurement]
+    keywords: list[str]
     unrecognized: list[str]
 
 

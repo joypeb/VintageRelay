@@ -113,6 +113,7 @@ export function SearchFiltersSheet({
       category,
       colors,
       measurements,
+      keywords: conditions.keywords,
       unrecognized: conditions.unrecognized,
     };
     // Drop ranges the sheet never shows (e.g. from AI/URL), like withCategory does.

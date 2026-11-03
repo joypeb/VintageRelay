@@ -6,7 +6,7 @@ import { interpretSearch, searchClothing } from '@/lib/api/search';
 import type { SearchConditions } from '@/types/search';
 
 vi.mock('@/lib/api/client', () => ({ apiFetch: vi.fn() }));
-const conditions: SearchConditions = { category: 'outer', colors: ['green', 'navy'], measurements: { chest: { min: 20, max: 24 } }, unrecognized: ['vintage'] };
+const conditions: SearchConditions = { category: 'outer', colors: ['green', 'navy'], measurements: { chest: { min: 20, max: 24 } }, keywords: ['workwear'], unrecognized: ['vintage'] };
 const clothing = {
   id: 'c1', eventId: 'e1', owner: { participantId: 'p1', displayName: 'Alex', isOrganizer: true },
   isMine: false, photos: [{ id: 'photo1', url: 'https://example.com/photo.jpg' }],
@@ -46,7 +46,7 @@ describe('searchClothing', () => {
     const [path, query] = (call?.[1] as string).split('?');
     expect(path).toBe('/events/a%2Fb%20c/clothing/search');
     expect([...new URLSearchParams(query).entries()]).toEqual([
-      ['category', 'outer'], ['color', 'green'], ['color', 'navy'], ['chestMin', '20'], ['chestMax', '24'],
+      ['category', 'outer'], ['color', 'green'], ['color', 'navy'], ['chestMin', '20'], ['chestMax', '24'], ['keyword', 'workwear'],
     ]);
     expect(apiFetch).toHaveBeenCalledOnce();
   });
