@@ -26,7 +26,7 @@ description: "Task list for 019 AI search"
 
 No behavior; pure boilerplate via `scaffolder`.
 
-- [ ] T002 Create backend/app/schemas/search.py with `MeasurementRange` (`min`, `max` floats, optional sides for ranked search), `SearchConditions` (`category: ClothingCategory | None`, `colors: list[str]`, `measurements: dict[str, MeasurementRange]` keyed by camelCase `Measurements` names, `unrecognized: list[str]`), `SearchInterpretationRequest` (`text: str`), `SearchResultItem` (`clothing: Clothing`, `match_count: int`, `missing_measurements: bool`), `SearchResults` (`items`, `condition_count: int`, `next_cursor: None = None`) using `ApiModel` camelCase like backend/app/schemas/clothing.py
+- [X] T002 Create backend/app/schemas/search.py with `MeasurementRange` (`min`, `max` floats, optional sides for ranked search), `SearchConditions` (`category: ClothingCategory | None`, `colors: list[str]`, `measurements: dict[str, MeasurementRange]` keyed by camelCase `Measurements` names, `unrecognized: list[str]`), `SearchInterpretationRequest` (`text: str`), `SearchResultItem` (`clothing: Clothing`, `match_count: int`, `missing_measurements: bool`), `SearchResults` (`items`, `condition_count: int`, `next_cursor: None = None`) using `ApiModel` camelCase like backend/app/schemas/clothing.py
 
 **Checkpoint**: Backend checks green.
 
