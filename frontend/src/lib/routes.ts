@@ -9,6 +9,10 @@ export const routes = {
   search: (eventId: string) => `/events/${encodeURIComponent(eventId)}/search`,
   trades: (eventId: string) => `/events/${encodeURIComponent(eventId)}/trades`,
   myItems: (eventId: string) => `/events/${encodeURIComponent(eventId)}/my-items`,
+  myItemDetail: (eventId: string, clothingId: string) =>
+    `/events/${encodeURIComponent(eventId)}/my-items/${encodeURIComponent(clothingId)}`,
+  myItemEdit: (eventId: string, clothingId: string) =>
+    `/events/${encodeURIComponent(eventId)}/my-items/${encodeURIComponent(clothingId)}/edit`,
   itemDetail: (eventId: string, clothingId: string) =>
     `/events/${encodeURIComponent(eventId)}/items/${encodeURIComponent(clothingId)}`,
 } as const;
