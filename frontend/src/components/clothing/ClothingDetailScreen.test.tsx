@@ -10,7 +10,10 @@ import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
 import type { Clothing } from '@/types/clothing';
 
-vi.mock('@/lib/api/clothing', () => ({ useClothingQuery: vi.fn() }));
+vi.mock('@/lib/api/clothing', () => ({
+  useClothingQuery: vi.fn(),
+  useMyItemsQuery: () => ({ data: { items: [] }, isPending: false, error: null }),
+}));
 const mocks = vi.hoisted(() => ({ apiFetch: vi.fn(), push: vi.fn(), replace: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({ apiFetch: mocks.apiFetch }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
@@ -44,7 +47,10 @@ describe('Clothing detail', () => {
     refetch.mockReset();
     query();
   });
-  afterEach(() => localStorage.clear());
+  afterEach(() => {
+    localStorage.clear();
+    vi.unstubAllGlobals();
+  });
 
   it('renders a back link to the home grid', () => {
     renderDetail();
@@ -120,32 +126,28 @@ describe('Clothing detail', () => {
     expect(screen.queryByText(/organizer/i)).not.toBeInTheDocument();
   });
 
-  it('shows withdrawn status alongside the disabled coming-soon request', () => {
+  it('shows withdrawn status and disables exchange requests', async () => {
     query({ data: { ...clothing, status: 'withdrawn' } });
     renderDetail();
     expect(screen.getByText(/withdrawn/i)).toBeVisible();
-    expect(screen.getByRole('button', { name: /request exchange/i })).toBeDisabled();
-    expect(screen.getByText(/coming soon/i)).toBeVisible();
+    const button = screen.getByRole('button', { name: /request exchange/i });
+    expect(button).toBeDisabled();
+    await userEvent.click(button);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('does not request an exchange or navigate when the disabled action is clicked', async () => {
-    mocks.apiFetch.mockClear();
-    mocks.push.mockClear();
-    mocks.replace.mockClear();
+  it('opens the offer flow for an available garment', async () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     renderDetail();
-    const location = window.location.href;
     const button = screen.getByRole('button', { name: /request exchange/i });
     expect(button).toBeVisible();
-    expect(button).toBeDisabled();
-    expect(screen.getByText(/coming soon/i)).toBeVisible();
+    expect(button).toBeEnabled();
 
     await userEvent.click(button);
 
-    expect(mocks.apiFetch).not.toHaveBeenCalled();
-    expect(mocks.push).not.toHaveBeenCalled();
-    expect(mocks.replace).not.toHaveBeenCalled();
-    expect(window.location.href).toBe(location);
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Choose an item to offer' })).toBeVisible();
+    expect(screen.getByText('You have no available items to offer. Register one first.')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Register item' })).toHaveAttribute('href', routes.newItem('e1'));
   });
 
   it('shows item not-found copy and a link home', () => {

@@ -8,6 +8,8 @@ export const routes = {
   newItem: (eventId: string) => `/events/${encodeURIComponent(eventId)}/my-items/new`,
   search: (eventId: string) => `/events/${encodeURIComponent(eventId)}/search`,
   trades: (eventId: string) => `/events/${encodeURIComponent(eventId)}/trades`,
+  tradeDetail: (eventId: string, tradeId: string) =>
+    `/events/${encodeURIComponent(eventId)}/trades/${encodeURIComponent(tradeId)}`,
   myItems: (eventId: string) => `/events/${encodeURIComponent(eventId)}/my-items`,
   myItemDetail: (eventId: string, clothingId: string) =>
     `/events/${encodeURIComponent(eventId)}/my-items/${encodeURIComponent(clothingId)}`,

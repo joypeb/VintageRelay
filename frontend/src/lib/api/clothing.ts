@@ -103,7 +103,10 @@ export function useClothingListQuery(eventId: string, { enabled = true }: { enab
   });
 }
 
-export function useMyItemsQuery(eventId: string, { enabled = true }: { enabled?: boolean } = {}) {
+export function useMyItemsQuery(
+  eventId: string,
+  { enabled = true, closed = false }: { enabled?: boolean; closed?: boolean } = {},
+) {
   return useQuery({
     queryKey: queryKeys.clothingList(eventId, 'mine'),
     queryFn: () => listClothing(eventId, 'mine'),
@@ -112,14 +115,18 @@ export function useMyItemsQuery(eventId: string, { enabled = true }: { enabled?:
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchInterval: (query) =>
-      query.state.data?.items.some((item) => item.analysis?.status === 'pending') ? 5000 : false,
+      closed
+        ? false
+        : query.state.data?.items.some((item) => item.analysis?.status === 'pending')
+          ? 5000
+          : false,
   });
 }
 
 export function useClothingQuery(
   eventId: string,
   clothingId: string,
-  { enabled = true }: { enabled?: boolean } = {},
+  { enabled = true, closed = false }: { enabled?: boolean; closed?: boolean } = {},
 ) {
   return useQuery({
     queryKey: queryKeys.clothing(eventId, clothingId),
@@ -129,7 +136,7 @@ export function useClothingQuery(
     staleTime: 0,
     refetchOnWindowFocus: true,
     refetchInterval: (query) =>
-      query.state.data?.analysis?.status === 'pending' ? 5000 : false,
+      closed ? false : query.state.data?.analysis?.status === 'pending' ? 5000 : false,
   });
 }
 

@@ -14,9 +14,12 @@ import { VStack } from '@astryxdesign/core/VStack';
 import { EstimatedByAI } from '@/components/clothing/EstimatedByAI';
 import { PhotoCarousel } from '@/components/clothing/PhotoCarousel';
 import { EventScreenStatus } from '@/components/event/EventScreenStatus';
+import { OfferSheet } from '@/components/trade/OfferSheet';
 import { ApiError } from '@/lib/api/api-error';
 import { useClothingQuery } from '@/lib/api/clothing';
 import { getFormErrorMessage } from '@/lib/api/error-messages';
+import { useEventQuery } from '@/lib/api/events';
+import { useIntentsQuery, useWithdrawIntentMutation } from '@/lib/api/intents';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
 import { CATEGORY_OPTIONS, MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
@@ -90,9 +93,23 @@ export function ClothingDetailScreen({
   // localStorage is unavailable during SSR, so read the session only after mount.
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
   const queryEnabled = isMounted && hasEventSession(eventId);
+  const { data: event } = useEventQuery(eventId, { enabled: queryEnabled });
+  const eventClosed = event?.status === 'closed';
   const { data, error, isPending, isFetching, refetch } = useClothingQuery(eventId, clothingId, {
     enabled: queryEnabled,
+    ...(eventClosed ? { closed: true } : {}),
   });
+  const [isOfferOpen, setIsOfferOpen] = useState(false);
+  const sentQuery = useIntentsQuery(eventId, {
+    direction: 'sent',
+    status: 'active',
+    wantedClothingId: clothingId,
+    enabled: queryEnabled,
+    closed: eventClosed,
+  });
+  const activeSent = (sentQuery.data?.items ?? []).find((intent) => intent.status === 'active') ?? null;
+  const withdraw = useWithdrawIntentMutation(eventId, activeSent?.id ?? '');
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const [failedPhotoIds, setFailedPhotoIds] = useState<ReadonlySet<string>>(new Set());
 
   if (!isMounted) return null;
@@ -208,8 +225,54 @@ export function ClothingDetailScreen({
           </VStack>
         ) : null}
         <EstimatedByAI analysis={clothing.analysis} />
-        <Button label="Request exchange" size="lg" width="100%" isDisabled />
-        <Text type="body">Coming soon: exchange requests are not available yet.</Text>
+        {event?.status === 'closed' ? (
+          <Text type="body">This event has ended. You can still browse items and confirmed exchanges.</Text>
+        ) : null}
+        {clothing.isMine ? null : clothing.status !== 'available' ? (
+          <Button label="Request exchange" size="lg" width="100%" isDisabled />
+        ) : activeSent !== null ? (
+          <VStack gap={2}>
+            <Text type="body">Request sent. The owner can accept or decline it.</Text>
+            {withdrawError !== null ? (
+              <Text type="body" as="p">
+                <span role="alert">{withdrawError}</span>
+              </Text>
+            ) : null}
+            <Button
+              label={withdraw.isPending ? 'Withdrawing…' : 'Withdraw request'}
+              size="lg"
+              width="100%"
+              isLoading={withdraw.isPending}
+              isDisabled={event?.status === 'closed' || withdraw.isPending}
+              onClick={() => {
+                setWithdrawError(null);
+                withdraw.mutate(undefined, {
+                  onSuccess: () => void sentQuery.refetch(),
+                  onError: (err) => setWithdrawError(getFormErrorMessage(err)),
+                });
+              }}
+            />
+          </VStack>
+        ) : (
+          <VStack gap={2}>
+            <Button
+              label="Request exchange"
+              size="lg"
+              width="100%"
+              isDisabled={event?.status === 'closed'}
+              onClick={() => setIsOfferOpen(true)}
+            />
+          </VStack>
+        )}
+        {isOfferOpen ? (
+          <OfferSheet
+            eventId={eventId}
+            wantedClothingId={clothingId}
+            isOpen={isOfferOpen}
+            onOpenChange={setIsOfferOpen}
+            onSent={() => void sentQuery.refetch()}
+          />
+        ) : null}
       </VStack>
     </VStack>
   );

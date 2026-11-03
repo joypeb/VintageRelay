@@ -22,6 +22,8 @@ import { ApiError } from '@/lib/api/api-error';
 import { useClothingQuery, useDeleteClothingMutation } from '@/lib/api/clothing';
 import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { useEventQuery } from '@/lib/api/events';
+import { useAcceptIntentMutation, useDeclineIntentMutation, useIntentsQuery } from '@/lib/api/intents';
+import { useProposalsQuery } from '@/lib/api/proposals';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
 import { CATEGORY_OPTIONS, MEASUREMENT_LABELS } from '@/lib/validation/clothing-form';
@@ -54,6 +56,130 @@ function statusLabel(status: string): string {
 
 const subscribe = () => () => {};
 
+function MyItemRequestsSection({
+  eventId,
+  closed,
+  requestsQuery,
+  relatedQuery,
+}: {
+  eventId: string;
+  closed: boolean;
+  requestsQuery: ReturnType<typeof useIntentsQuery>;
+  relatedQuery: ReturnType<typeof useProposalsQuery>;
+}) {
+  if (requestsQuery.isPending) {
+    return (
+      <VStack gap={2}>
+        <Heading level={2}>Requests</Heading>
+        <Text type="body">Loading requests…</Text>
+      </VStack>
+    );
+  }
+  if (requestsQuery.error) {
+    return (
+      <VStack gap={2}>
+        <Heading level={2}>Requests</Heading>
+        <Text type="body" as="p">
+          <span role="alert">{getFormErrorMessage(requestsQuery.error)}</span>
+        </Text>
+        <Button label="Retry" size="lg" width="100%" onClick={() => void requestsQuery.refetch()} />
+      </VStack>
+    );
+  }
+  const items = (requestsQuery.data?.items ?? []).filter((intent) => intent.status === 'active');
+  const related = relatedQuery.data?.items ?? [];
+  return (
+    <VStack gap={2}>
+      <Heading level={2}>Requests</Heading>
+      {items.length === 0 ? (
+        <Text type="body">No active requests for this item yet.</Text>
+      ) : (
+        <VStack gap={2}>
+          {items.map((intent) => (
+            <MyItemRequestRow key={intent.id} eventId={eventId} intentId={intent.id} offerTitle={intent.offeredClothing.title} closed={closed} />
+          ))}
+        </VStack>
+      )}
+      {related.length > 0 ? (
+        <VStack gap={2}>
+          <Heading level={3}>Related exchanges</Heading>
+          {related.map((proposal) => (
+            <Text key={proposal.id} type="body">
+              {`Version ${proposal.version} · ${proposal.status} · Your response: ${proposal.myResponse}`}
+            </Text>
+          ))}
+        </VStack>
+      ) : null}
+    </VStack>
+  );
+}
+
+function MyItemRequestRow({
+  eventId,
+  intentId,
+  offerTitle,
+  closed,
+}: {
+  eventId: string;
+  intentId: string;
+  offerTitle: string;
+  closed: boolean;
+}) {
+  const accept = useAcceptIntentMutation(eventId, intentId);
+  const decline = useDeclineIntentMutation(eventId, intentId);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleAccept() {
+    setError(null);
+    try {
+      await accept.mutateAsync();
+    } catch (err) {
+      setError(getFormErrorMessage(err));
+    }
+  }
+
+  async function handleDecline() {
+    setError(null);
+    try {
+      await decline.mutateAsync();
+    } catch (err) {
+      setError(getFormErrorMessage(err));
+    }
+  }
+
+  return (
+    <VStack gap={2}>
+      <Text type="body">{`Offered: ${offerTitle}`}</Text>
+      {error !== null ? (
+        <Text type="body" as="p">
+          <span role="alert">{error}</span>
+        </Text>
+      ) : null}
+      {closed ? null : (
+        <VStack gap={2}>
+          <Button
+            label="Accept"
+            size="md"
+            width="100%"
+            isLoading={accept.isPending}
+            isDisabled={accept.isPending || decline.isPending}
+            onClick={() => void handleAccept()}
+          />
+          <Button
+            label="Decline"
+            variant="destructive"
+            size="md"
+            width="100%"
+            isLoading={decline.isPending}
+            isDisabled={accept.isPending || decline.isPending}
+            onClick={() => void handleDecline()}
+          />
+        </VStack>
+      )}
+    </VStack>
+  );
+}
+
 export function MyItemDetailScreen({
   eventId,
   clothingId,
@@ -69,9 +195,22 @@ export function MyItemDetailScreen({
     enabled: queryEnabled,
   });
   const { data: event } = useEventQuery(eventId, { enabled: queryEnabled });
+  const eventClosed = event?.status === 'closed';
   const deleteMutation = useDeleteClothingMutation(eventId, clothingId);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [failedPhotoIds, setFailedPhotoIds] = useState<ReadonlySet<string>>(new Set());
+  const requestsQuery = useIntentsQuery(eventId, {
+    direction: 'received',
+    status: ['active', 'declined', 'withdrawn', 'invalidated'],
+    wantedClothingId: clothingId,
+    enabled: queryEnabled,
+    closed: eventClosed,
+  });
+  const relatedQuery = useProposalsQuery(eventId, {
+    clothingId,
+    enabled: queryEnabled,
+    closed: eventClosed,
+  });
 
   if (!isMounted) return null;
 
@@ -247,10 +386,12 @@ export function MyItemDetailScreen({
           </>
         )}
         <EstimatedByAI analysis={clothing.analysis} />
-        <VStack gap={2}>
-          <Heading level={2}>Requests</Heading>
-          <Text type="body">Coming soon: exchange requests will appear here.</Text>
-        </VStack>
+        <MyItemRequestsSection
+          eventId={eventId}
+          closed={isClosed === true}
+          requestsQuery={requestsQuery}
+          relatedQuery={relatedQuery}
+        />
       </VStack>
       <Dialog isOpen={isDialogOpen} onOpenChange={handleDialogOpenChange} purpose="info">
         <DialogHeader title="Delete this item?" />

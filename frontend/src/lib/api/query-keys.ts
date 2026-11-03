@@ -8,6 +8,12 @@ export const queryKeys = {
     ['events', eventId, 'clothing', 'search', params] as const,
   entryCodePreview: (code: string) => ['entry-codes', code] as const,
   entryCodePreviews: () => ['entry-codes'] as const,
+  intents: (eventId: string, direction: string = 'sent', params: string = 'active') =>
+    ['events', eventId, 'intents', direction, params] as const,
+  proposals: (eventId: string, params: string = 'all') =>
+    ['events', eventId, 'proposals', 'list', params] as const,
+  proposal: (eventId: string, proposalId: string) =>
+    ['events', eventId, 'proposals', 'detail', proposalId] as const,
 };
 
 export const mutationKeys = {
@@ -19,4 +25,15 @@ export const mutationKeys = {
   deleteClothing: (eventId: string, clothingId: string) =>
     ['events', eventId, 'clothing', clothingId, 'delete'] as const,
   interpretSearch: (eventId: string) => ['events', eventId, 'search', 'interpretation'] as const,
+  registerIntent: (eventId: string) => ['events', eventId, 'intents', 'register'] as const,
+  withdrawIntent: (eventId: string, intentId: string) =>
+    ['events', eventId, 'intents', intentId, 'withdraw'] as const,
+  acceptIntent: (eventId: string, intentId: string) =>
+    ['events', eventId, 'intents', intentId, 'accept'] as const,
+  declineIntent: (eventId: string, intentId: string) =>
+    ['events', eventId, 'intents', intentId, 'decline'] as const,
+  consentProposal: (eventId: string, proposalId: string) =>
+    ['events', eventId, 'proposals', proposalId, 'consent'] as const,
+  rejectProposal: (eventId: string, proposalId: string) =>
+    ['events', eventId, 'proposals', proposalId, 'reject'] as const,
 };
