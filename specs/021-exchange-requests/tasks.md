@@ -17,7 +17,7 @@
 
 **Purpose**: Branch + artifact baseline (already done, verify)
 
-- [ ] T001 Verify branch `feature/020-exchange-requests` tracks `origin/main` and specs/021-exchange-requests/ contains spec.md, plan.md, tasks.md, research.md, data-model.md, contracts/, quickstart.md
+- [x] T001 Verify branch `feature/020-exchange-requests` tracks `origin/main` and specs/021-exchange-requests/ contains spec.md, plan.md, tasks.md, research.md, data-model.md, contracts/, quickstart.md
 
 ---
 
@@ -27,11 +27,11 @@
 
 **Checkpoint**: Foundation ready — no endpoint work until complete
 
-- [ ] T002 [P] Write failing migration test verifying an actual Alembic upgrade creates `exchange_intents`, `trade_proposals`, `trade_participants` with required partial unique indexes in backend/tests/test_migrations.py
-- [ ] T003 Implement models + Alembic revision in backend/app/models/exchange_intent.py, backend/app/models/trade_proposal.py, backend/app/models/trade_participant.py, backend/app/models/__init__.py, backend/alembic/versions/*_exchange_requests.py
-- [ ] T004 [P] Write failing pure tests for two-/three-person cycle detection, `cycleKey` order-independence, and suppression in backend/tests/unit/test_matching.py
-- [ ] T005 Implement pure `domain/matching.py` (cycles, `cycleKey`, suppression) with no DB imports in backend/app/domain/matching.py
-- [ ] T006 [P] Add intent/proposal error codes (`INTENT_NOT_ACTIVE`, `PROPOSAL_VERSION_MISMATCH` with `currentStatus`/`latestProposalId` details) in backend/app/domain/errors.py and wire through backend/app/api/errors.py
+- [x] T002 [P] Write failing migration test verifying an actual Alembic upgrade creates `exchange_intents`, `trade_proposals`, `trade_participants` with required partial unique indexes in backend/tests/test_migrations.py
+- [x] T003 Implement models + Alembic revision in backend/app/models/exchange_intent.py, backend/app/models/trade_proposal.py, backend/app/models/trade_participant.py, backend/app/models/__init__.py, backend/alembic/versions/*_exchange_requests.py
+- [x] T004 [P] Write failing pure tests for two-/three-person cycle detection, `cycleKey` order-independence, and suppression in backend/tests/unit/test_matching.py
+- [x] T005 Implement pure `domain/matching.py` (cycles, `cycleKey`, suppression) with no DB imports in backend/app/domain/matching.py
+- [x] T006 [P] Add intent/proposal error codes (`INTENT_NOT_ACTIVE`, `PROPOSAL_VERSION_MISMATCH` with `currentStatus`/`latestProposalId` details) in backend/app/domain/errors.py and wire through backend/app/api/errors.py
 
 **Checkpoint**: `uv run pytest backend/tests/unit/test_matching.py backend/tests/test_migrations.py` green; ruff/mypy clean
 
@@ -45,13 +45,13 @@
 
 ### Tests for US1 (REQUIRED — write first) ⚠️
 
-- [ ] T007 [P] [US1] Failing API tests for intent register/list in backend/tests/api/test_intents_register_list.py (pair validation, own_clothing 422, active-pair replay 200, sent/received + status/wantedClothingId filters, visibility 404, check order, closure rules)
-- [ ] T008 [P] [US1] Failing API tests for withdraw in backend/tests/api/test_intents_withdraw.py (sender-only 403, replay 204 incl. after closure, `INTENT_NOT_ACTIVE` paths, pending `intent_changed` invalidation, confirmed untouched)
+- [x] T007 [P] [US1] Failing API tests for intent register/list in backend/tests/api/test_intents_register_list.py (pair validation, own_clothing 422, active-pair replay 200, sent/received + status/wantedClothingId filters, visibility 404, check order, closure rules)
+- [x] T008 [P] [US1] Failing API tests for withdraw in backend/tests/api/test_intents_withdraw.py (sender-only 403, replay 204 incl. after closure, `INTENT_NOT_ACTIVE` paths, pending `intent_changed` invalidation, confirmed untouched)
 
 ### Implementation for US1
 
-- [ ] T009 [US1] Implement intent register + list (`POST/GET /events/{id}/intents`) with check order + same-transaction cycle recalculation in backend/app/services/intent.py, backend/app/repositories/intent.py, backend/app/schemas/intent.py, backend/app/api/routers/intents.py (register in backend/app/main.py)
-- [ ] T010 [US1] Implement withdraw (`DELETE /intents/{id}`) with same-transaction pending invalidation in backend/app/services/intent.py, backend/app/api/routers/intents.py
+- [x] T009 [US1] Implement intent register + list (`POST/GET /events/{id}/intents`) with check order + same-transaction cycle recalculation in backend/app/services/intent.py, backend/app/repositories/intent.py, backend/app/schemas/intent.py, backend/app/api/routers/intents.py (register in backend/app/main.py)
+- [x] T010 [US1] Implement withdraw (`DELETE /intents/{id}`) with same-transaction pending invalidation in backend/app/services/intent.py, backend/app/api/routers/intents.py
 
 **Checkpoint**: US1 API tests green
 
