@@ -49,8 +49,8 @@ class SearchMeasurement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    min: float
-    max: float
+    min: float | None
+    max: float | None
 
 
 class SearchInterpretation(BaseModel):

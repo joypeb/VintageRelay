@@ -93,7 +93,7 @@ The schema intentionally has no fields for price, authenticity, or fit verdicts.
 |---|---|---|
 | `category` | enum \| null | `top`, `outer`, `bottom`, `other`; `null` if the text names no garment type |
 | `colors` | string[] | Colors from the [vocabulary](#21-color-vocabulary); `[]` if none |
-| `measurements` | object | Map of measurement name ([`Measurements`](api/06-register-read-clothing.md#measurements-schema) fields) to `{ "min": number, "max": number }` in inches; `{}` if none |
+| `measurements` | object | Map of measurement name ([`Measurements`](api/06-register-read-clothing.md#measurements-schema) fields) to `{ "min": number | null, "max": number | null }` in inches; one bound may be null, and `{}` means none |
 | `unrecognized` | string[] | Phrases the model could not map to a condition, e.g. `"size M"`, `"55 cm"`; shown as a "Not understood" note |
 
 ## 3. Clothing Analysis

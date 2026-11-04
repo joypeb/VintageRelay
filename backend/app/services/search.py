@@ -82,19 +82,15 @@ def to_search_conditions(raw: SearchInterpretation) -> SearchConditions:
             _add(name)
             continue
         minimum, maximum = item.min, item.max
-        if (
-            isinstance(minimum, bool)
-            or isinstance(maximum, bool)
-            or not isinstance(minimum, (int, float))
-            or not isinstance(maximum, (int, float))
-        ):
+        if minimum is None and maximum is None:
             continue
-        min_value, max_value = float(minimum), float(maximum)
-        if not (0 < min_value <= 120 and 0 < max_value <= 120):
+        if any(value is not None and not 0 < value <= 120 for value in (minimum, maximum)):
             continue
-        if min_value > max_value:
+        min_value = float(minimum) if minimum is not None else None
+        max_value = float(maximum) if maximum is not None else None
+        if min_value is not None and max_value is not None and min_value > max_value:
             continue
-        if min_value == max_value:
+        if min_value is not None and max_value is not None and min_value == max_value:
             min_value = max(min_value - 1, 0.1)
             max_value = min(max_value + 1, 120)
         measurements[name] = MeasurementRange(min=min_value, max=max_value)
