@@ -125,6 +125,7 @@ def test_proposal_schema_and_caller_actions(client, db, list_context, closed):
             "version",
             "status",
             "endReason",
+            "endDetail",
             "cycleSize",
             "participants",
             "myResponse",
