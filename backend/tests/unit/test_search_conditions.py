@@ -37,7 +37,19 @@ def test_all_measurement_names_are_retained_and_unknown_names_are_unrecognized()
     assert result.unrecognized == ["collar"]
 
 
-@pytest.mark.parametrize(("minimum", "maximum"), [(21, 20), (0, 20), (-1, 20), (20, 121)])
+@pytest.mark.parametrize(("minimum", "maximum"), [(None, 30), (20, None)])
+def test_one_sided_measurement_ranges_are_retained(minimum, maximum):
+    result = search.to_search_conditions(
+        raw(measurements=[SearchMeasurement(name="totalLength", min=minimum, max=maximum)])
+    )
+    assert result.measurements["totalLength"].min == minimum
+    assert result.measurements["totalLength"].max == maximum
+
+
+@pytest.mark.parametrize(
+    ("minimum", "maximum"),
+    [(21, 20), (0, 20), (-1, 20), (20, 121), (None, None), (None, 0), (121, None)],
+)
 def test_invalid_measurement_ranges_are_dropped(minimum, maximum):
     result = search.to_search_conditions(
         raw(measurements=[SearchMeasurement(name="chest", min=minimum, max=maximum)])
