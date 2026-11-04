@@ -20,6 +20,8 @@ import { consentProposal, cancelProposal, getProposal, rejectProposal } from '@/
 import { queryKeys } from '@/lib/api/query-keys';
 import { routes } from '@/lib/routes';
 import { toHandoverRows } from '@/lib/trades';
+import { formatDateTime } from '@/lib/utils/date';
+import { CATEGORY_OPTIONS } from '@/lib/validation/clothing-form';
 
 const subscribe = () => () => {};
 
@@ -65,8 +67,13 @@ export function ProposalDetail({
     retry: 1,
     staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchInterval: (q) =>
-      eventStatus === 'closed' ? false : q.state.data?.status === 'pending' ? 5_000 : false,
+    refetchInterval: (q) => {
+      if (eventStatus === 'closed') return false;
+      const status = q.state.data?.status;
+      if (status === 'pending') return 5_000;
+      if (status === 'confirmed') return 10_000;
+      return false;
+    },
     refetchIntervalInBackground: false,
   });
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
@@ -195,11 +202,11 @@ export function ProposalDetail({
 
   return (
     <VStack gap={4} padding={6}>
-      <Heading level={1}>Exchange proposal</Heading>
+      <Heading level={1}>{isCancelled ? 'Exchange cancelled' : isHandover ? 'Exchange confirmed' : 'Exchange proposal'}</Heading>
       {closed ? (
         <Banner status="warning" title="This event has ended." description="Trades are read-only." />
       ) : null}
-      <Text type="body">{`Version ${data.version} · ${data.status}`}</Text>
+      {isHandover ? null : <Text type="body">{`Version ${data.version} · ${data.status}`}</Text>}
       {!isHandover && versionChanged ? (
         <VStack gap={2}>
           <Banner
@@ -221,55 +228,74 @@ export function ProposalDetail({
             <Banner
               status="info"
               title="This exchange was cancelled."
-              description={data.cancelledAt ? `Cancelled at ${data.cancelledAt}` : undefined}
+              description={data.cancelledAt ? `Cancelled at ${formatDateTime(data.cancelledAt)}` : undefined}
             />
           ) : (
-            <Text type="body" as="p">
-              Confirmed. Inspect the garments in person before handing them over.
-            </Text>
+            <Banner
+              status="success"
+              title="Confirmed."
+              description="Inspect the garments in person before handing them over."
+            />
           )}
           {data.confirmedAt !== null ? (
-            <Text type="body">{`Confirmed at ${data.confirmedAt}`}</Text>
+            <Text type="body">{`Confirmed at ${formatDateTime(data.confirmedAt)}`}</Text>
           ) : null}
           <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
-            {toHandoverRows(data.participants).map((row) => (
-              <ListItem
-                key={row.gives.id}
-                isSelected={row.isMe}
-                label={
-                  <>
-                    {`${row.name} gives `}
-                    <Link href={routes.itemDetail(eventId, row.gives.id)} isStandalone>
-                      {row.gives.photoUrl !== '' ? (
-                        <img
-                          src={row.gives.photoUrl}
-                          alt={row.gives.title}
-                          className="h-12 w-12 object-cover"
-                        />
-                      ) : null}
-                      {`${row.gives.title} · ${row.gives.category}`}
-                    </Link>
-                    {` to ${row.givesTo}`}
-                  </>
-                }
-                description={
-                  <>
-                    Receives{' '}
-                    <Link href={routes.itemDetail(eventId, row.receives.id)} isStandalone>
-                      {row.receives.photoUrl !== '' ? (
-                        <img
-                          src={row.receives.photoUrl}
-                          alt={row.receives.title}
-                          className="h-12 w-12 object-cover"
-                        />
-                      ) : null}
-                      {`${row.receives.title} · ${row.receives.category}`}
-                    </Link>
-                    {` from ${row.receivesFrom}`}
-                  </>
-                }
-              />
-            ))}
+            {toHandoverRows(data.participants).map((row) => {
+              const givesLabel =
+                CATEGORY_OPTIONS.find((option) => option.value === row.gives.category)?.label ??
+                row.gives.category;
+              const receivesLabel =
+                CATEGORY_OPTIONS.find((option) => option.value === row.receives.category)?.label ??
+                row.receives.category;
+              return (
+                <ListItem
+                  key={row.gives.id}
+                  isSelected={row.isMe}
+                  aria-current={row.isMe ? true : undefined}
+                  label={
+                    <>
+                      {row.isMe ? 'You give ' : `${row.name} gives `}
+                      <Link
+                        href={routes.itemDetail(eventId, row.gives.id)}
+                        isStandalone
+                        className="inline-flex min-h-11 items-center"
+                      >
+                        {row.gives.photoUrl !== '' ? (
+                          <img
+                            src={row.gives.photoUrl}
+                            alt=""
+                            className="h-12 w-12 object-cover"
+                          />
+                        ) : null}
+                        {`${row.gives.title} · ${givesLabel}`}
+                      </Link>
+                      {` to ${row.givesTo}`}
+                    </>
+                  }
+                  description={
+                    <>
+                      {row.isMe ? 'You receive ' : `${row.name} receives `}
+                      <Link
+                        href={routes.itemDetail(eventId, row.receives.id)}
+                        isStandalone
+                        className="inline-flex min-h-11 items-center"
+                      >
+                        {row.receives.photoUrl !== '' ? (
+                          <img
+                            src={row.receives.photoUrl}
+                            alt=""
+                            className="h-12 w-12 object-cover"
+                          />
+                        ) : null}
+                        {`${row.receives.title} · ${receivesLabel}`}
+                      </Link>
+                      {` from ${row.receivesFrom}`}
+                    </>
+                  }
+                />
+              );
+            })}
           </List>
           {showCancelButton ? (
             <Button

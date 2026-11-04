@@ -6,6 +6,8 @@ import { MyItemDetailScreen } from '@/components/clothing/MyItemDetailScreen';
 import { ApiError } from '@/lib/api/api-error';
 import { useClothingQuery, useDeleteClothingMutation } from '@/lib/api/clothing';
 import { useEventQuery } from '@/lib/api/events';
+import { useProposalsQuery } from '@/lib/api/proposals';
+import type * as ProposalsModule from '@/lib/api/proposals';
 import { routes } from '@/lib/routes';
 import { saveEventSession } from '@/lib/session';
 import { renderWithClient } from '@/test/render';
@@ -14,6 +16,10 @@ import type { Event } from '@/types/event';
 
 vi.mock('@/lib/api/clothing', () => ({ useClothingQuery: vi.fn(), useDeleteClothingMutation: vi.fn() }));
 vi.mock('@/lib/api/events', () => ({ useEventQuery: vi.fn() }));
+vi.mock('@/lib/api/proposals', async (importOriginal) => ({
+  ...await importOriginal<typeof ProposalsModule>(),
+  useProposalsQuery: vi.fn(),
+}));
 const mocks = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace }) }));
 
@@ -105,8 +111,24 @@ describe('MyItemDetailScreen', () => {
     query();
     eventQuery();
     deleteMutation();
+    vi.mocked(useProposalsQuery).mockReturnValue({ data: { items: [] } } as unknown as ReturnType<typeof useProposalsQuery>);
   });
   afterEach(() => localStorage.clear());
+
+
+  it.each([
+    ['confirmed', 'Confirmed exchange'],
+    ['cancelled', 'Cancelled exchange'],
+    ['pending', 'Pending exchange'],
+    ['rejected', 'Rejected exchange'],
+    ['invalidated', 'Invalidated exchange'],
+  ] as const)('links a %s related exchange with its status label', (status, label) => {
+    vi.mocked(useProposalsQuery).mockReturnValue({
+      data: { items: [{ id: 'trade1', status, version: 7, myResponse: 'pending' }] },
+    } as unknown as ReturnType<typeof useProposalsQuery>);
+    renderDetail();
+    expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', routes.tradeDetail('e1', 'trade1'));
+  });
 
   it('shows the available status', () => {
     renderDetail();

@@ -15,6 +15,7 @@
 ### Session 2026-11-04
 
 - Q: Should the confirmed view offer a [Handover complete] record? → A: No. Handover stays untracked in v1 (open decision); the view only shows the inspection notice.
+- Q: Should the confirmed view refresh on its own? → A: Yes, about every 10 seconds while the event is active (design critique: a party standing at the table must not see a stale "Confirmed" after the other party cancelled).
 - Q: What does the cancel confirmation say, and do other parties get a visible notice? → A: Dialog title "Cancel this exchange?", body "The whole exchange is cancelled for every participant, and all its garments become available again.", actions [Cancel exchange] / [Keep exchange]. Other parties get no new notice: the exchange moves to History on their next Trades refresh; the existing Trades badge (actionable items only) is unchanged.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -102,7 +103,7 @@ The Exchanges segment in Trades lists confirmed exchanges (opening the confirmed
 - **FR-014**: Trades → Exchanges MUST list confirmed exchanges (opening the confirmed view) and history entries for rejected, invalidated, and cancelled exchanges.
 - **FR-015**: My item detail MUST link a confirmed garment to its confirmed exchange and keep edit and delete disabled with guidance to cancel first.
 - **FR-016**: When the event is closed, the confirmed view MUST be view-only.
-- **FR-017**: The confirmed view MUST NOT poll; it refreshes on screen entry. The Trades list keeps its existing 020 refresh cadence because it also carries pending items.
+- **FR-017**: While the event is active, the confirmed view MUST refresh periodically (about every 10 seconds) so a party at the table sees a cancellation by someone else; cancelled and closed views do not poll. The Trades list keeps its existing 020 refresh cadence because it also carries pending items.
 - **FR-018**: The confirmed view MUST NOT offer a handover completion record (open decision; out of scope).
 
 ### Key Entities

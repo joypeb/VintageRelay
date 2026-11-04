@@ -37,5 +37,5 @@
 
 ## R8. Refresh cadence
 
-- **Decision**: T3 detail does not poll (existing `refetchInterval` polls only `pending`). The Trades list keeps 020's 15s poll because one query serves pending and confirmed/history together; splitting it is not justified for v1.
+- **Decision**: T3 detail polls every 10s while `confirmed` and the event is active (revised after design critique), alongside the existing 5s `pending` poll. The Trades list keeps 020's 15s poll because one query serves pending and confirmed/history together; splitting it is not justified for v1.
 - **Alternatives**: Separate non-polling query for confirmed/history (more code, two requests, no user-visible gain).
