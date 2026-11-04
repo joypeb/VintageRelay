@@ -130,6 +130,18 @@ describe('MyItemDetailScreen', () => {
     expect(screen.getByRole('link', { name: label })).toHaveAttribute('href', routes.tradeDetail('e1', 'trade1'));
   });
 
+  it('links the confirmed exchange and disables editing and deletion', () => {
+    query({ data: { ...clothing, status: 'confirmed' } });
+    vi.mocked(useProposalsQuery).mockReturnValue({
+      data: { items: [{ id: 'trade1', status: 'confirmed', version: 7, myResponse: 'pending' }] },
+    } as unknown as ReturnType<typeof useProposalsQuery>);
+    renderDetail();
+
+    expect(screen.getByRole('link', { name: 'View confirmed exchange' })).toHaveAttribute('href', routes.tradeDetail('e1', 'trade1'));
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled();
+  });
+
   it('shows the available status', () => {
     renderDetail();
     expect(screen.getByText('Available', { exact: true })).toBeVisible();

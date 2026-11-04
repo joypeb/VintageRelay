@@ -20,7 +20,7 @@ Add `POST /api/v1/proposals/{proposal_id}/cancel` that, in one `Db.write()` tran
 
 **Target Platform**: Mobile web prototype.
 
-**Performance Goals**: Event-scale; no polling for confirmed/cancelled proposals (T2's 5s poll is pending-only already).
+**Performance Goals**: Event-scale; T3 polls every 10s while confirmed and the event is active (FR-017), 5s while pending (020); cancelled/closed views do not poll.
 
 **Constraints**: Same-transaction cancel + garment release + recalculation; idempotent replay (including after closure); 404-hiding for non-parties; `EVENT_CLOSED` message "This event is closed, so exchanges can no longer be cancelled."; `PROPOSAL_NOT_CONFIRMED` for pending/rejected/invalidated.
 

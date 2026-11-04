@@ -36,6 +36,4 @@ export const mutationKeys = {
     ['events', eventId, 'proposals', proposalId, 'consent'] as const,
   rejectProposal: (eventId: string, proposalId: string) =>
     ['events', eventId, 'proposals', proposalId, 'reject'] as const,
-  cancelProposal: (eventId: string, proposalId: string) =>
-    ['events', eventId, 'proposals', proposalId, 'cancel'] as const,
 };

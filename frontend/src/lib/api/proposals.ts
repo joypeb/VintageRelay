@@ -144,15 +144,3 @@ export function useRejectProposalMutation(eventId: string, proposalId: string) {
     },
   });
 }
-
-export function useCancelProposalMutation(eventId: string, proposalId: string) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationKey: mutationKeys.cancelProposal(eventId, proposalId),
-    mutationFn: () => cancelProposal(eventId, proposalId),
-    retry: 0,
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ['events', eventId] });
-    },
-  });
-}

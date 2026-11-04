@@ -56,4 +56,4 @@ Feature numbers are roadmap IDs. Spec Kit assigns the next free `specs/0NN-*` nu
 | 018 | Done (backend analysis + C1/C4/B3 UI; real-model authenticated call pending operator AI_API_KEY — route liveness verified without key) |
 | 019 | Done (backend interpretation + ranked search, S1/S2 UI; search items reuse the Home `Clothing` object instead of `ClothingSummary`; real-model interpretation quality pending operator AI_API_KEY) |
 | 020 | Done (backend intents/proposals/consent + I1/T1/T2/C4 UI; screenshots pending on device) |
-| 021 | Done (backend cancel + T3 handover view, C4 exchange links; spec dir `specs/022-cancel-and-handover`; phone screenshots pending on device) |
+| 021 | Done (backend cancel + T3 handover view, C4 exchange links; spec dir `specs/022-cancel-and-handover`; end-to-end phone run and screenshots pending on device) |
