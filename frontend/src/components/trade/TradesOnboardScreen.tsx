@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { Fragment, useState, useSyncExternalStore } from 'react';
 
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import { Divider } from '@astryxdesign/core/Divider';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { List, ListItem } from '@astryxdesign/core/List';
@@ -30,10 +31,9 @@ import {
   intentStatusLabel,
   isReceivedActionable,
   isSentActionable,
-  pendingParticipantNames,
-  proposalStatusLabel,
+  proposalRowDescription,
+  proposalRowLabel,
   requestStageItems,
-  responseLabel,
 } from '@/lib/trades';
 import type { Intent } from '@/types/intent';
 import type { Proposal } from '@/types/proposal';
@@ -46,11 +46,13 @@ function ReceivedRow({
   eventId,
   intent,
   proposals,
+  viewerId,
   closed,
 }: {
   eventId: string;
   intent: Intent;
   proposals: Proposal[];
+  viewerId: string;
   closed: boolean;
 }) {
   const accept = useAcceptIntentMutation(eventId, intent.id);
@@ -80,7 +82,7 @@ function ReceivedRow({
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent, proposals)}`}
+        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent, proposals, viewerId)}`}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -91,17 +93,20 @@ function ReceivedRow({
         <VStack gap={2}>
           <Button
             label="Accept"
-            size="md"
+            variant="primary"
+            size="lg"
             width="100%"
+            aria-label={`Accept request for ${intent.wantedClothing.title}`}
             isLoading={accept.isPending}
             isDisabled={accept.isPending || decline.isPending}
             onClick={() => void handleAccept()}
           />
           <Button
             label="Decline"
-            variant="destructive"
-            size="md"
+            variant="secondary"
+            size="lg"
             width="100%"
+            aria-label={`Decline request for ${intent.wantedClothing.title}`}
             isLoading={decline.isPending}
             isDisabled={accept.isPending || decline.isPending}
             onClick={() => void handleDecline()}
@@ -116,11 +121,13 @@ function SentRow({
   eventId,
   intent,
   proposals,
+  viewerId,
   closed,
 }: {
   eventId: string;
   intent: Intent;
   proposals: Proposal[];
+  viewerId: string;
   closed: boolean;
 }) {
   const withdraw = useWithdrawIntentMutation(eventId, intent.id);
@@ -140,7 +147,7 @@ function SentRow({
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={intentStatusLabel(intent, proposals)}
+        description={intentStatusLabel(intent, proposals, viewerId)}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -149,9 +156,10 @@ function SentRow({
       ) : null}
       {actionable ? (
         <Button
-          label={withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
-          size="md"
+          label="Withdraw"
+          size="lg"
           width="100%"
+          aria-label={`Withdraw request for ${intent.wantedClothing.title}`}
           isLoading={withdraw.isPending}
           isDisabled={withdraw.isPending}
           onClick={() => void handleWithdraw()}
@@ -161,26 +169,11 @@ function SentRow({
   );
 }
 
-function ProposalRow({
-  eventId,
-  proposal,
-  waitingFor,
-}: {
-  eventId: string;
-  proposal: Proposal;
-  waitingFor?: string[];
-}) {
-  const summary = proposal.participants
-    .map((p) => `${p.participant.displayName} gives ${p.offeredClothing.title}`)
-    .join(' · ');
-  const waiting =
-    waitingFor !== undefined && waitingFor.length > 0
-      ? ` · Waiting for ${waitingFor.join(', ')}`
-      : '';
+function ProposalRow({ eventId, proposal }: { eventId: string; proposal: Proposal }) {
   return (
     <ListItem
-      label={`Version ${proposal.version} · ${proposalStatusLabel(proposal)}`}
-      description={`${summary} · Your response: ${responseLabel(proposal.myResponse)}${waiting}`}
+      label={proposalRowLabel(proposal)}
+      description={proposalRowDescription(proposal)}
       href={routes.tradeDetail(eventId, proposal.id)}
     />
   );
@@ -244,6 +237,7 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
   }
 
   const closed = isClosed(state.event);
+  const viewerId = state.event.me.participantId;
   const tabHref = (value: TradeTab) => `${routes.trades(eventId)}?tab=${value}`;
 
   function renderPanel() {
@@ -282,15 +276,18 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         );
       }
       return (
-        <List header={<Heading level={2}>Received requests</Heading>} hasDividers>
-          {items.map((intent) => (
-            <ReceivedRow
-              key={intent.id}
-              eventId={eventId}
-              intent={intent}
-              proposals={proposalsQuery.data?.items ?? []}
-              closed={closed}
-            />
+        <List header={<Heading level={2}>Received requests</Heading>}>
+          {items.map((intent, index) => (
+            <Fragment key={intent.id}>
+              <ReceivedRow
+                eventId={eventId}
+                intent={intent}
+                proposals={proposalsQuery.data?.items ?? []}
+                viewerId={viewerId}
+                closed={closed}
+              />
+              {index < items.length - 1 ? <Divider /> : null}
+            </Fragment>
           ))}
         </List>
       );
@@ -330,15 +327,18 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         );
       }
       return (
-        <List header={<Heading level={2}>Sent requests</Heading>} hasDividers>
-          {items.map((intent) => (
-            <SentRow
-              key={intent.id}
-              eventId={eventId}
-              intent={intent}
-              proposals={proposalsQuery.data?.items ?? []}
-              closed={closed}
-            />
+        <List header={<Heading level={2}>Sent requests</Heading>}>
+          {items.map((intent, index) => (
+            <Fragment key={intent.id}>
+              <SentRow
+                eventId={eventId}
+                intent={intent}
+                proposals={proposalsQuery.data?.items ?? []}
+                viewerId={viewerId}
+                closed={closed}
+              />
+              {index < items.length - 1 ? <Divider /> : null}
+            </Fragment>
           ))}
         </List>
       );
@@ -372,7 +372,8 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
       receivedQuery.data?.items ?? [],
       proposalsQuery.data?.items ?? [],
     );
-    const grouped = groupProposals(proposalsQuery.data?.items ?? []);
+    const proposals = proposalsQuery.data?.items ?? [];
+    const grouped = groupProposals(proposals);
     const total =
       requests.length +
       grouped.awaitingMyConsent.length +
@@ -393,16 +394,12 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
       <VStack gap={4}>
         {requests.length > 0 ? (
           <List header={<Heading level={2}>Requests</Heading>} hasDividers>
-            {requests.map(({ intent, direction }) => (
+            {requests.map(({ intent }) => (
               <ListItem
                 key={intent.id}
                 label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-                description={
-                  direction === 'sent'
-                    ? `Waiting for ${intent.wantedClothing.owner.displayName} to answer`
-                    : 'Waiting for your answer'
-                }
-                href={tabHref(direction)}
+                description={intentStatusLabel(intent, proposals, viewerId)}
+                href={tabHref(intent.participantId === viewerId ? 'sent' : 'received')}
               />
             ))}
           </List>
@@ -417,12 +414,7 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         {grouped.waitingForOthers.length > 0 ? (
           <List header={<Heading level={2}>Waiting for others</Heading>} hasDividers>
             {grouped.waitingForOthers.map((proposal) => (
-              <ProposalRow
-                key={proposal.id}
-                eventId={eventId}
-                proposal={proposal}
-                waitingFor={pendingParticipantNames(proposal)}
-              />
+              <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
             ))}
           </List>
         ) : null}

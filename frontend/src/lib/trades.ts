@@ -52,6 +52,7 @@ export function countTradesBadge(
   proposals: readonly Proposal[],
   closed: boolean,
 ): number {
+  if (closed) return 0;
   const awaitingRequests = received.filter((intent) =>
     isReceivedActionable(intent, proposals, closed),
   ).length;
@@ -92,10 +93,20 @@ export function isSentActionable(intent: Intent, closed: boolean): boolean {
   return intent.status === 'active' && !closed;
 }
 
-export function intentStatusLabel(intent: Intent, proposals: readonly Proposal[]): string {
+export function intentStatusLabel(
+  intent: Intent,
+  proposals: readonly Proposal[],
+  viewerId?: string,
+): string {
   if (intent.status === 'declined') return 'Declined';
   if (intent.status === 'withdrawn') return 'Withdrawn';
   if (intent.status === 'invalidated') return 'Item withdrawn';
+  if (isLiveLeg(
+    intent,
+    proposals.filter((proposal) => proposal.status === 'confirmed'),
+  )) {
+    return 'In your confirmed exchange';
+  }
   if (
     intent.offeredClothing.status === 'confirmed' ||
     intent.wantedClothing.status === 'confirmed'
@@ -105,7 +116,10 @@ export function intentStatusLabel(intent: Intent, proposals: readonly Proposal[]
   if (isLiveLeg(intent, proposals)) {
     return intent.acceptedProposalId !== null ? 'Accepted' : 'In a proposal';
   }
-  return 'Waiting';
+  if (intent.participantId === viewerId) {
+    return `Waiting for ${intent.wantedClothing.owner.displayName} to answer`;
+  }
+  return 'Your answer needed';
 }
 
 export type RequestStageItem = {
@@ -130,7 +144,10 @@ export function requestStageItems(
       items.push({ intent, direction: 'received', nextActor: 'me' });
     }
   }
-  items.sort((a, b) => Date.parse(b.intent.createdAt) - Date.parse(a.intent.createdAt));
+  items.sort((a, b) => {
+    if (a.direction !== b.direction) return a.direction === 'received' ? -1 : 1;
+    return Date.parse(b.intent.createdAt) - Date.parse(a.intent.createdAt);
+  });
   return items;
 }
 
@@ -169,6 +186,21 @@ export function proposalStatusLabel(
     return 'Ended';
   }
   return 'Ended';
+}
+
+export function proposalRowLabel(proposal: Proposal): string {
+  const me = proposal.participants.find((participant) => participant.isMe) ?? proposal.participants[0];
+  const base = `You give ${me?.offeredClothing.title} · get ${me?.receivedClothing.title}`;
+  return proposal.cycleSize === 3 ? `${base} · 3-person swap` : base;
+}
+
+export function proposalRowDescription(proposal: Proposal): string {
+  if (proposal.status === 'pending') {
+    if (proposal.myResponse === 'pending') return 'Your consent needed';
+    const names = pendingParticipantNames(proposal);
+    return names.length > 0 ? `Waiting for ${names.join(', ')}` : 'Waiting for consent';
+  }
+  return proposalStatusLabel(proposal);
 }
 
 export function responseLabel(response: string): string {

@@ -72,17 +72,33 @@ describe('proposal detail', () => {
     expect(document.body).not.toHaveTextContent(/\b(pending|consented)\b/);
   });
 
-  it('shows a declined request as the reason an exchange ended', async () => {
+  it('shows a declined request as an ended exchange without actions', async () => {
     vi.mocked(getProposal).mockResolvedValue({ ...pending, status: 'invalidated', endReason: 'intent_changed', endDetail: 'intent_declined', canConsent: false });
     renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
-    expect(await screen.findByText(/Version 7 · Declined/)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Exchange ended' })).toBeInTheDocument();
+    expect(screen.getByText('Declined')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Consent' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reject' })).not.toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/\binvalidated\b/);
   });
 
-  it('disables consent for an invalidated proposal', async () => {
-    vi.mocked(getProposal).mockResolvedValue({ ...pending, status: 'invalidated', canConsent: false });
+  it('links back to Exchanges', async () => {
     renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
-    expect(await screen.findByRole('button', { name: 'Consent' })).toBeDisabled();
+    expect(await screen.findByRole('link', { name: 'Back to Exchanges' })).toHaveAttribute('href', '/events/e1/trades?tab=exchanges');
+  });
+
+  it('hides consent after my consent while still offering rejection', async () => {
+    vi.mocked(getProposal).mockResolvedValue({ ...pending, myResponse: 'consented', canConsent: false, canReject: true });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByRole('button', { name: 'Reject' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Consent' })).not.toBeInTheDocument();
+  });
+
+  it('omits version 1 from the proposal status', async () => {
+    vi.mocked(getProposal).mockResolvedValue({ ...pending, version: 1 });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByText(/Waiting for consent/)).toBeInTheDocument();
+    expect(screen.queryByText(/Version 1/)).not.toBeInTheDocument();
   });
 
   it('keeps the proposal heading for pending exchanges', async () => {

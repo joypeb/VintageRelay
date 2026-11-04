@@ -71,8 +71,12 @@ description: "Task list for 023 Trades Status Fixes After Exchange QA"
 
 ## Phase 7: Design polish
 
-- [ ] T013 Run `/impeccable` critique/polish limited to the UI changed in this feature (Trades Received/Sent/Exchanges rows and groups, proposal detail labels) within Astryx rules at 360–430 px; apply fixes via test-author (if behavior changes) → implementer-fe → commit-reviewer
-
+- [x] T013 Run `/impeccable` critique/polish limited to the UI changed in this feature (Trades Received/Sent/Exchanges rows and groups, proposal detail labels) within Astryx rules at 360–430 px; apply fixes via test-author (if behavior changes) → implementer-fe → commit-reviewer. Critique 2026-11-04 (dual-agent, 21/40) fixes:
+  - (a) `intentStatusLabel`: a live **confirmed** leg reads "In your confirmed exchange" (checked before "Item already exchanged", which stays for garments confirmed elsewhere); active unanswered sent → "Waiting for {owner} to answer", received → "Your answer needed"; Sent/Received/Exchanges share these labels
+  - (b) Proposal rows: label "You give {my offered title} · get {my received title}" (3-person: append " · 3-person swap"); description = status or "Waiting for {names}" for waiting-for-others, the plain end reason for History; no "Version N" and no "Your response" on rows; Requests group lists "Your answer needed" items first
+  - (c) Received/Sent rows: actions grouped with their row (not separated by the list divider), Accept `primary` and Decline non-destructive secondary (fixes 3.8:1 contrast), buttons ≥ 44 px tall (`size="lg"`), accessible names include the item ("Accept request for Wool coat", "Decline request for Wool coat", "Withdraw request for Trench coat")
+  - (d) Proposal detail: back link "Back to Exchanges" (`routes.trades` + `?tab=exchanges`); terminal non-handover proposals use heading "Exchange ended" with a Banner showing the plain end reason and hide Consent/Reject and per-participant responses; after my consent, Consent is hidden and Reject uses a non-destructive variant; no "Version N" in the status line when version is 1
+  - (e) `countTradesBadge` returns 0 when the event is closed (commit-review Low)
 ## Phase 8: User Story 5 - Exception QA (P2)
 
 - [ ] T014 [US5] QA agent restarts backend (Docker) and frontend, runs quickstart.md scenarios 1–9 with computer/browser use and multiple participant sessions, and verifies stored state via the SQLite DB inside the backend container; reports pass/fail with evidence

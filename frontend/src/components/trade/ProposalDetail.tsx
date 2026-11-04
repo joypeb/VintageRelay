@@ -143,6 +143,7 @@ export function ProposalDetail({
   const terminal = data.status !== 'pending';
   const isHandover = data.status === 'confirmed' || data.status === 'cancelled';
   const isCancelled = data.status === 'cancelled';
+  const isEnded = terminal && !isHandover;
   const showCancelButton = data.status === 'confirmed' && data.canCancel && !closed;
   const anyPending = consentMutation.isPending || rejectMutation.isPending;
   const consentDisabled =
@@ -202,11 +203,23 @@ export function ProposalDetail({
 
   return (
     <VStack gap={4} padding={6}>
-      <Heading level={1}>{isCancelled ? 'Exchange cancelled' : isHandover ? 'Exchange confirmed' : 'Exchange proposal'}</Heading>
+      <Heading level={1}>{isCancelled ? 'Exchange cancelled' : isHandover ? 'Exchange confirmed' : isEnded ? 'Exchange ended' : 'Exchange proposal'}</Heading>
+      <Link
+        href={`${routes.trades(eventId)}?tab=exchanges`}
+        isStandalone
+        className="inline-flex min-h-11 items-center"
+      >
+        Back to Exchanges
+      </Link>
       {closed ? (
         <Banner status="warning" title="This event has ended." description="Trades are read-only." />
       ) : null}
-      {isHandover ? null : <Text type="body">{`Version ${data.version} · ${proposalStatusLabel(data)}`}</Text>}
+      {isHandover || isEnded ? null : (
+        <Text type="body">
+          {data.version === 1 ? proposalStatusLabel(data) : `Version ${data.version} · ${proposalStatusLabel(data)}`}
+        </Text>
+      )}
+      {isEnded ? <Banner status="info" title={proposalStatusLabel(data)} /> : null}
       {!isHandover && versionChanged ? (
         <VStack gap={2}>
           <Banner
@@ -307,6 +320,16 @@ export function ProposalDetail({
             />
           ) : null}
         </>
+      ) : isEnded ? (
+        <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
+          {data.participants.map((participant) => (
+            <ListItem
+              key={participant.participant.participantId}
+              label={`${participant.participant.displayName} gives ${participant.offeredClothing.title}`}
+              description={`Receives ${participant.receivedClothing.title}`}
+            />
+          ))}
+        </List>
       ) : (
         <>
           <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
@@ -319,17 +342,19 @@ export function ProposalDetail({
             ))}
           </List>
           <Text type="body">{`Your response: ${responseLabel(data.myResponse)}`}</Text>
-          <Button
-            label="Consent"
-            size="lg"
-            width="100%"
-            isDisabled={consentDisabled}
-            isLoading={consentMutation.isPending}
-            onClick={() => setConfirmKind('consent')}
-          />
+          {data.myResponse === 'consented' ? null : (
+            <Button
+              label="Consent"
+              size="lg"
+              width="100%"
+              isDisabled={consentDisabled}
+              isLoading={consentMutation.isPending}
+              onClick={() => setConfirmKind('consent')}
+            />
+          )}
           <Button
             label="Reject"
-            variant="destructive"
+            variant="secondary"
             size="lg"
             width="100%"
             isDisabled={rejectDisabled}
@@ -382,7 +407,7 @@ export function ProposalDetail({
           <Text type="body">{`You reviewed version ${displayedVersion ?? data.version}. This action applies to that version only.`}</Text>
           <Button
             label={confirmKind === 'reject' ? 'Reject' : 'Consent'}
-            variant={confirmKind === 'reject' ? 'destructive' : 'primary'}
+            variant={confirmKind === 'reject' ? 'secondary' : 'primary'}
             size="lg"
             width="100%"
             isLoading={anyPending}
