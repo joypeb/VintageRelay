@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 
 from app.schemas.common import ApiModel, UtcDatetime
@@ -23,6 +25,7 @@ class Proposal(ApiModel):
     version: int
     status: str
     end_reason: str | None = None
+    end_detail: Literal["intent_declined", "intent_withdrawn", "intent_invalidated"] | None = None
     cycle_size: int
     participants: list[ProposalParticipant]
     my_response: str

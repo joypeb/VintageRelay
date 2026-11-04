@@ -1,9 +1,15 @@
+import { useQuery } from '@tanstack/react-query';
+import type * as ReactQuery from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '@/lib/api/api-error';
 import { apiFetch } from '@/lib/api/client';
 import { cancelProposal, consentProposal, getProposal, getProposalConflict, rejectProposal } from '@/lib/api/proposals';
+import { useProposalsQuery } from '@/lib/api/proposals';
 
+vi.mock('@tanstack/react-query', async (importOriginal) => ({
+  ...await importOriginal<typeof ReactQuery>(), useQuery: vi.fn(),
+}));
 vi.mock('@/lib/api/client', () => ({ apiFetch: vi.fn() }));
 beforeEach(() => vi.resetAllMocks());
 
@@ -45,5 +51,15 @@ describe('cancel proposal', () => {
     const result = cancelProposal('event-2', 'p1');
     await expect(result).rejects.toBeInstanceOf(ApiError);
     await expect(result).rejects.toMatchObject({ status: 409, code });
+  });
+});
+
+
+describe('list polling', () => {
+  it.each([[false, 4000], [true, false]] as const)('uses the correct refresh settings when closed is %s', (closed, interval) => {
+    useProposalsQuery('e1', { closed });
+    expect(useQuery).toHaveBeenCalledWith(expect.objectContaining({
+      refetchInterval: interval, refetchOnWindowFocus: true, refetchIntervalInBackground: false,
+    }));
   });
 });

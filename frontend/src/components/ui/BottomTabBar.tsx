@@ -36,13 +36,14 @@ export function BottomTabBar({ eventId }: { eventId: string }) {
   const closed = eventQuery.data?.status === 'closed';
   const receivedQuery = useIntentsQuery(eventId, {
     direction: 'received',
+    status: ['active', 'declined', 'withdrawn', 'invalidated'],
     enabled,
     closed,
   });
-  const proposalsQuery = useProposalsQuery(eventId, { status: 'pending', enabled, closed });
+  const proposalsQuery = useProposalsQuery(eventId, { enabled, closed });
   const badge =
     enabled && receivedQuery.data && proposalsQuery.data
-      ? countTradesBadge(receivedQuery.data.items, proposalsQuery.data.items)
+      ? countTradesBadge(receivedQuery.data.items, proposalsQuery.data.items, closed)
       : 0;
 
   // Link navigation drives the selected value from the pathname; the manage

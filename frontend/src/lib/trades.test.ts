@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { countTradesBadge, groupProposals, toHandoverRows } from '@/lib/trades';
+import { countTradesBadge, groupProposals, toHandoverRows, isLiveLeg, isReceivedActionable, isSentActionable, intentStatusLabel, requestStageItems, pendingParticipantNames, proposalStatusLabel, responseLabel, proposalRowLabel, proposalRowDescription } from '@/lib/trades';
+import type { Intent } from '@/types/intent';
+import type { Proposal, ProposalParticipant } from '@/types/proposal';
+
 
 const proposal = (id: string, status: string, myResponse: string, cycleSize: number, createdAt: string) =>
   ({ id, status, myResponse, cycleSize, createdAt });
-const intent = (status: string, acceptedProposalId: string | null) => ({ status, acceptedProposalId });
 
 describe('trade lists', () => {
   it('groups proposals by state and sorts each group newest first', () => {
@@ -14,28 +16,24 @@ describe('trade lists', () => {
     const confirmed = proposal('confirmed', 'confirmed', 'consented', 2, '2026-11-02T00:00:00Z');
     const rejected = proposal('rejected', 'rejected', 'rejected', 2, '2026-11-01T00:00:00Z');
     const invalidated = proposal('invalidated', 'invalidated', 'pending', 3, '2026-11-03T00:00:00Z');
+    const unknown = proposal('unknown', 'unknown', 'pending', 2, '2026-10-31T00:00:00Z');
     const cancelled = proposal('cancelled', 'cancelled', 'consented', 2, '2026-11-02T00:00:00Z');
-    expect(groupProposals([awaitingOld, rejected, found, cancelled, awaitingNew, confirmed, invalidated])).toEqual({
-      awaitingMyConsent: [awaitingNew, awaitingOld], threePersonFound: [found],
-      confirmed: [confirmed], history: [invalidated, cancelled, rejected],
+    expect(groupProposals([awaitingOld, rejected, found, cancelled, awaitingNew, confirmed, invalidated, unknown])).toEqual({
+      awaitingMyConsent: [awaitingNew, awaitingOld], waitingForOthers: [found],
+      confirmed: [confirmed], history: [invalidated, cancelled, rejected, unknown],
     });
   });
 
-  it('only groups consented three-person proposals as found', () => {
+  it('groups consented proposals of any size as waiting for others', () => {
     const twoPerson = proposal('two', 'pending', 'consented', 2, '2026-11-02T00:00:00Z');
     const threePerson = proposal('three', 'pending', 'consented', 3, '2026-11-02T00:00:00Z');
 
     expect(groupProposals([twoPerson, threePerson])).toEqual({
-      awaitingMyConsent: [], threePersonFound: [threePerson], confirmed: [], history: [twoPerson],
+      awaitingMyConsent: [], waitingForOthers: [twoPerson, threePerson], confirmed: [], history: [],
     });
   });
 
-  it('counts only active unaccepted received requests and proposals awaiting my response', () => {
-    expect(countTradesBadge(
-      [intent('active', null), intent('active', 'p1'), intent('declined', null), intent('withdrawn', null)],
-      [proposal('p1', 'pending', 'pending', 2, ''), proposal('p2', 'pending', 'consented', 3, ''), proposal('p3', 'confirmed', 'pending', 2, '')],
-    )).toBe(2);
-  });
+
 });
 
 describe('handover rows', () => {
@@ -57,5 +55,145 @@ describe('handover rows', () => {
       gives: p.offeredClothing, givesTo: recipients[i],
       receives: p.receivedClothing, receivesFrom: senders[i],
     })));
+  });
+});
+
+const owner = (id: string) => ({ participantId: id, displayName: id, isOrganizer: false });
+const clothing = (id: string, status: 'available' | 'confirmed' | 'withdrawn' = 'available') => ({ id, owner: owner(id), photoUrl: '', category: 'top' as const, title: id, description: '', status, contentVersion: 1 });
+const request = (id: string, overrides: Partial<Intent> = {}): Intent => ({ id, eventId: 'e1', participantId: 'a', offeredClothing: clothing('a'), wantedClothing: clothing('b'), status: 'active' as const, acceptedProposalId: null, createdAt: `2026-11-0${id}T00:00:00Z`, updatedAt: '', ...overrides });
+const leg = (participantId: string, offered: string, received: string, response = 'pending', isMe = false): ProposalParticipant => ({ participant: owner(participantId), isMe, offeredClothing: clothing(offered), receivedClothing: clothing(received), response, respondedAt: null });
+const exchange = (status: string, participants = [leg('a', 'a', 'b')]): Proposal & { endDetail: 'intent_declined' | 'intent_withdrawn' | 'intent_invalidated' | null } => ({ id: 'p1', eventId: 'e1', version: 1, status, endReason: null, endDetail: null, cycleSize: participants.length, participants, myResponse: 'pending', canConsent: true, canReject: true, canCancel: false, createdAt: '', confirmedAt: null, cancelledAt: null, endedAt: null });
+
+describe('trades badge', () => {
+  it('counts actionable requests and proposals awaiting my consent', () => {
+    const awaiting = { ...exchange('pending', []), myResponse: 'pending' };
+    const consented = { ...exchange('pending', []), myResponse: 'consented' };
+    expect(countTradesBadge([request('1'), request('2', { status: 'declined' })], [awaiting, consented, exchange('confirmed', [])], false)).toBe(2);
+  });
+
+  it.each(['offeredClothing', 'wantedClothing'] as const)('does not count a request with confirmed %s', (field) => {
+    expect(countTradesBadge([request('1', { [field]: clothing('a', 'confirmed') })], [], false)).toBe(0);
+  });
+
+  it.each(['rejected', 'invalidated', 'cancelled'])('counts an accepted request again when its proposal is %s', (status) => {
+    expect(countTradesBadge([request('1', { acceptedProposalId: 'p1' })], [exchange(status)], false)).toBe(1);
+  });
+
+  it.each(['pending', 'confirmed'])('does not count a request that is a live %s leg', (status) => {
+    const live = { ...exchange(status), myResponse: 'consented' };
+    expect(countTradesBadge([request('1')], [live], false)).toBe(0);
+  });
+
+  it('does not count requests or proposals after closure', () => {
+    expect(countTradesBadge([request('1')], [{ ...exchange('pending', []), myResponse: 'pending' }], true)).toBe(0);
+  });
+});
+
+describe('request state', () => {
+  const active = request('1');
+  it('matches all three leg fields only in pending or confirmed proposals', () => {
+    for (const status of ['pending', 'confirmed']) expect(isLiveLeg(active, [exchange(status)])).toBe(true);
+    for (const status of ['rejected', 'invalidated', 'cancelled']) expect(isLiveLeg(active, [exchange(status)])).toBe(false);
+    for (const participant of [leg('other', 'a', 'b'), leg('a', 'other', 'b'), leg('a', 'a', 'other')]) expect(isLiveLeg(active, [exchange('pending', [participant])])).toBe(false);
+  });
+  it('permits received actions only on available requests outside live proposals', () => {
+    expect(isReceivedActionable(active, [], false)).toBe(true);
+    expect(isReceivedActionable(active, [], true)).toBe(false);
+    expect(isReceivedActionable(active, [exchange('pending')], false)).toBe(false);
+    for (const status of ['declined', 'withdrawn', 'invalidated'] as const) expect(isReceivedActionable(request('1', { status }), [], false)).toBe(false);
+    for (const key of ['offeredClothing', 'wantedClothing']) expect(isReceivedActionable(request('1', { [key]: clothing('a', 'confirmed') }), [], false)).toBe(false);
+    for (const status of ['rejected', 'invalidated', 'cancelled']) expect(isReceivedActionable(request('1', { acceptedProposalId: 'p1' }), [exchange(status)], false)).toBe(true);
+  });
+  it('allows withdrawal of active sent requests even when a garment is confirmed', () => {
+    expect(isSentActionable(request('1', { offeredClothing: clothing('a', 'confirmed') }), false)).toBe(true);
+    expect(isSentActionable(active, true)).toBe(false);
+    expect(isSentActionable(request('1', { status: 'withdrawn' }), false)).toBe(false);
+  });
+  it('labels unanswered requests by viewer direction', () => {
+    expect(intentStatusLabel(active, [], 'a')).toBe('Waiting for b to answer');
+    expect(intentStatusLabel(active, [], 'b')).toBe('Your answer needed');
+  });
+  it.each(['a', 'b'])('labels unanswered requests after closure for viewer %s', (viewerId) => {
+    expect(intentStatusLabel(active, [], viewerId, true)).toBe('Not answered before the event closed');
+  });
+  it('preserves terminal, confirmed, and accepted labels after closure', () => {
+    for (const [status, label] of [['declined', 'Declined'], ['withdrawn', 'Withdrawn'], ['invalidated', 'Item withdrawn']] as const) {
+      expect(intentStatusLabel(request('1', { status }), [], 'a', true)).toBe(label);
+    }
+    const confirmed = request('1', { offeredClothing: clothing('a', 'confirmed'), acceptedProposalId: 'p1' });
+    expect(intentStatusLabel(confirmed, [exchange('confirmed')], 'a', true)).toBe('In your confirmed exchange');
+    expect(intentStatusLabel(confirmed, [], 'a', true)).toBe('Item already exchanged');
+    expect(intentStatusLabel(request('1', { acceptedProposalId: 'p1' }), [exchange('pending')], 'a', true)).toBe('Accepted');
+  });
+  it('prioritizes a confirmed live leg over confirmed garment status', () => {
+    const confirmed = request('1', { acceptedProposalId: 'p1', offeredClothing: clothing('a', 'confirmed'), wantedClothing: clothing('b', 'confirmed') });
+    expect(intentStatusLabel(confirmed, [exchange('confirmed')], 'a')).toBe('In your confirmed exchange');
+    expect(intentStatusLabel(confirmed, [], 'a')).toBe('Item already exchanged');
+  });
+  it('labels other request states', () => {
+    expect(intentStatusLabel(request('1', { acceptedProposalId: 'p1' }), [exchange('pending')], 'a')).toBe('Accepted');
+    expect(intentStatusLabel(active, [exchange('pending')], 'a')).toBe('In a proposal');
+    for (const [status, label] of [['declined', 'Declined'], ['withdrawn', 'Withdrawn'], ['invalidated', 'Item withdrawn']] as const) expect(intentStatusLabel(request('1', { status }), [], 'a')).toBe(label);
+  });
+  it('orders received requests before sent requests, newest first within each direction', () => {
+    const sentOld = request('1');
+    const receivedOld = request('2');
+    const sentNew = request('4');
+    const receivedNew = request('3');
+    expect(requestStageItems([sentOld, sentNew], [receivedOld, receivedNew], [])).toEqual([
+      { intent: receivedNew, direction: 'received', nextActor: 'me' },
+      { intent: receivedOld, direction: 'received', nextActor: 'me' },
+      { intent: sentNew, direction: 'sent', nextActor: 'owner' },
+      { intent: sentOld, direction: 'sent', nextActor: 'owner' },
+    ]);
+  });
+  it('shows eligible requests newest first and excludes both directions of live cycles', () => {
+    const cycle = exchange('pending', [leg('a', 'a', 'b'), leg('b', 'b', 'c'), leg('c', 'c', 'a')]);
+    const reverse = request('2', { participantId: 'b', offeredClothing: clothing('b'), wantedClothing: clothing('c') });
+    const lastLeg = request('3', { participantId: 'c', offeredClothing: clothing('c'), wantedClothing: clothing('a') });
+    const ended = request('4', { participantId: 'd', offeredClothing: clothing('d'), acceptedProposalId: 'ended' });
+    const received = request('5', { participantId: 'e', offeredClothing: clothing('e') });
+    const excluded = (['declined', 'withdrawn', 'invalidated'] as const).map((status) => request('1', { status }));
+    const confirmed = request('1', { wantedClothing: clothing('b', 'confirmed') });
+    expect(requestStageItems([active, reverse, lastLeg, ended, ...excluded, confirmed], [received], [cycle, exchange('rejected', [leg('d', 'd', 'b')])])).toEqual([
+      { intent: received, direction: 'received', nextActor: 'me' }, { intent: ended, direction: 'sent', nextActor: 'owner' },
+    ]);
+    const swap = exchange('confirmed', [leg('a', 'a', 'b'), leg('b', 'b', 'a')]);
+    expect(requestStageItems([active], [request('2', { participantId: 'b', offeredClothing: clothing('b'), wantedClothing: clothing('a') })], [swap])).toEqual([]);
+  });
+  it('names only other participants whose response is pending', () => {
+    expect(pendingParticipantNames(exchange('pending', [leg('a', 'a', 'b', 'pending', true), leg('b', 'b', 'a'), leg('c', 'c', 'a', 'consented')]))).toEqual(['b']);
+  });
+});
+
+describe('plain proposal labels', () => {
+  it.each([
+    ['pending', null, null, 'Waiting for consent'], ['confirmed', null, null, 'Confirmed'], ['rejected', 'participant_rejected', null, 'Rejected'],
+    ['invalidated', 'intent_changed', 'intent_declined', 'Declined'], ['invalidated', 'intent_changed', 'intent_withdrawn', 'Request withdrawn'],
+    ['invalidated', 'intent_changed', 'intent_invalidated', 'Request ended'], ['invalidated', 'intent_changed', null, 'Request ended'],
+    ['invalidated', 'clothing_changed', null, 'Item changed'], ['invalidated', 'clothing_withdrawn', null, 'Item withdrawn'],
+    ['invalidated', 'clothing_confirmed_elsewhere', null, 'Item exchanged elsewhere'], ['invalidated', 'event_closed', null, 'Event closed'],
+    ['cancelled', null, null, 'Cancelled'], ['unknown', null, null, 'Ended'], ['invalidated', 'unknown', null, 'Ended'],
+  ] as const)('labels %s / %s / %s', (status, endReason, endDetail, label) => {
+    expect(proposalStatusLabel({ ...exchange(status), endReason, endDetail })).toBe(label);
+  });
+  it.each([['pending', 'Waiting'], ['consented', 'Consented'], ['rejected', 'Rejected']])('labels response %s', (response, label) => {
+    expect(responseLabel(response)).toBe(label);
+  });
+});
+
+
+describe('proposal row text', () => {
+  const participants = [leg('a', 'shirt', 'coat', 'consented', true), leg('b', 'coat', 'shirt'), leg('c', 'hat', 'shirt')];
+  it('describes my garments for two- and three-person exchanges', () => {
+    expect(proposalRowLabel({ ...exchange('pending', participants), cycleSize: 2 })).toBe('You give shirt · get coat');
+    expect(proposalRowLabel({ ...exchange('pending', participants), cycleSize: 3 })).toBe('You give shirt · get coat · 3-person swap');
+  });
+  it('describes who must act next or the plain terminal status', () => {
+    const pending = exchange('pending', participants);
+    expect(proposalRowDescription({ ...pending, myResponse: 'consented' })).toBe('Waiting for b, c');
+    expect(proposalRowDescription({ ...pending, myResponse: 'pending' })).toBe('Your consent needed');
+    expect(proposalRowDescription({ ...pending, status: 'invalidated', endReason: 'intent_changed', endDetail: 'intent_declined' })).toBe('Declined');
+    expect(proposalRowDescription({ ...pending, status: 'confirmed' })).toBe('Confirmed');
   });
 });

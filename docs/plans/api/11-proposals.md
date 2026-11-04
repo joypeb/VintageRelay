@@ -28,6 +28,7 @@ Rules:
 | `version` | integer | Version shown to participants; consent requests must send it |
 | `status` | enum | `pending`, `confirmed`, `rejected`, `invalidated`, `cancelled` |
 | `endReason` | enum \| null | Why it left `pending` or `confirmed` (below); `null` for `pending`/`confirmed` |
+| `endDetail` | enum \| null | Which request change ended an `intent_changed` proposal: `intent_declined`, `intent_withdrawn`, `intent_invalidated`; `null` otherwise or when the cause cannot be determined (below) |
 | `cycleSize` | integer | `2` or `3` |
 | `participants` | array | `ProposalParticipant` per participant, in cycle order starting with the caller |
 | `myResponse` | enum | Caller's response: `pending`, `consented`, `rejected` |
@@ -61,6 +62,8 @@ Rules:
 | `clothing_confirmed_elsewhere` | `invalidated` | A garment was confirmed in another proposal |
 | `event_closed` | `invalidated` | Event closed while pending |
 | `participant_cancelled` | `cancelled` | A participant cancelled the confirmed exchange |
+
+`endDetail` is derived at read time (not stored): for an `invalidated` proposal with `endReason = intent_changed`, the server finds the cycle's intents (matching each participant's offered and received garment) that became `declined`, `withdrawn`, or `invalidated` at exactly the proposal's `endedAt` (decline and withdrawal write both timestamps in the same transaction). Precedence when several match: `intent_declined` > `intent_withdrawn` > `intent_invalidated`. If none match (for example a consent recheck found an intent that had changed earlier), it is `null`. It lets clients show "Declined" even when the declined request was between two other participants of a three-person cycle.
 
 ## 1. `GET /api/v1/events/{event_id}/proposals`
 
@@ -106,6 +109,7 @@ Returns one proposal (T2, T3).
   "version": 2,
   "status": "pending",
   "endReason": null,
+  "endDetail": null,
   "cycleSize": 3,
   "participants": [
     {

@@ -1,5 +1,6 @@
 import logging
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import uuid4
 
 from sqlalchemy import or_, select, update
@@ -83,6 +84,7 @@ def build_proposal(
         version=proposal.version,
         status=proposal.status,
         end_reason=proposal.end_reason,
+        end_detail=_end_detail_for(s, proposal, ordered),
         cycle_size=len(ordered),
         participants=items,
         my_response=mine.response,
@@ -94,6 +96,45 @@ def build_proposal(
         cancelled_at=proposal.cancelled_at,
         ended_at=proposal.ended_at,
     )
+
+
+EndDetail = Literal["intent_declined", "intent_withdrawn", "intent_invalidated"]
+
+_END_DETAIL_BY_STATUS: dict[str, EndDetail] = {
+    "declined": "intent_declined",
+    "withdrawn": "intent_withdrawn",
+    "invalidated": "intent_invalidated",
+}
+_END_DETAIL_ORDER: tuple[EndDetail, ...] = (
+    "intent_declined",
+    "intent_withdrawn",
+    "intent_invalidated",
+)
+
+
+def _end_detail_for(
+    s: Session, proposal: TradeProposal, parts: list[TradeParticipant]
+) -> EndDetail | None:
+    if proposal.status != "invalidated" or proposal.end_reason != "intent_changed":
+        return None
+    if proposal.ended_at is None or not parts:
+        return None
+    legs = {
+        (part.participant_id, part.offered_clothing_id, part.received_clothing_id) for part in parts
+    }
+    rows = s.scalars(
+        select(ExchangeIntent).where(
+            ExchangeIntent.event_id == proposal.event_id,
+            ExchangeIntent.status.in_(("declined", "withdrawn", "invalidated")),
+            ExchangeIntent.updated_at == proposal.ended_at,
+        )
+    )
+    found = {
+        _END_DETAIL_BY_STATUS[row.status]
+        for row in rows
+        if (row.participant_id, row.offered_clothing_id, row.wanted_clothing_id) in legs
+    }
+    return next((detail for detail in _END_DETAIL_ORDER if detail in found), None)
 
 
 def list_proposals(

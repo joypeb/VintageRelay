@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { Fragment, useState, useSyncExternalStore } from 'react';
 
 import { Banner } from '@astryxdesign/core/Banner';
 import { Button } from '@astryxdesign/core/Button';
+import { Divider } from '@astryxdesign/core/Divider';
 import { EmptyState } from '@astryxdesign/core/EmptyState';
 import { Heading } from '@astryxdesign/core/Heading';
 import { List, ListItem } from '@astryxdesign/core/List';
@@ -25,7 +26,15 @@ import { useProposalsQuery } from '@/lib/api/proposals';
 import { getEventScreenState, isClosed } from '@/lib/event';
 import { routes } from '@/lib/routes';
 import { hasEventSession } from '@/lib/session';
-import { groupProposals } from '@/lib/trades';
+import {
+  groupProposals,
+  intentStatusLabel,
+  isReceivedActionable,
+  isSentActionable,
+  proposalRowDescription,
+  proposalRowLabel,
+  requestStageItems,
+} from '@/lib/trades';
 import type { Intent } from '@/types/intent';
 import type { Proposal } from '@/types/proposal';
 
@@ -33,20 +42,23 @@ export type TradeTab = 'received' | 'sent' | 'exchanges';
 
 const TABS: TradeTab[] = ['received', 'sent', 'exchanges'];
 
-function intentStatusLabel(intent: Intent): string {
-  if (intent.status === 'active') {
-    return intent.acceptedProposalId !== null ? 'Accepted' : 'Waiting';
-  }
-  if (intent.status === 'declined') return 'Declined';
-  if (intent.status === 'withdrawn') return 'Withdrawn';
-  return 'Invalidated';
-}
-
-function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Intent; closed: boolean }) {
+function ReceivedRow({
+  eventId,
+  intent,
+  proposals,
+  viewerId,
+  closed,
+}: {
+  eventId: string;
+  intent: Intent;
+  proposals: Proposal[];
+  viewerId: string;
+  closed: boolean;
+}) {
   const accept = useAcceptIntentMutation(eventId, intent.id);
   const decline = useDeclineIntentMutation(eventId, intent.id);
   const [error, setError] = useState<string | null>(null);
-  const actionable = intent.status === 'active' && !closed;
+  const actionable = isReceivedActionable(intent, proposals, closed);
 
   async function handleAccept() {
     setError(null);
@@ -70,7 +82,7 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent)}`}
+        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent, proposals, viewerId, closed)}`}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -81,17 +93,20 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
         <VStack gap={2}>
           <Button
             label="Accept"
-            size="md"
+            variant="primary"
+            size="lg"
             width="100%"
+            aria-label={`Accept request for ${intent.wantedClothing.title}`}
             isLoading={accept.isPending}
             isDisabled={accept.isPending || decline.isPending}
             onClick={() => void handleAccept()}
           />
           <Button
             label="Decline"
-            variant="destructive"
-            size="md"
+            variant="secondary"
+            size="lg"
             width="100%"
+            aria-label={`Decline request for ${intent.wantedClothing.title}`}
             isLoading={decline.isPending}
             isDisabled={accept.isPending || decline.isPending}
             onClick={() => void handleDecline()}
@@ -102,10 +117,22 @@ function ReceivedRow({ eventId, intent, closed }: { eventId: string; intent: Int
   );
 }
 
-function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent; closed: boolean }) {
+function SentRow({
+  eventId,
+  intent,
+  proposals,
+  viewerId,
+  closed,
+}: {
+  eventId: string;
+  intent: Intent;
+  proposals: Proposal[];
+  viewerId: string;
+  closed: boolean;
+}) {
   const withdraw = useWithdrawIntentMutation(eventId, intent.id);
   const [error, setError] = useState<string | null>(null);
-  const actionable = intent.status === 'active' && !closed;
+  const actionable = isSentActionable(intent, closed);
 
   async function handleWithdraw() {
     setError(null);
@@ -120,7 +147,7 @@ function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent;
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={intentStatusLabel(intent)}
+        description={intentStatusLabel(intent, proposals, viewerId, closed)}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -129,9 +156,10 @@ function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent;
       ) : null}
       {actionable ? (
         <Button
-          label={withdraw.isPending ? 'Withdrawing…' : 'Withdraw'}
-          size="md"
+          label="Withdraw"
+          size="lg"
           width="100%"
+          aria-label={`Withdraw request for ${intent.wantedClothing.title}`}
           isLoading={withdraw.isPending}
           isDisabled={withdraw.isPending}
           onClick={() => void handleWithdraw()}
@@ -142,13 +170,10 @@ function SentRow({ eventId, intent, closed }: { eventId: string; intent: Intent;
 }
 
 function ProposalRow({ eventId, proposal }: { eventId: string; proposal: Proposal }) {
-  const summary = proposal.participants
-    .map((p) => `${p.participant.displayName} gives ${p.offeredClothing.title}`)
-    .join(' · ');
   return (
     <ListItem
-      label={`Version ${proposal.version} · ${proposal.status}`}
-      description={`${summary} · Your response: ${proposal.myResponse}`}
+      label={proposalRowLabel(proposal)}
+      description={proposalRowDescription(proposal)}
       href={routes.tradeDetail(eventId, proposal.id)}
     />
   );
@@ -212,18 +237,30 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
   }
 
   const closed = isClosed(state.event);
+  const viewerId = state.event.me.participantId;
   const tabHref = (value: TradeTab) => `${routes.trades(eventId)}?tab=${value}`;
 
   function renderPanel() {
     if (tab === 'received') {
-      if (receivedQuery.isPending) return <Text type="body">Loading requests…</Text>;
-      if (receivedQuery.error) {
+      if (receivedQuery.isPending || proposalsQuery.isPending) {
+        return <Text type="body">Loading requests…</Text>;
+      }
+      const requestsError = receivedQuery.error ?? proposalsQuery.error;
+      if (requestsError) {
         return (
           <VStack gap={2}>
             <Text type="body" as="p">
-              <span role="alert">{getFormErrorMessage(receivedQuery.error)}</span>
+              <span role="alert">{getFormErrorMessage(requestsError)}</span>
             </Text>
-            <Button label="Retry" size="lg" width="100%" onClick={() => void receivedQuery.refetch()} />
+            <Button
+              label="Retry"
+              size="lg"
+              width="100%"
+              onClick={() => {
+                if (receivedQuery.error) void receivedQuery.refetch();
+                if (proposalsQuery.error) void proposalsQuery.refetch();
+              }}
+            />
           </VStack>
         );
       }
@@ -239,22 +276,42 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         );
       }
       return (
-        <List header={<Heading level={2}>Received requests</Heading>} hasDividers>
-          {items.map((intent) => (
-            <ReceivedRow key={intent.id} eventId={eventId} intent={intent} closed={closed} />
+        <List header={<Heading level={2}>Received requests</Heading>}>
+          {items.map((intent, index) => (
+            <Fragment key={intent.id}>
+              <ReceivedRow
+                eventId={eventId}
+                intent={intent}
+                proposals={proposalsQuery.data?.items ?? []}
+                viewerId={viewerId}
+                closed={closed}
+              />
+              {index < items.length - 1 ? <Divider /> : null}
+            </Fragment>
           ))}
         </List>
       );
     }
     if (tab === 'sent') {
-      if (sentQuery.isPending) return <Text type="body">Loading requests…</Text>;
-      if (sentQuery.error) {
+      if (sentQuery.isPending || proposalsQuery.isPending) {
+        return <Text type="body">Loading requests…</Text>;
+      }
+      const requestsError = sentQuery.error ?? proposalsQuery.error;
+      if (requestsError) {
         return (
           <VStack gap={2}>
             <Text type="body" as="p">
-              <span role="alert">{getFormErrorMessage(sentQuery.error)}</span>
+              <span role="alert">{getFormErrorMessage(requestsError)}</span>
             </Text>
-            <Button label="Retry" size="lg" width="100%" onClick={() => void sentQuery.refetch()} />
+            <Button
+              label="Retry"
+              size="lg"
+              width="100%"
+              onClick={() => {
+                if (sentQuery.error) void sentQuery.refetch();
+                if (proposalsQuery.error) void proposalsQuery.refetch();
+              }}
+            />
           </VStack>
         );
       }
@@ -270,28 +327,59 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         );
       }
       return (
-        <List header={<Heading level={2}>Sent requests</Heading>} hasDividers>
-          {items.map((intent) => (
-            <SentRow key={intent.id} eventId={eventId} intent={intent} closed={closed} />
+        <List header={<Heading level={2}>Sent requests</Heading>}>
+          {items.map((intent, index) => (
+            <Fragment key={intent.id}>
+              <SentRow
+                eventId={eventId}
+                intent={intent}
+                proposals={proposalsQuery.data?.items ?? []}
+                viewerId={viewerId}
+                closed={closed}
+              />
+              {index < items.length - 1 ? <Divider /> : null}
+            </Fragment>
           ))}
         </List>
       );
     }
-    if (proposalsQuery.isPending) return <Text type="body">Loading exchanges…</Text>;
-    if (proposalsQuery.error) {
+    const exchangesPending =
+      receivedQuery.isPending || sentQuery.isPending || proposalsQuery.isPending;
+    if (exchangesPending) return <Text type="body">Loading exchanges…</Text>;
+    const exchangesError =
+      receivedQuery.error ?? sentQuery.error ?? proposalsQuery.error;
+    if (exchangesError) {
       return (
         <VStack gap={2}>
           <Text type="body" as="p">
-            <span role="alert">{getFormErrorMessage(proposalsQuery.error)}</span>
+            <span role="alert">{getFormErrorMessage(exchangesError)}</span>
           </Text>
-          <Button label="Retry" size="lg" width="100%" onClick={() => void proposalsQuery.refetch()} />
+          <Button
+            label="Retry"
+            size="lg"
+            width="100%"
+            onClick={() => {
+              void receivedQuery.refetch();
+              void sentQuery.refetch();
+              void proposalsQuery.refetch();
+            }}
+          />
         </VStack>
       );
     }
-    const grouped = groupProposals(proposalsQuery.data?.items ?? []);
+    const requests = closed
+      ? []
+      : requestStageItems(
+          sentQuery.data?.items ?? [],
+          receivedQuery.data?.items ?? [],
+          proposalsQuery.data?.items ?? [],
+        );
+    const proposals = proposalsQuery.data?.items ?? [];
+    const grouped = groupProposals(proposals);
     const total =
+      requests.length +
       grouped.awaitingMyConsent.length +
-      grouped.threePersonFound.length +
+      grouped.waitingForOthers.length +
       grouped.confirmed.length +
       grouped.history.length;
     if (total === 0) {
@@ -306,6 +394,18 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
     }
     return (
       <VStack gap={4}>
+        {requests.length > 0 ? (
+          <List header={<Heading level={2}>Requests</Heading>} hasDividers>
+            {requests.map(({ intent }) => (
+              <ListItem
+                key={intent.id}
+                label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
+                description={intentStatusLabel(intent, proposals, viewerId, closed)}
+                href={tabHref(intent.participantId === viewerId ? 'sent' : 'received')}
+              />
+            ))}
+          </List>
+        ) : null}
         {grouped.awaitingMyConsent.length > 0 ? (
           <List header={<Heading level={2}>Awaiting my consent</Heading>} hasDividers>
             {grouped.awaitingMyConsent.map((proposal) => (
@@ -313,9 +413,9 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
             ))}
           </List>
         ) : null}
-        {grouped.threePersonFound.length > 0 ? (
-          <List header={<Heading level={2}>3-person found</Heading>} hasDividers>
-            {grouped.threePersonFound.map((proposal) => (
+        {grouped.waitingForOthers.length > 0 ? (
+          <List header={<Heading level={2}>Waiting for others</Heading>} hasDividers>
+            {grouped.waitingForOthers.map((proposal) => (
               <ProposalRow key={proposal.id} eventId={eventId} proposal={proposal} />
             ))}
           </List>

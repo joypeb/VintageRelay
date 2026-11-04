@@ -99,7 +99,7 @@ export function useProposalsQuery(
     retry: 1,
     staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchInterval: closed ? false : 15_000,
+    refetchInterval: closed ? false : 4_000,
     refetchIntervalInBackground: false,
   });
 }
