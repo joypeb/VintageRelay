@@ -7,3 +7,5 @@
 /.impeccable/live/
 /.impeccable/history/
 /.impeccable/config.local.json
+/.env*
+!/.env.example
