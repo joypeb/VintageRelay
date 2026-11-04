@@ -66,6 +66,12 @@ export async function rejectProposal(
   });
 }
 
+export async function cancelProposal(eventId: string, proposalId: string): Promise<Proposal> {
+  return apiFetch<Proposal>(eventId, proposalPath(proposalId, '/cancel'), {
+    method: 'POST',
+  });
+}
+
 export function getProposalConflict(error: unknown): ProposalConflict | null {
   if (!(error instanceof ApiError)) return null;
   if (error.code !== 'PROPOSAL_VERSION_MISMATCH') return null;
@@ -134,6 +140,18 @@ export function useRejectProposalMutation(eventId: string, proposalId: string) {
     mutationFn: (version: number) => rejectProposal(eventId, proposalId, version),
     retry: 0,
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['events', eventId] });
+    },
+  });
+}
+
+export function useCancelProposalMutation(eventId: string, proposalId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: mutationKeys.cancelProposal(eventId, proposalId),
+    mutationFn: () => cancelProposal(eventId, proposalId),
+    retry: 0,
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['events', eventId] });
     },
   });

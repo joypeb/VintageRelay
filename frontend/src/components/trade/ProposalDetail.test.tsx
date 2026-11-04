@@ -4,11 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ProposalDetail } from '@/components/trade/ProposalDetail';
 import { ApiError } from '@/lib/api/api-error';
-import { consentProposal, getProposal, rejectProposal } from '@/lib/api/proposals';
+import { cancelProposal, consentProposal, getProposal, rejectProposal } from '@/lib/api/proposals';
+import { routes } from '@/lib/routes';
 import { renderWithClient } from '@/test/render';
+import type { Proposal } from '@/types/proposal';
 
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 vi.mock('@/lib/api/proposals', () => ({
-  getProposal: vi.fn(), consentProposal: vi.fn(), rejectProposal: vi.fn(),
+  getProposal: vi.fn(), consentProposal: vi.fn(), rejectProposal: vi.fn(), cancelProposal: vi.fn(),
 }));
 
 const pending = {
@@ -68,5 +72,108 @@ describe('proposal detail', () => {
     await queryClient.refetchQueries();
     expect(await screen.findByText(/the proposal has changed/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Consent' })).toBeDisabled();
+  });
+});
+
+const confirmed = {
+  ...pending, status: 'confirmed', canConsent: false, canReject: false, canCancel: true,
+  confirmedAt: '2026-11-03T00:00:00Z',
+};
+
+describe('confirmed exchange', () => {
+  it('shows both handover directions and highlights the current participant', async () => {
+    const alex = { participantId: 'a', displayName: 'Alex', isOrganizer: false };
+    const sam = { participantId: 's', displayName: 'Sam', isOrganizer: false };
+    const jacket = { id: 'c1', owner: alex, photoUrl: '', category: 'top' as const, title: 'Jacket', description: '', status: 'confirmed' as const, contentVersion: 1 };
+    const shirt = { ...jacket, id: 'c2', owner: sam, title: 'Shirt' };
+    const proposal: Proposal = {
+      ...confirmed,
+      participants: [
+        { participant: alex, isMe: true, offeredClothing: jacket, receivedClothing: shirt, response: 'consented', respondedAt: null },
+        { participant: sam, isMe: false, offeredClothing: shirt, receivedClothing: jacket, response: 'consented', respondedAt: null },
+      ],
+    };
+    vi.mocked(getProposal).mockResolvedValue(proposal);
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+
+    expect(await screen.findByText('Confirmed at 2026-11-03T00:00:00Z')).toBeInTheDocument();
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('Alex gives Jacket · top to Sam');
+    expect(rows[0]).toHaveTextContent('Receives Shirt · top from Sam');
+    expect(rows[1]).toHaveTextContent('Sam gives Shirt · top to Alex');
+    expect(rows[1]).toHaveTextContent('Receives Jacket · top from Alex');
+    for (const row of rows) {
+      expect(within(row).getByRole('link', { name: 'Jacket · top' })).toHaveAttribute('href', routes.itemDetail('e1', 'c1'));
+      expect(within(row).getByRole('link', { name: 'Shirt · top' })).toHaveAttribute('href', routes.itemDetail('e1', 'c2'));
+    }
+    expect(rows[0]).toHaveAttribute('aria-current', 'true');
+    expect(rows[1]).not.toHaveAttribute('aria-current');
+  });
+
+  it('shows the handover notice and lets a participant keep the exchange', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProposal).mockResolvedValue(confirmed);
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByText('Confirmed. Inspect the garments in person before handing them over.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel exchange' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Cancel this exchange?' });
+    expect(dialog).toHaveTextContent('The whole exchange is cancelled for every participant, and all its garments become available again.');
+    await user.click(within(dialog).getByRole('button', { name: 'Keep exchange' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(cancelProposal).not.toHaveBeenCalled();
+  });
+
+  it('cancels once and returns to trades after confirmation', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProposal).mockResolvedValue(confirmed);
+    vi.mocked(cancelProposal).mockResolvedValue({ ...confirmed, status: 'cancelled', canCancel: false });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    await user.click(await screen.findByRole('button', { name: 'Cancel exchange' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel exchange' }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(routes.trades('e1')));
+    expect(cancelProposal).toHaveBeenCalledOnce();
+    expect(cancelProposal).toHaveBeenCalledWith('e1', 'p1');
+  });
+
+  it('does not offer cancellation when the event is closed', async () => {
+    vi.mocked(getProposal).mockResolvedValue({ ...confirmed, canCancel: false });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="closed" />);
+    expect(await screen.findByText('Confirmed. Inspect the garments in person before handing them over.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel exchange' })).not.toBeInTheDocument();
+  });
+
+  it('shows the cancelled banner without the notice or cancel button', async () => {
+    vi.mocked(getProposal).mockResolvedValue({ ...confirmed, status: 'cancelled', canCancel: false, cancelledAt: '2026-11-03T01:00:00Z' });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByText('This exchange was cancelled.')).toBeInTheDocument();
+    expect(screen.getByText('Cancelled at 2026-11-03T01:00:00Z')).toBeInTheDocument();
+    expect(screen.queryByText('Confirmed. Inspect the garments in person before handing them over.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel exchange' })).not.toBeInTheDocument();
+  });
+
+  it('closes the dialog, displays the error and refetches when no longer confirmed', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProposal).mockResolvedValue(confirmed);
+    vi.mocked(cancelProposal).mockRejectedValue(new ApiError(409, 'PROPOSAL_NOT_CONFIRMED', 'Only confirmed exchanges can be cancelled.'));
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    await user.click(await screen.findByRole('button', { name: 'Cancel exchange' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel exchange' }));
+    expect(await screen.findByText('Only confirmed exchanges can be cancelled.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('invalidates event queries after cancellation fails because the proposal is no longer confirmed', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getProposal).mockResolvedValue(confirmed);
+    vi.mocked(cancelProposal).mockRejectedValue(new ApiError(409, 'PROPOSAL_NOT_CONFIRMED', 'Only confirmed exchanges can be cancelled.'));
+    const { queryClient } = renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    await user.click(await screen.findByRole('button', { name: 'Cancel exchange' }));
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel exchange' }));
+    await screen.findByText('Only confirmed exchanges can be cancelled.');
+    await waitFor(() => expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['events', 'e1'] }));
   });
 });

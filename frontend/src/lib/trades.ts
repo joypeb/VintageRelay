@@ -1,3 +1,6 @@
+import type { IntentClothingSummary } from '@/types/intent';
+import type { ProposalParticipant } from '@/types/proposal';
+
 type ProposalLike = {
   id: string;
   status: string;
@@ -60,4 +63,28 @@ export function countTradesBadge(
     (proposal) => proposal.status === 'pending' && proposal.myResponse === 'pending',
   ).length;
   return awaitingRequests + awaitingProposals;
+}
+
+export type HandoverRow = {
+  name: string;
+  isMe: boolean;
+  gives: IntentClothingSummary;
+  givesTo: string;
+  receives: IntentClothingSummary;
+  receivesFrom: string;
+};
+
+export function toHandoverRows(participants: readonly ProposalParticipant[]): HandoverRow[] {
+  return participants.map((participant) => ({
+    name: participant.participant.displayName,
+    isMe: participant.isMe,
+    gives: participant.offeredClothing,
+    givesTo:
+      participants.find((other) => other.receivedClothing.id === participant.offeredClothing.id)
+        ?.participant.displayName ?? '',
+    receives: participant.receivedClothing,
+    receivesFrom:
+      participants.find((other) => other.offeredClothing.id === participant.receivedClothing.id)
+        ?.participant.displayName ?? '',
+  }));
 }
