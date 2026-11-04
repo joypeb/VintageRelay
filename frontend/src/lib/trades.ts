@@ -97,6 +97,7 @@ export function intentStatusLabel(
   intent: Intent,
   proposals: readonly Proposal[],
   viewerId?: string,
+  closed = false,
 ): string {
   if (intent.status === 'declined') return 'Declined';
   if (intent.status === 'withdrawn') return 'Withdrawn';
@@ -116,6 +117,7 @@ export function intentStatusLabel(
   if (isLiveLeg(intent, proposals)) {
     return intent.acceptedProposalId !== null ? 'Accepted' : 'In a proposal';
   }
+  if (closed) return 'Not answered before the event closed';
   if (intent.participantId === viewerId) {
     return `Waiting for ${intent.wantedClothing.owner.displayName} to answer`;
   }

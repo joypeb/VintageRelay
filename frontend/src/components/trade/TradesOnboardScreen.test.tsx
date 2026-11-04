@@ -1,13 +1,13 @@
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TradesOnboardScreen } from '@/components/trade/TradesOnboardScreen';
 import { renderWithClient } from '@/test/render';
 
-const { useIntentsQuery, useProposalsQuery } = vi.hoisted(() => ({ useIntentsQuery: vi.fn(), useProposalsQuery: vi.fn() }));
+const { useEventQuery, useIntentsQuery, useProposalsQuery } = vi.hoisted(() => ({ useEventQuery: vi.fn(), useIntentsQuery: vi.fn(), useProposalsQuery: vi.fn() }));
 vi.mock('@/lib/session', () => ({ hasEventSession: () => true }));
-vi.mock('@/lib/api/events', () => ({ useEventQuery: () => ({ data: { status: 'active', me: { participantId: 'b' } }, isPending: false }) }));
+vi.mock('@/lib/api/events', () => ({ useEventQuery }));
 vi.mock('@/lib/api/intents', () => ({
   useIntentsQuery, useAcceptIntentMutation: () => ({}), useDeclineIntentMutation: () => ({}), useWithdrawIntentMutation: () => ({}),
 }));
@@ -17,6 +17,10 @@ const owner = { participantId: 'a', displayName: 'Alex', isOrganizer: false };
 const item = (id: string) => ({ id, owner, photoUrl: '', category: 'top', title: id, description: '', status: 'available', contentVersion: 1 });
 const request = { id: 'i1', participantId: 'a', offeredClothing: item('Jacket'), wantedClothing: item('Shirt'), status: 'active', acceptedProposalId: 'p1' };
 const proposal = { id: 'p1', status: 'pending', participants: [{ participant: owner, offeredClothing: item('Jacket'), receivedClothing: item('Shirt') }] };
+
+beforeEach(() => {
+  useEventQuery.mockReturnValue({ data: { status: 'active', me: { participantId: 'b' } }, isPending: false });
+});
 
 describe('received requests', () => {
   it.each([[true], [false]])('only shows actions for unanswered requests (accepted: %s)', (accepted) => {
@@ -73,5 +77,25 @@ describe('trade row accessibility and summaries', () => {
     const row = screen.getByRole('link', { name: /You give Jacket · get Shirt/ });
     expect(row).toHaveTextContent('Your consent needed');
     expect(row).not.toHaveTextContent(/Version|Your response/);
+  });
+});
+
+
+describe('closed event requests', () => {
+  it.each([['received', 'b'], ['sent', 'a']] as const)('shows a closed-event status in %s', (tab, viewerId) => {
+    useEventQuery.mockReturnValue({ data: { status: 'closed', me: { participantId: viewerId } }, isPending: false });
+    useIntentsQuery.mockReturnValue({ data: { items: [{ ...request, acceptedProposalId: null }] }, isPending: false });
+    useProposalsQuery.mockReturnValue({ data: { items: [] }, isPending: false });
+    renderWithClient(<TradesOnboardScreen eventId="e1" tab={tab} />);
+    expect(screen.getByText(/Not answered before the event closed/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your answer needed|Waiting for/)).not.toBeInTheDocument();
+  });
+
+  it('does not show a Requests group on Exchanges', () => {
+    useEventQuery.mockReturnValue({ data: { status: 'closed', me: { participantId: 'b' } }, isPending: false });
+    useIntentsQuery.mockReturnValue({ data: { items: [{ ...request, acceptedProposalId: null }] }, isPending: false });
+    useProposalsQuery.mockReturnValue({ data: { items: [] }, isPending: false });
+    renderWithClient(<TradesOnboardScreen eventId="e1" tab="exchanges" />);
+    expect(screen.queryByRole('heading', { name: 'Requests' })).not.toBeInTheDocument();
   });
 });

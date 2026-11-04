@@ -79,8 +79,8 @@ description: "Task list for 023 Trades Status Fixes After Exchange QA"
   - (e) `countTradesBadge` returns 0 when the event is closed (commit-review Low)
 ## Phase 8: User Story 5 - Exception QA (P2)
 
-- [ ] T014 [US5] QA agent restarts backend (Docker) and frontend, runs quickstart.md scenarios 1–9 with computer/browser use and multiple participant sessions, and verifies stored state via the SQLite DB inside the backend container; reports pass/fail with evidence
-- [ ] T015 [US5] For each QA failure: reproducing test (test-author) → fix (implementer-be/fe) → commit-reviewer → commit; re-run the failed scenario
+- [x] T014 [US5] QA agent restarts backend (Docker) and frontend, runs quickstart.md scenarios 1–9 with computer/browser use and multiple participant sessions, and verifies stored state via the SQLite DB inside the backend container; reports pass/fail with evidence
+- [x] T015 [US5] For each QA failure: reproducing test (test-author) → fix (implementer-be/fe) → commit-reviewer → commit; re-run the failed scenario. QA 2026-11-04 (/tmp/vr-qa/report.md): all scenarios PASS on API/DB; one Low — after event closure, active unanswered requests still read "Your answer needed" / "Waiting for {owner} to answer" in Received, Sent and Exchanges. Fix: `intentStatusLabel(intent, proposals, viewerId, closed)` returns "Not answered before the event closed" for active, unanswered, non-live requests when closed (other labels unchanged), and the Exchanges "Requests" group is not shown when the event is closed
 
 ## Phase 9: Polish
 

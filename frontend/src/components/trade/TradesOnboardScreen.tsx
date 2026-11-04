@@ -82,7 +82,7 @@ function ReceivedRow({
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent, proposals, viewerId)}`}
+        description={`${intent.offeredClothing.owner.displayName} offers · ${intentStatusLabel(intent, proposals, viewerId, closed)}`}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -147,7 +147,7 @@ function SentRow({
     <VStack gap={2}>
       <ListItem
         label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-        description={intentStatusLabel(intent, proposals, viewerId)}
+        description={intentStatusLabel(intent, proposals, viewerId, closed)}
       />
       {error !== null ? (
         <Text type="body" as="p">
@@ -367,11 +367,13 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
         </VStack>
       );
     }
-    const requests = requestStageItems(
-      sentQuery.data?.items ?? [],
-      receivedQuery.data?.items ?? [],
-      proposalsQuery.data?.items ?? [],
-    );
+    const requests = closed
+      ? []
+      : requestStageItems(
+          sentQuery.data?.items ?? [],
+          receivedQuery.data?.items ?? [],
+          proposalsQuery.data?.items ?? [],
+        );
     const proposals = proposalsQuery.data?.items ?? [];
     const grouped = groupProposals(proposals);
     const total =
@@ -398,7 +400,7 @@ export function TradesOnboardScreen({ eventId, tab }: { eventId: string; tab: Tr
               <ListItem
                 key={intent.id}
                 label={`${intent.offeredClothing.title} for ${intent.wantedClothing.title}`}
-                description={intentStatusLabel(intent, proposals, viewerId)}
+                description={intentStatusLabel(intent, proposals, viewerId, closed)}
                 href={tabHref(intent.participantId === viewerId ? 'sent' : 'received')}
               />
             ))}

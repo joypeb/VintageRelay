@@ -113,6 +113,18 @@ describe('request state', () => {
     expect(intentStatusLabel(active, [], 'a')).toBe('Waiting for b to answer');
     expect(intentStatusLabel(active, [], 'b')).toBe('Your answer needed');
   });
+  it.each(['a', 'b'])('labels unanswered requests after closure for viewer %s', (viewerId) => {
+    expect(intentStatusLabel(active, [], viewerId, true)).toBe('Not answered before the event closed');
+  });
+  it('preserves terminal, confirmed, and accepted labels after closure', () => {
+    for (const [status, label] of [['declined', 'Declined'], ['withdrawn', 'Withdrawn'], ['invalidated', 'Item withdrawn']] as const) {
+      expect(intentStatusLabel(request('1', { status }), [], 'a', true)).toBe(label);
+    }
+    const confirmed = request('1', { offeredClothing: clothing('a', 'confirmed'), acceptedProposalId: 'p1' });
+    expect(intentStatusLabel(confirmed, [exchange('confirmed')], 'a', true)).toBe('In your confirmed exchange');
+    expect(intentStatusLabel(confirmed, [], 'a', true)).toBe('Item already exchanged');
+    expect(intentStatusLabel(request('1', { acceptedProposalId: 'p1' }), [exchange('pending')], 'a', true)).toBe('Accepted');
+  });
   it('prioritizes a confirmed live leg over confirmed garment status', () => {
     const confirmed = request('1', { acceptedProposalId: 'p1', offeredClothing: clothing('a', 'confirmed'), wantedClothing: clothing('b', 'confirmed') });
     expect(intentStatusLabel(confirmed, [exchange('confirmed')], 'a')).toBe('In your confirmed exchange');
