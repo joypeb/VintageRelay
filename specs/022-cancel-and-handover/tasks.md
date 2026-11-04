@@ -51,11 +51,11 @@ No schema change (data-model.md). The `ProposalNotConfirmedError` class is creat
 
 **Independent Test**: Manual check per quickstart.md steps 4–6 (T008). No new pure logic beyond 020's tested `groupProposals` (confirmed/history grouping already includes `cancelled`); UI-only changes are verified manually per frontend testing.md.
 
-- [ ] T008 [US3] UI (manual verification): in frontend/src/components/clothing/MyItemDetailScreen.tsx make each "Related exchanges" row a link to `routes.tradeDetail(eventId, proposal.id)`; keep the existing lock guidance ("This item is locked for an exchange. ...") and, when `clothing.status === 'confirmed'`, add a link to the confirmed related proposal next to it; edit/delete stay disabled (existing `locked`). In frontend/src/components/trade/TradesOnboardScreen.tsx verify confirmed rows open T3 and cancelled history rows show the cancelled status (change only if they do not)
+- [x] T008 [US3] UI (manual verification): in frontend/src/components/clothing/MyItemDetailScreen.tsx make each "Related exchanges" row a link to `routes.tradeDetail(eventId, proposal.id)`; keep the existing lock guidance ("This item is locked for an exchange. ...") and, when `clothing.status === 'confirmed'`, add a link to the confirmed related proposal next to it; edit/delete stay disabled (existing `locked`). In frontend/src/components/trade/TradesOnboardScreen.tsx verify confirmed rows open T3 and cancelled history rows show the cancelled status (change only if they do not)
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T009 Update docs to match the implementation in the same PR: docs/plans/api/13-cancel-exchange.md (`PROPOSAL_NOT_CONFIRMED` message), docs/plans/features/README.md status row 021 → Done
+- [x] T009 Update docs to match the implementation in the same PR: docs/plans/api/13-cancel-exchange.md (`PROPOSAL_NOT_CONFIRMED` message), docs/plans/features/README.md status row 021 → Done
 - [ ] T010 Run full checks and record actual results: `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`; `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 - [ ] T011 Manual phone run per quickstart.md (create → join → register → search → request → accept → consent → cancel → close), 360–430px screenshots for T3 and C4
 

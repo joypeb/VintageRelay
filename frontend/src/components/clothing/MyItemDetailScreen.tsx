@@ -104,9 +104,13 @@ function MyItemRequestsSection({
         <VStack gap={2}>
           <Heading level={3}>Related exchanges</Heading>
           {related.map((proposal) => (
-            <Text key={proposal.id} type="body">
+            <Link
+              key={proposal.id}
+              href={routes.tradeDetail(eventId, proposal.id)}
+              isStandalone
+            >
               {`Version ${proposal.version} · ${proposal.status} · Your response: ${proposal.myResponse}`}
-            </Text>
+            </Link>
           ))}
         </VStack>
       ) : null}
@@ -272,6 +276,8 @@ export function MyItemDetailScreen({
   // Confirmed garments need cancellation via Trades, withdrawn ones are gone,
   // and closed events allow no changes at all.
   const locked = isConfirmed || isWithdrawn || isClosed === true;
+  const confirmedProposal =
+    relatedQuery.data?.items.find((proposal) => proposal.status === 'confirmed') ?? null;
   const categoryLabel =
     CATEGORY_OPTIONS.find((option) => option.value === clothing.category)?.label ?? clothing.category;
   const measurements = MEASUREMENT_ORDER.filter(
@@ -364,6 +370,14 @@ export function MyItemDetailScreen({
                 This item is locked for an exchange. To cancel it, go to Trades &gt; Exchanges and
                 cancel the exchange first.
               </Text>
+            ) : null}
+            {isConfirmed && confirmedProposal !== null ? (
+              <Link
+                href={routes.tradeDetail(eventId, confirmedProposal.id)}
+                isStandalone
+              >
+                View confirmed exchange
+              </Link>
             ) : null}
             {locked ? (
               <Button label="Edit" size="lg" width="100%" isDisabled />

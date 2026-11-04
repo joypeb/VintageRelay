@@ -42,7 +42,7 @@ The frontend asks for confirmation first and explains that the whole exchange is
 | 401 | `UNAUTHENTICATED` | Missing or invalid token |
 | 404 | `NOT_FOUND` | Proposal does not exist, belongs to another event, or the caller is not a participant (existence hidden; see [contract](../../rules/dev/common/api-contract.md#authentication-decided)) |
 | 409 | `EVENT_CLOSED` | Event is closed. Message: "This event is closed, so exchanges can no longer be cancelled." |
-| 409 | `PROPOSAL_NOT_CONFIRMED` | Proposal is `pending`, `rejected`, or `invalidated`. Use [reject](12-consent-reject-proposal.md) for pending proposals |
+| 409 | `PROPOSAL_NOT_CONFIRMED` | Proposal is `pending`, `rejected`, or `invalidated`. Message: "Only confirmed exchanges can be cancelled." Use [reject](12-consent-reject-proposal.md) for pending proposals |
 | 500 | `INTERNAL_ERROR` | Transaction failed; the exchange stays confirmed |
 
 ### Idempotency
