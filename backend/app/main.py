@@ -86,6 +86,7 @@ def create_app(settings: Settings | None = None, db: Db | None = None) -> FastAP
             ("/api/v1/intents/{intent_id}/accept", "post"),
             ("/api/v1/intents/{intent_id}/decline", "post"),
             ("/api/v1/proposals/{proposal_id}", "get"),
+            ("/api/v1/proposals/{proposal_id}/cancel", "post"),
         ):
             responses = schema["paths"][path][method]["responses"]
             validation_ref = (

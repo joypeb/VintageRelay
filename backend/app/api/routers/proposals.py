@@ -107,3 +107,24 @@ def reject_proposal(
 ) -> Proposal:
     participant = get_token_participant(db, credentials)
     return proposal_service.reject(db, settings, participant, proposal_id, body.version)
+
+
+@router.post(
+    "/proposals/{proposal_id}/cancel",
+    operation_id="cancelProposal",
+    summary="Cancel a confirmed exchange",
+    responses={
+        200: {
+            "headers": {"X-Request-ID": {"description": "Request ID", "schema": {"type": "string"}}}
+        },
+        **error_responses(401, 404, 409, 500),
+    },
+)
+def cancel_proposal(
+    proposal_id: str,
+    db: DbDep,
+    settings: SettingsDep,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
+) -> Proposal:
+    participant = get_token_participant(db, credentials)
+    return proposal_service.cancel(db, settings, participant, proposal_id)

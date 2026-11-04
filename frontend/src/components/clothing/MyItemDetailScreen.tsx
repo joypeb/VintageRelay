@@ -56,6 +56,14 @@ function statusLabel(status: string): string {
 
 const subscribe = () => () => {};
 
+function relatedExchangeLabel(status: string): string {
+  if (status === 'confirmed') return 'Confirmed exchange';
+  if (status === 'cancelled') return 'Cancelled exchange';
+  if (status === 'pending') return 'Pending exchange';
+  if (status === 'rejected') return 'Rejected exchange';
+  return 'Invalidated exchange';
+}
+
 function MyItemRequestsSection({
   eventId,
   closed,
@@ -67,11 +75,29 @@ function MyItemRequestsSection({
   requestsQuery: ReturnType<typeof useIntentsQuery>;
   relatedQuery: ReturnType<typeof useProposalsQuery>;
 }) {
+  const related = relatedQuery.data?.items ?? [];
+  const relatedSection =
+    related.length > 0 ? (
+      <VStack gap={2}>
+        <Heading level={3}>Related exchanges</Heading>
+        {related.map((proposal) => (
+          <Link
+            key={proposal.id}
+            href={routes.tradeDetail(eventId, proposal.id)}
+            isStandalone
+            className="inline-flex min-h-11 items-center"
+          >
+            {relatedExchangeLabel(proposal.status)}
+          </Link>
+        ))}
+      </VStack>
+    ) : null;
   if (requestsQuery.isPending) {
     return (
       <VStack gap={2}>
         <Heading level={2}>Requests</Heading>
         <Text type="body">Loading requests…</Text>
+        {relatedSection}
       </VStack>
     );
   }
@@ -83,11 +109,11 @@ function MyItemRequestsSection({
           <span role="alert">{getFormErrorMessage(requestsQuery.error)}</span>
         </Text>
         <Button label="Retry" size="lg" width="100%" onClick={() => void requestsQuery.refetch()} />
+        {relatedSection}
       </VStack>
     );
   }
   const items = (requestsQuery.data?.items ?? []).filter((intent) => intent.status === 'active');
-  const related = relatedQuery.data?.items ?? [];
   return (
     <VStack gap={2}>
       <Heading level={2}>Requests</Heading>
@@ -100,16 +126,7 @@ function MyItemRequestsSection({
           ))}
         </VStack>
       )}
-      {related.length > 0 ? (
-        <VStack gap={2}>
-          <Heading level={3}>Related exchanges</Heading>
-          {related.map((proposal) => (
-            <Text key={proposal.id} type="body">
-              {`Version ${proposal.version} · ${proposal.status} · Your response: ${proposal.myResponse}`}
-            </Text>
-          ))}
-        </VStack>
-      ) : null}
+      {relatedSection}
     </VStack>
   );
 }
@@ -272,6 +289,8 @@ export function MyItemDetailScreen({
   // Confirmed garments need cancellation via Trades, withdrawn ones are gone,
   // and closed events allow no changes at all.
   const locked = isConfirmed || isWithdrawn || isClosed === true;
+  const confirmedProposal =
+    relatedQuery.data?.items.find((proposal) => proposal.status === 'confirmed') ?? null;
   const categoryLabel =
     CATEGORY_OPTIONS.find((option) => option.value === clothing.category)?.label ?? clothing.category;
   const measurements = MEASUREMENT_ORDER.filter(
@@ -364,6 +383,15 @@ export function MyItemDetailScreen({
                 This item is locked for an exchange. To cancel it, go to Trades &gt; Exchanges and
                 cancel the exchange first.
               </Text>
+            ) : null}
+            {isConfirmed && confirmedProposal !== null ? (
+              <Link
+                href={routes.tradeDetail(eventId, confirmedProposal.id)}
+                isStandalone
+                className="inline-flex min-h-11 items-center"
+              >
+                View confirmed exchange
+              </Link>
             ) : null}
             {locked ? (
               <Button label="Edit" size="lg" width="100%" isDisabled />

@@ -17,6 +17,7 @@ from app.domain.errors import (
     IntentNotActiveError,
     InternalError,
     NotFoundError,
+    ProposalNotConfirmedError,
     ProposalVersionMismatchError,
 )
 from app.domain.matching import cycle_key
@@ -32,6 +33,7 @@ from app.repositories import event as event_repo
 from app.repositories import photo as photo_repo
 from app.schemas.intent import ClothingSummary, IntentOwner
 from app.schemas.proposal import Proposal, ProposalList, ProposalParticipant
+from app.services.clothing import _recalculate_cycles_for_clothing
 
 
 def build_proposal(
@@ -610,6 +612,65 @@ def reject(
     logger.info(
         "proposal_rejected",
         extra={"proposal_id": logged_proposal_id, "event_id": logged_event_id},
+    )
+    return response
+
+
+def cancel(db: Db, settings: Settings, participant: Participant, proposal_id: str) -> Proposal:
+    with db.write() as s:
+        proposal = s.get(TradeProposal, proposal_id)
+        if proposal is None or proposal.event_id != participant.event_id:
+            raise NotFoundError()
+        mine = s.scalar(
+            select(TradeParticipant).where(
+                TradeParticipant.proposal_id == proposal.id,
+                TradeParticipant.participant_id == participant.id,
+            )
+        )
+        if mine is None:
+            raise NotFoundError()
+        if proposal.status == "cancelled":
+            return build_proposal(s, settings, proposal, participant)
+        event = s.get(Event, proposal.event_id)
+        if event is None:
+            raise NotFoundError()
+        if event.status == EventStatus.CLOSED:
+            raise EventClosedError("This event is closed, so exchanges can no longer be cancelled.")
+        if proposal.status != "confirmed":
+            raise ProposalNotConfirmedError()
+        now = datetime.now(UTC)
+        proposal.status = "cancelled"
+        proposal.end_reason = "participant_cancelled"
+        proposal.cancelled_at = now
+        proposal.ended_at = now
+        parts = list(
+            s.scalars(select(TradeParticipant).where(TradeParticipant.proposal_id == proposal.id))
+        )
+        for part in parts:
+            part.is_confirmed = False
+        offered_ids = sorted({part.offered_clothing_id for part in parts})
+        for clothing_id in offered_ids:
+            result = s.connection().execute(
+                update(ClothingModel)
+                .where(ClothingModel.id == clothing_id, ClothingModel.status == "confirmed")
+                .values(status="available")
+            )
+            if result.rowcount != 1:
+                raise InternalError()
+        s.flush()
+        for clothing_id in offered_ids:
+            _recalculate_cycles_for_clothing(s, proposal.event_id, clothing_id, now)
+        response = build_proposal(s, settings, proposal, participant)
+        logged_proposal_id = proposal.id
+        logged_event_id = proposal.event_id
+        logged_cancelled_by = participant.id
+    logger.info(
+        "proposal_cancelled",
+        extra={
+            "proposal_id": logged_proposal_id,
+            "event_id": logged_event_id,
+            "cancelled_by": logged_cancelled_by,
+        },
     )
     return response
 

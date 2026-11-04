@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import { Banner } from '@astryxdesign/core/Banner';
@@ -15,9 +16,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '@/lib/api/api-error';
 import { getFormErrorMessage } from '@/lib/api/error-messages';
-import { consentProposal, getProposal, rejectProposal } from '@/lib/api/proposals';
+import { consentProposal, cancelProposal, getProposal, rejectProposal } from '@/lib/api/proposals';
 import { queryKeys } from '@/lib/api/query-keys';
 import { routes } from '@/lib/routes';
+import { toHandoverRows } from '@/lib/trades';
+import { formatDateTime } from '@/lib/utils/date';
+import { CATEGORY_OPTIONS } from '@/lib/validation/clothing-form';
 
 const subscribe = () => () => {};
 
@@ -54,6 +58,7 @@ export function ProposalDetail({
   eventStatus: 'active' | 'closed';
 }) {
   const isMounted = useSyncExternalStore(subscribe, () => true, () => false);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: queryKeys.proposal(eventId, proposalId),
@@ -62,11 +67,17 @@ export function ProposalDetail({
     retry: 1,
     staleTime: 0,
     refetchOnWindowFocus: true,
-    refetchInterval: (q) =>
-      eventStatus === 'closed' ? false : q.state.data?.status === 'pending' ? 5_000 : false,
+    refetchInterval: (q) => {
+      if (eventStatus === 'closed') return false;
+      const status = q.state.data?.status;
+      if (status === 'pending') return 5_000;
+      if (status === 'confirmed') return 10_000;
+      return false;
+    },
     refetchIntervalInBackground: false,
   });
   const [confirmKind, setConfirmKind] = useState<ConfirmKind | null>(null);
+  const [showCancel, setShowCancel] = useState(false);
   const [conflict, setConflict] = useState<VersionConflict | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [displayedVersion, setDisplayedVersion] = useState<number | null>(null);
@@ -92,6 +103,13 @@ export function ProposalDetail({
     mutationFn: (version: number) => rejectProposal(eventId, proposalId, version),
     retry: 0,
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['events', eventId] });
+    },
+  });
+  const cancelMutation = useMutation({
+    mutationFn: () => cancelProposal(eventId, proposalId),
+    retry: 0,
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['events', eventId] });
     },
   });
@@ -123,6 +141,9 @@ export function ProposalDetail({
   const versionChanged = displayedVersion !== null && data.version !== displayedVersion;
   const closed = eventStatus === 'closed';
   const terminal = data.status !== 'pending';
+  const isHandover = data.status === 'confirmed' || data.status === 'cancelled';
+  const isCancelled = data.status === 'cancelled';
+  const showCancelButton = data.status === 'confirmed' && data.canCancel && !closed;
   const anyPending = consentMutation.isPending || rejectMutation.isPending;
   const consentDisabled =
     closed || terminal || !data.canConsent || versionChanged || anyPending || conflict !== null;
@@ -167,14 +188,26 @@ export function ProposalDetail({
     }
   }
 
+  async function handleCancelConfirm() {
+    setActionError(null);
+    try {
+      await cancelMutation.mutateAsync();
+      setShowCancel(false);
+      router.push(routes.trades(eventId));
+    } catch (err) {
+      setShowCancel(false);
+      setActionError(getFormErrorMessage(err));
+    }
+  }
+
   return (
     <VStack gap={4} padding={6}>
-      <Heading level={1}>Exchange proposal</Heading>
+      <Heading level={1}>{isCancelled ? 'Exchange cancelled' : isHandover ? 'Exchange confirmed' : 'Exchange proposal'}</Heading>
       {closed ? (
         <Banner status="warning" title="This event has ended." description="Trades are read-only." />
       ) : null}
-      <Text type="body">{`Version ${data.version} · ${data.status}`}</Text>
-      {versionChanged ? (
+      {isHandover ? null : <Text type="body">{`Version ${data.version} · ${data.status}`}</Text>}
+      {!isHandover && versionChanged ? (
         <VStack gap={2}>
           <Banner
             status="warning"
@@ -189,33 +222,154 @@ export function ProposalDetail({
           <span role="alert">{actionError}</span>
         </Text>
       ) : null}
-      <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
-        {data.participants.map((participant) => (
-          <ListItem
-            key={participant.participant.participantId}
-            label={`${participant.participant.displayName} gives ${participant.offeredClothing.title}`}
-            description={`Receives ${participant.receivedClothing.title} · ${participant.response}`}
+      {isHandover ? (
+        <>
+          {isCancelled ? (
+            <Banner
+              status="info"
+              title="This exchange was cancelled."
+              description={data.cancelledAt ? `Cancelled at ${formatDateTime(data.cancelledAt)}` : undefined}
+            />
+          ) : (
+            <Banner
+              status="success"
+              title="Confirmed."
+              description="Inspect the garments in person before handing them over."
+            />
+          )}
+          {data.confirmedAt !== null ? (
+            <Text type="body">{`Confirmed at ${formatDateTime(data.confirmedAt)}`}</Text>
+          ) : null}
+          <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
+            {toHandoverRows(data.participants).map((row) => {
+              const givesLabel =
+                CATEGORY_OPTIONS.find((option) => option.value === row.gives.category)?.label ??
+                row.gives.category;
+              const receivesLabel =
+                CATEGORY_OPTIONS.find((option) => option.value === row.receives.category)?.label ??
+                row.receives.category;
+              return (
+                <ListItem
+                  key={row.gives.id}
+                  isSelected={row.isMe}
+                  aria-current={row.isMe ? true : undefined}
+                  label={
+                    <>
+                      {row.isMe ? 'You give ' : `${row.name} gives `}
+                      <Link
+                        href={routes.itemDetail(eventId, row.gives.id)}
+                        isStandalone
+                        className="inline-flex min-h-11 items-center"
+                      >
+                        {row.gives.photoUrl !== '' ? (
+                          <img
+                            src={row.gives.photoUrl}
+                            alt=""
+                            className="h-12 w-12 object-cover"
+                          />
+                        ) : null}
+                        {`${row.gives.title} · ${givesLabel}`}
+                      </Link>
+                      {` to ${row.givesTo}`}
+                    </>
+                  }
+                  description={
+                    <>
+                      {row.isMe ? 'You receive ' : `${row.name} receives `}
+                      <Link
+                        href={routes.itemDetail(eventId, row.receives.id)}
+                        isStandalone
+                        className="inline-flex min-h-11 items-center"
+                      >
+                        {row.receives.photoUrl !== '' ? (
+                          <img
+                            src={row.receives.photoUrl}
+                            alt=""
+                            className="h-12 w-12 object-cover"
+                          />
+                        ) : null}
+                        {`${row.receives.title} · ${receivesLabel}`}
+                      </Link>
+                      {` from ${row.receivesFrom}`}
+                    </>
+                  }
+                />
+              );
+            })}
+          </List>
+          {showCancelButton ? (
+            <Button
+              label="Cancel exchange"
+              variant="destructive"
+              size="lg"
+              width="100%"
+              onClick={() => setShowCancel(true)}
+            />
+          ) : null}
+        </>
+      ) : (
+        <>
+          <List header={<Heading level={2}>Who gives and receives</Heading>} hasDividers>
+            {data.participants.map((participant) => (
+              <ListItem
+                key={participant.participant.participantId}
+                label={`${participant.participant.displayName} gives ${participant.offeredClothing.title}`}
+                description={`Receives ${participant.receivedClothing.title} · ${participant.response}`}
+              />
+            ))}
+          </List>
+          <Text type="body">{`Your response: ${data.myResponse}`}</Text>
+          <Button
+            label="Consent"
+            size="lg"
+            width="100%"
+            isDisabled={consentDisabled}
+            isLoading={consentMutation.isPending}
+            onClick={() => setConfirmKind('consent')}
           />
-        ))}
-      </List>
-      <Text type="body">{`Your response: ${data.myResponse}`}</Text>
-      <Button
-        label="Consent"
-        size="lg"
-        width="100%"
-        isDisabled={consentDisabled}
-        isLoading={consentMutation.isPending}
-        onClick={() => setConfirmKind('consent')}
-      />
-      <Button
-        label="Reject"
-        variant="destructive"
-        size="lg"
-        width="100%"
-        isDisabled={rejectDisabled}
-        isLoading={rejectMutation.isPending}
-        onClick={() => setConfirmKind('reject')}
-      />
+          <Button
+            label="Reject"
+            variant="destructive"
+            size="lg"
+            width="100%"
+            isDisabled={rejectDisabled}
+            isLoading={rejectMutation.isPending}
+            onClick={() => setConfirmKind('reject')}
+          />
+        </>
+      )}
+      <Dialog
+        isOpen={showCancel}
+        onOpenChange={(open) => {
+          if (!open && !cancelMutation.isPending) setShowCancel(false);
+        }}
+        purpose="info"
+      >
+        <DialogHeader title="Cancel this exchange?" />
+        <VStack gap={4} padding={6}>
+          <Text type="body">
+            The whole exchange is cancelled for every participant, and all its garments become
+            available again.
+          </Text>
+          <Button
+            label="Cancel exchange"
+            variant="destructive"
+            size="lg"
+            width="100%"
+            isLoading={cancelMutation.isPending}
+            isDisabled={cancelMutation.isPending}
+            onClick={() => void handleCancelConfirm()}
+          />
+          <Button
+            label="Keep exchange"
+            variant="ghost"
+            size="lg"
+            width="100%"
+            isDisabled={cancelMutation.isPending}
+            onClick={() => setShowCancel(false)}
+          />
+        </VStack>
+      </Dialog>
       <Dialog
         isOpen={confirmKind !== null}
         onOpenChange={(open) => {

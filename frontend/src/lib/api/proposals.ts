@@ -66,6 +66,12 @@ export async function rejectProposal(
   });
 }
 
+export async function cancelProposal(eventId: string, proposalId: string): Promise<Proposal> {
+  return apiFetch<Proposal>(eventId, proposalPath(proposalId, '/cancel'), {
+    method: 'POST',
+  });
+}
+
 export function getProposalConflict(error: unknown): ProposalConflict | null {
   if (!(error instanceof ApiError)) return null;
   if (error.code !== 'PROPOSAL_VERSION_MISMATCH') return null;
