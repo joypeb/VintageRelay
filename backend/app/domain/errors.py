@@ -72,6 +72,11 @@ class ProposalVersionMismatchError(ConflictError):
     message = "This proposal has a newer version. Reload to review it."
 
 
+class ProposalNotConfirmedError(ConflictError):
+    code = "PROPOSAL_NOT_CONFIRMED"
+    message = "Only confirmed exchanges can be cancelled."
+
+
 class PhotoTooLargeError(AppError):
     status_code = 413
     code = "FILE_TOO_LARGE"
