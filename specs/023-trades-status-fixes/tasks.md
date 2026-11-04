@@ -84,7 +84,7 @@ description: "Task list for 023 Trades Status Fixes After Exchange QA"
 
 ## Phase 9: Polish
 
-- [ ] T016 Run full checks and record actual results: `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`; `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
+- [x] T016 Run full checks and record actual results: `cd backend && uv run ruff format --check . && uv run ruff check --no-cache . && uv run mypy app && uv run pytest`; `cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build`
 
 ## Dependencies
 
