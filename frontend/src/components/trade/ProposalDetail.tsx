@@ -19,7 +19,7 @@ import { getFormErrorMessage } from '@/lib/api/error-messages';
 import { consentProposal, cancelProposal, getProposal, rejectProposal } from '@/lib/api/proposals';
 import { queryKeys } from '@/lib/api/query-keys';
 import { routes } from '@/lib/routes';
-import { toHandoverRows } from '@/lib/trades';
+import { proposalStatusLabel, responseLabel, toHandoverRows } from '@/lib/trades';
 import { formatDateTime } from '@/lib/utils/date';
 import { CATEGORY_OPTIONS } from '@/lib/validation/clothing-form';
 
@@ -206,7 +206,7 @@ export function ProposalDetail({
       {closed ? (
         <Banner status="warning" title="This event has ended." description="Trades are read-only." />
       ) : null}
-      {isHandover ? null : <Text type="body">{`Version ${data.version} · ${data.status}`}</Text>}
+      {isHandover ? null : <Text type="body">{`Version ${data.version} · ${proposalStatusLabel(data)}`}</Text>}
       {!isHandover && versionChanged ? (
         <VStack gap={2}>
           <Banner
@@ -314,11 +314,11 @@ export function ProposalDetail({
               <ListItem
                 key={participant.participant.participantId}
                 label={`${participant.participant.displayName} gives ${participant.offeredClothing.title}`}
-                description={`Receives ${participant.receivedClothing.title} · ${participant.response}`}
+                description={`Receives ${participant.receivedClothing.title} · ${responseLabel(participant.response)}`}
               />
             ))}
           </List>
-          <Text type="body">{`Your response: ${data.myResponse}`}</Text>
+          <Text type="body">{`Your response: ${responseLabel(data.myResponse)}`}</Text>
           <Button
             label="Consent"
             size="lg"
@@ -409,7 +409,7 @@ export function ProposalDetail({
           <>
             <DialogHeader title="The proposal has changed." />
             <VStack gap={4} padding={6}>
-              <Text type="body">{`Current status: ${conflict.currentStatus}. Review the latest version before acting.`}</Text>
+              <Text type="body">{`Current status: ${proposalStatusLabel({ status: conflict.currentStatus, endReason: null, endDetail: null })}. Review the latest version before acting.`}</Text>
               {conflict.latestProposalId ? (
                 <Link
                   href={routes.tradeDetail(eventId, conflict.latestProposalId)}

@@ -23,6 +23,7 @@ export type Proposal = {
   version: number;
   status: ProposalStatus | (string & {});
   endReason: string | null;
+  endDetail: 'intent_declined' | 'intent_withdrawn' | 'intent_invalidated' | null;
   cycleSize: number;
   participants: ProposalParticipant[];
   myResponse: ProposalResponse | (string & {});

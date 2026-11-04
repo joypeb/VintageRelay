@@ -1,5 +1,5 @@
-import type { IntentClothingSummary } from '@/types/intent';
-import type { ProposalParticipant } from '@/types/proposal';
+import type { Intent, IntentClothingSummary } from '@/types/intent';
+import type { Proposal, ProposalParticipant } from '@/types/proposal';
 
 type ProposalLike = {
   id: string;
@@ -9,17 +9,16 @@ type ProposalLike = {
   createdAt: string;
 };
 
-type IntentLike = {
-  status: string;
-  acceptedProposalId: string | null;
-};
-
 export type GroupedProposals<T extends ProposalLike> = {
   awaitingMyConsent: T[];
-  threePersonFound: T[];
+  waitingForOthers: T[];
   confirmed: T[];
   history: T[];
 };
+
+function isLiveStatus(status: string): boolean {
+  return status === 'pending' || status === 'confirmed';
+}
 
 function byNewest<T extends ProposalLike>(a: T, b: T): number {
   return Date.parse(b.createdAt) - Date.parse(a.createdAt);
@@ -27,18 +26,14 @@ function byNewest<T extends ProposalLike>(a: T, b: T): number {
 
 export function groupProposals<T extends ProposalLike>(proposals: readonly T[]): GroupedProposals<T> {
   const awaitingMyConsent: T[] = [];
-  const threePersonFound: T[] = [];
+  const waitingForOthers: T[] = [];
   const confirmed: T[] = [];
   const history: T[] = [];
   for (const proposal of proposals) {
     if (proposal.status === 'pending' && proposal.myResponse === 'pending') {
       awaitingMyConsent.push(proposal);
-    } else if (
-      proposal.status === 'pending' &&
-      proposal.myResponse === 'consented' &&
-      proposal.cycleSize === 3
-    ) {
-      threePersonFound.push(proposal);
+    } else if (proposal.status === 'pending' && proposal.myResponse === 'consented') {
+      waitingForOthers.push(proposal);
     } else if (proposal.status === 'confirmed') {
       confirmed.push(proposal);
     } else {
@@ -46,23 +41,141 @@ export function groupProposals<T extends ProposalLike>(proposals: readonly T[]):
     }
   }
   awaitingMyConsent.sort(byNewest);
-  threePersonFound.sort(byNewest);
+  waitingForOthers.sort(byNewest);
   confirmed.sort(byNewest);
   history.sort(byNewest);
-  return { awaitingMyConsent, threePersonFound, confirmed, history };
+  return { awaitingMyConsent, waitingForOthers, confirmed, history };
 }
 
 export function countTradesBadge(
-  received: readonly IntentLike[],
-  proposals: readonly Pick<ProposalLike, 'status' | 'myResponse'>[],
+  received: readonly Intent[],
+  proposals: readonly Proposal[],
+  closed: boolean,
 ): number {
-  const awaitingRequests = received.filter(
-    (intent) => intent.status === 'active' && intent.acceptedProposalId === null,
+  const awaitingRequests = received.filter((intent) =>
+    isReceivedActionable(intent, proposals, closed),
   ).length;
   const awaitingProposals = proposals.filter(
     (proposal) => proposal.status === 'pending' && proposal.myResponse === 'pending',
   ).length;
   return awaitingRequests + awaitingProposals;
+}
+
+export function isLiveLeg(intent: Intent, proposals: readonly Proposal[]): boolean {
+  return proposals.some(
+    (proposal) =>
+      isLiveStatus(proposal.status) &&
+      proposal.participants.some(
+        (participant) =>
+          participant.participant.participantId === intent.participantId &&
+          participant.offeredClothing.id === intent.offeredClothing.id &&
+          participant.receivedClothing.id === intent.wantedClothing.id,
+      ),
+  );
+}
+
+export function isReceivedActionable(
+  intent: Intent,
+  proposals: readonly Proposal[],
+  closed: boolean,
+): boolean {
+  return (
+    intent.status === 'active' &&
+    !closed &&
+    !isLiveLeg(intent, proposals) &&
+    intent.offeredClothing.status === 'available' &&
+    intent.wantedClothing.status === 'available'
+  );
+}
+
+export function isSentActionable(intent: Intent, closed: boolean): boolean {
+  return intent.status === 'active' && !closed;
+}
+
+export function intentStatusLabel(intent: Intent, proposals: readonly Proposal[]): string {
+  if (intent.status === 'declined') return 'Declined';
+  if (intent.status === 'withdrawn') return 'Withdrawn';
+  if (intent.status === 'invalidated') return 'Item withdrawn';
+  if (
+    intent.offeredClothing.status === 'confirmed' ||
+    intent.wantedClothing.status === 'confirmed'
+  ) {
+    return 'Item already exchanged';
+  }
+  if (isLiveLeg(intent, proposals)) {
+    return intent.acceptedProposalId !== null ? 'Accepted' : 'In a proposal';
+  }
+  return 'Waiting';
+}
+
+export type RequestStageItem = {
+  intent: Intent;
+  direction: 'sent' | 'received';
+  nextActor: 'owner' | 'me';
+};
+
+export function requestStageItems(
+  sent: readonly Intent[],
+  received: readonly Intent[],
+  proposals: readonly Proposal[],
+): RequestStageItem[] {
+  const items: RequestStageItem[] = [];
+  for (const intent of sent) {
+    if (isRequestStageEligible(intent, proposals)) {
+      items.push({ intent, direction: 'sent', nextActor: 'owner' });
+    }
+  }
+  for (const intent of received) {
+    if (isRequestStageEligible(intent, proposals)) {
+      items.push({ intent, direction: 'received', nextActor: 'me' });
+    }
+  }
+  items.sort((a, b) => Date.parse(b.intent.createdAt) - Date.parse(a.intent.createdAt));
+  return items;
+}
+
+function isRequestStageEligible(intent: Intent, proposals: readonly Proposal[]): boolean {
+  return (
+    intent.status === 'active' &&
+    intent.offeredClothing.status === 'available' &&
+    intent.wantedClothing.status === 'available' &&
+    !isLiveLeg(intent, proposals)
+  );
+}
+
+export function pendingParticipantNames(proposal: Proposal): string[] {
+  return proposal.participants
+    .filter((participant) => !participant.isMe && participant.response === 'pending')
+    .map((participant) => participant.participant.displayName);
+}
+
+export function proposalStatusLabel(
+  proposal: Pick<Proposal, 'status' | 'endReason' | 'endDetail'>,
+): string {
+  if (proposal.status === 'pending') return 'Waiting for consent';
+  if (proposal.status === 'confirmed') return 'Confirmed';
+  if (proposal.status === 'rejected') return 'Rejected';
+  if (proposal.status === 'cancelled') return 'Cancelled';
+  if (proposal.status === 'invalidated') {
+    if (proposal.endReason === 'intent_changed') {
+      if (proposal.endDetail === 'intent_declined') return 'Declined';
+      if (proposal.endDetail === 'intent_withdrawn') return 'Request withdrawn';
+      return 'Request ended';
+    }
+    if (proposal.endReason === 'clothing_changed') return 'Item changed';
+    if (proposal.endReason === 'clothing_withdrawn') return 'Item withdrawn';
+    if (proposal.endReason === 'clothing_confirmed_elsewhere') return 'Item exchanged elsewhere';
+    if (proposal.endReason === 'event_closed') return 'Event closed';
+    return 'Ended';
+  }
+  return 'Ended';
+}
+
+export function responseLabel(response: string): string {
+  if (response === 'pending') return 'Waiting';
+  if (response === 'consented') return 'Consented';
+  if (response === 'rejected') return 'Rejected';
+  return 'Ended';
 }
 
 export type HandoverRow = {

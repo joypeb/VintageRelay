@@ -23,7 +23,7 @@ Source: explorer report (2026-11-04) plus direct reads of `frontend/src/lib/trad
 ## R4. Exchanges grouping
 
 - **Decision**: Replace `threePersonFound` with `waitingForOthers` (pending, my response consented, any cycle size). Add a pure helper that builds request-stage items from sent + received intents and proposals (active, both garments available, not a leg of a live proposal — covers reverse intents created by accept and 3-person legs). Exchanges renders groups: Requests, Awaiting my consent, Waiting for others, Confirmed, History.
-- **Rationale**: `groupProposals` puts 2-person consented proposals in History (`lib/trades.ts`; `trades.test.ts:29` asserts the bug). Badge (`countTradesBadge`, `BottomTabBar.tsx:43-65`) stays unchanged (actionable only).
+- **Rationale**: `groupProposals` puts 2-person consented proposals in History (`lib/trades.ts`; `trades.test.ts:29` asserts the bug). Badge (`countTradesBadge`, `BottomTabBar.tsx:43-65`) counts exactly the received requests that `isReceivedActionable` allows plus proposals awaiting my consent, so it never stays lit without an action.
 
 ## R5. Human-readable end reasons
 

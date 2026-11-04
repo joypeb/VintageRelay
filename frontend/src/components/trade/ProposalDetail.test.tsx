@@ -18,7 +18,7 @@ vi.mock('@/lib/api/proposals', () => ({
 }));
 
 const pending = {
-  id: 'p1', eventId: 'e1', version: 7, status: 'pending', endReason: null,
+  id: 'p1', eventId: 'e1', version: 7, status: 'pending', endReason: null, endDetail: null,
   cycleSize: 2, participants: [], myResponse: 'pending', canConsent: true,
   canReject: true, canCancel: false, createdAt: '2026-11-02T00:00:00Z',
   confirmedAt: null, cancelledAt: null, endedAt: null,
@@ -52,8 +52,31 @@ describe('proposal detail', () => {
     await user.click(await screen.findByRole('button', { name: 'Consent' }));
     await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Consent' }));
     expect(await screen.findByText(/the proposal has changed/i)).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).not.toHaveTextContent('invalidated');
+    expect(screen.getByRole('dialog')).toHaveTextContent(/Current status: (Declined|Ended)/);
     await user.click(screen.getByRole('button', { name: /reload/i }));
     await waitFor(() => expect(getProposal).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows plain proposal and participant response labels', async () => {
+    const alex = { participantId: 'a', displayName: 'Alex', isOrganizer: false };
+    const item = { id: 'c1', owner: alex, photoUrl: '', category: 'top' as const, title: 'Jacket', description: '', status: 'available' as const, contentVersion: 1 };
+    vi.mocked(getProposal).mockResolvedValue({ ...pending, participants: [
+      { participant: alex, isMe: true, offeredClothing: item, receivedClothing: item, response: 'pending', respondedAt: null },
+      { participant: { ...alex, participantId: 'b', displayName: 'Sam' }, isMe: false, offeredClothing: item, receivedClothing: item, response: 'consented', respondedAt: null },
+    ] });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByText(/Waiting for consent/)).toBeInTheDocument();
+    expect(screen.getByText(/Your response: Waiting/)).toBeInTheDocument();
+    expect(screen.getByText(/Receives Jacket · Consented/)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/\b(pending|consented)\b/);
+  });
+
+  it('shows a declined request as the reason an exchange ended', async () => {
+    vi.mocked(getProposal).mockResolvedValue({ ...pending, status: 'invalidated', endReason: 'intent_changed', endDetail: 'intent_declined', canConsent: false });
+    renderWithClient(<ProposalDetail eventId="e1" proposalId="p1" eventStatus="active" />);
+    expect(await screen.findByText(/Version 7 · Declined/)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/\binvalidated\b/);
   });
 
   it('disables consent for an invalidated proposal', async () => {
