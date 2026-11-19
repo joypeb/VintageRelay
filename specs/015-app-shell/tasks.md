@@ -120,6 +120,7 @@
 - [X] T024 [P] Closed-aware empty-state copy in `frontend/src/components/clothing/MyItemsPlaceholderScreen.tsx` ("Register your first item" hidden or reworded when closed; update any exact-copy assertions)
 - [X] T025 [P] Fix doubled accessible tab names in `frontend/src/components/ui/BottomTabBar.tsx` (diagnosed as Astryx aria-hidden sizer artifact, no app fix; documented in review)
 - [X] T026 [P] Render the header landmark only with the menu in `frontend/src/app/events/[eventId]/(tabs)/layout.tsx` (empty:hidden hides it; removed from a11y tree when empty)
+- [X] T027 Pin tabs to the viewport bottom regardless of content length: parent `frontend/src/app/events/[eventId]/layout.tsx` becomes the 100dvh flex shell (banner + scrollable fill wrapper), `(tabs)` shell uses `height="100%"` with internal main scroll (follow-up 2026-11-19: sticky moved with content and banner pushed tabs off-screen; verified with forced-overflow page on active and closed events)
 
 ---
 

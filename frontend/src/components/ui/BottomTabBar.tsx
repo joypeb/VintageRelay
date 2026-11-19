@@ -54,7 +54,7 @@ export function BottomTabBar({ eventId }: { eventId: string }) {
       onChange={() => undefined}
       layout="fill"
       size="lg"
-      className="sticky bottom-0 bg-surface pb-[env(safe-area-inset-bottom)]"
+      className="shrink-0 pb-[env(safe-area-inset-bottom)]"
     >
       <Tab value="home" label="Home" href={routes.eventHome(eventId)} />
       <Tab value="search" label="Search" href={routes.search(eventId)} />

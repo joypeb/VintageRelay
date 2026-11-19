@@ -1,3 +1,4 @@
+import { StackItem } from '@astryxdesign/core/Stack';
 import { VStack } from '@astryxdesign/core/VStack';
 
 import { EventClosedBanner } from '@/components/event/EventClosedBanner';
@@ -13,9 +14,11 @@ export default async function EventLayout({
 
   return (
     // Full-viewport-height column so the tab bar ends at the viewport bottom on short pages.
-    <VStack minHeight="100dvh" gap={0}>
+    <VStack height="100dvh" gap={0}>
       <EventClosedBanner eventId={eventId} />
-      {children}
+      <StackItem size="fill" isScrollable>
+        {children}
+      </StackItem>
     </VStack>
   );
 }
